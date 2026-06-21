@@ -36,7 +36,11 @@ export function parseAbilities(abilitiesText) {
     };
 
     lines.forEach(line => {
-        const trimmed = line.trim();
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Clean leading OCR noise (commas, pipes, spaces, dashes)
+        trimmed = trimmed.replace(/^[\s,./|*-]+/g, '').trim();
         if (!trimmed) return;
 
         // Numbered list item check (e.g. "1. Charm Ray.")
@@ -127,6 +131,16 @@ export function parseAbilities(abilitiesText) {
             });
         }
 
+        // Clean up damage list to avoid double-counting versatile or alternative damage types
+        const seenTypes = new Set();
+        const cleanedDamageList = [];
+        damageList.forEach(d => {
+            if (!seenTypes.has(d.type)) {
+                seenTypes.add(d.type);
+                cleanedDamageList.push(d);
+            }
+        });
+
         const halfOnSuccess = /half\s+as\s+much/i.test(segment) || /half\s+damage/i.test(segment);
 
         parsedSkills.push({
@@ -135,7 +149,7 @@ export function parseAbilities(abilitiesText) {
             toHit,
             dc,
             save,
-            damage: damageList,
+            damage: cleanedDamageList,
             halfOnSuccess,
             description: segment
         });
