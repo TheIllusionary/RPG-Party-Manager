@@ -1,0 +1,4942 @@
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo3
+VBA Filename: Módulo3.bas
+------------------------------------------
+Attribute VB_Name = "Módulo3"
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/ThisWorkbook
+VBA Filename: ThisWorkbook.cls
+------------------------------------------
+Attribute VB_Name = "ThisWorkbook"
+Attribute VB_Base = "0{00020819-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet1
+VBA Filename: Sheet1.cls
+------------------------------------------
+Attribute VB_Name = "Sheet1"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet2
+VBA Filename: Sheet2.cls
+------------------------------------------
+Attribute VB_Name = "Sheet2"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet3
+VBA Filename: Sheet3.cls
+------------------------------------------
+Attribute VB_Name = "Sheet3"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet4
+VBA Filename: Sheet4.cls
+------------------------------------------
+Attribute VB_Name = "Sheet4"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+Option Explicit
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/AttackMenu
+VBA Filename: AttackMenu.frm
+------------------------------------------
+Attribute VB_Name = "AttackMenu"
+Attribute VB_Base = "0{FCC7E50E-BE42-44D7-BBE7-EE2225D6588A}{E63F6082-A7E5-433C-AC8F-5295F3F23244}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet6
+VBA Filename: Sheet6.cls
+------------------------------------------
+Attribute VB_Name = "Sheet6"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+Option Explicit
+Private Sub ComboBox1_DropButtonClick()
+    ComboBox1.ListFillRange = "CreatureNames"
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/EncounterGenerator
+VBA Filename: EncounterGenerator.bas
+------------------------------------------
+Attribute VB_Name = "EncounterGenerator"
+Option Explicit
+Public Sub GetCMBVals1()
+    
+End Sub
+Public Sub ClearReady()
+    'Clear Values
+    Sheets("Readied Encounter").Range("A17:J1048576").ClearContents
+    'Clear Formats
+    With Sheets("Readied Encounter").Range("A17:J145").Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Sheets("Readied Encounter").Range("A17:J145").Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    
+    Columns("D:D").FormatConditions.Delete
+    
+    Call ClearInitiatives
+End Sub
+Public Sub Ready()
+    Dim i, j, k, m, N As Double
+    'Used
+    'i,j,k
+    'Replacable
+    'i,j,k
+    
+    Dim Encounter() As Variant
+    Dim Output() As Variant
+    Dim CreatureInfo() As Variant
+    
+    Dim Creatures As Double
+    Dim RangeX As Double
+    
+    Dim Check129 As String
+    
+    Application.ScreenUpdating = False
+    
+    If ActiveSheet.Name = "Encounter Builder" Then
+        Encounter() = Sheets("Encounter Builder").Range("A19:V48").Value
+    ElseIf ActiveSheet.Name = "Xanathar's Encounter Builder" Then
+        Encounter() = Sheets("Xanathar's Encounter Builder").Range("A34:V63").Value
+    End If
+    
+    'check max
+    For i = 1 To UBound(Encounter(), 1)
+        j = j + Encounter(i, 11)
+    Next
+    
+    If j > 129 Then
+        Check129 = MsgBox("The encounter creature cap is 129. Please reduce the number of enemy combatants before continuing. I apologize for any inconvenience.", vbOKOnly, "Error")
+        End
+    End If
+    'end check max
+    
+    For i = 1 To 30
+        Creatures = Creatures + Encounter(i, 11)
+    Next
+    
+    If Creatures = 0 Then Exit Sub
+    
+    ReDim Output(1 To Creatures, 1 To 10) As Variant
+    
+    Call ClearReady
+    
+    'Get Values
+    k = 1
+    N = 1
+    For i = 1 To 30
+        If Not Encounter(i, 1) = "" Then
+            CreatureInfo() = GetCreatureInfo(Encounter(i, 1))
+            For j = 1 To Encounter(i, 11)
+                'Name
+                Output(k, 1) = CreatureInfo(1, 1)
+                '#
+                Output(k, 2) = j
+                'Hp max
+                If Not CreatureInfo(1, 4) = "" Then
+                    Output(k, 3) = RandomHP(CreatureInfo(1, 4))
+                End If
+                'Current HP
+                Output(k, 4) = "=C" & 16 + N
+                N = N + 1
+                'Conditions
+                Output(k, 5) = ""
+                'Size
+                Output(k, 6) = CreatureInfo(1, 2)
+                'AC
+                Output(k, 7) = CreatureInfo(1, 3)
+                'CR
+                Output(k, 8) = CreatureInfo(1, 5)
+                'EXP
+                Output(k, 9) = "=" & CreatureInfo(1, 6) '& "*L1"
+                'Source
+                Output(k, 10) = CreatureInfo(1, 7)
+                
+                'Color Scale
+                Sheets("Readied Encounter").Range("D" & k + 16).FormatConditions.Delete
+                Call HealthScale(Sheets("Readied Encounter").Range("D" & k + 16), "$C$" & k + 16)
+                
+                'Next
+                k = k + 1
+            Next
+            
+            With Sheets("Readied Encounter").Range("A" & k + 15 & ":J" & k + 15).Borders(xlEdgeBottom)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+        End If
+    Next
+    
+    Sheets("Readied Encounter").Range("A17:J" & Creatures + 16).Value = Output()
+    With Sheets("Readied Encounter").Columns("B:J").EntireColumn
+        .ColumnWidth = 45
+        .AutoFit
+    End With
+    
+    Sheets("Readied Encounter").Columns("E").EntireColumn.ColumnWidth = 17.57
+    
+    Sheets("Readied Encounter").Activate
+    Sheets("Readied Encounter").Range("A3").Select
+    
+    Application.ScreenUpdating = True
+End Sub
+Public Sub HealthScale(RangeX As Range, Ref As String)
+    RangeX.FormatConditions.AddColorScale ColorScaleType:=3
+    RangeX.FormatConditions(RangeX.FormatConditions.Count).SetFirstPriority
+    RangeX.FormatConditions(1).ColorScaleCriteria(1).Type = xlConditionValueNumber
+    RangeX.FormatConditions(1).ColorScaleCriteria(1).Value = 0
+    
+    With RangeX.FormatConditions(1).ColorScaleCriteria(1).FormatColor
+        .Color = 7039480
+        .TintAndShade = 0
+    End With
+    RangeX.FormatConditions(1).ColorScaleCriteria(2).Type = _
+        xlConditionValueNumber
+    RangeX.FormatConditions(1).ColorScaleCriteria(2).Value = "='Readied Encounter'!" & Ref & "/2"
+    With RangeX.FormatConditions(1).ColorScaleCriteria(2).FormatColor
+        .Color = 8711167
+        .TintAndShade = 0
+    End With
+    RangeX.FormatConditions(1).ColorScaleCriteria(3).Type = _
+        xlConditionValueNumber
+    RangeX.FormatConditions(1).ColorScaleCriteria(3).Value = _
+        "='Readied Encounter'!" & Ref & "*2"
+    With RangeX.FormatConditions(1).ColorScaleCriteria(3).FormatColor
+        .Color = 16764743
+        .TintAndShade = 0
+    End With
+End Sub
+Public Sub ClearEncounter()
+    Sheets("Encounter Builder").Range("A19:K48").Value = ""
+    
+    Call ClearReady
+End Sub
+Public Sub PullLoadView()
+    EncounterBrowser.Show
+End Sub
+Public Sub SaveEncounter()
+    Dim i, j, k As Integer
+    'Used
+    'i,j,k
+    'Reusable
+    'j,k
+    
+    Dim Original() As Variant
+    Dim Altered() As Variant
+    Dim NameX() As Variant
+    
+    Dim EncounterName As String
+    Dim NameChk As Boolean
+    Dim RangeX As Range
+    
+    'Pull values
+    If ActiveSheet.Name = "Encounter Builder" Then
+        Set RangeX = Sheets("Encounter Builder").Range("A19:L48")
+    ElseIf ActiveSheet.Name = "Xanathar's Encounter Builder" Then
+        Set RangeX = Sheets("Xanathar's Encounter Builder").Range("A34:K63")
+    End If
+    
+    If Not Sheets("Saved Encounters").Range("A3").Value = "" Then
+        NameX() = Range("SavedEncounters[Encounter Name]").Value
+    End If
+    
+    'Get Name
+    EncounterName = InputBox("Please name your encounter", "Encounter Name")
+    If EncounterName = "" Then Exit Sub
+    
+    If Not Sheets("Saved Encounters").Range("A3").Value = "" Then
+        j = 1
+        Do
+            NameChk = True
+            For k = 1 To UBound(NameX(), 1)
+                If EncounterName = NameX(k, 1) Then
+                    NameChk = False
+                    Exit For
+                End If
+            Next
+            j = j + 1
+            
+            If NameChk = False Then
+                EncounterName = InputBox("That name has already been used. Please enter a unique identifier for your encounter", "Encounter Name")
+                If EncounterName = "" Then Exit Sub
+            End If
+        Loop Until NameChk = True Or j > 10000
+    End If
+    
+    Original = RangeX.Value
+    
+    i = 2 * UBound(Original(), 1)
+    ReDim Altered(1 To 1, 1 To i) As Variant
+    
+    k = 1
+    
+    For j = 1 To i / 2
+        Altered(1, k) = Original(j, 1)
+        Altered(1, k + 1) = Original(j, 11)
+        k = k + 2
+    Next
+    
+    If Not Sheets("Saved Encounters").Range("A2").Value = "" Then
+        Sheets("Saved Encounters").Range("SavedEncounters[Encounter Name]").ListObject.ListRows.Add (1)
+    End If
+    Sheets("Saved Encounters").Range("B2:BI2").Value = Altered()
+    Sheets("Saved Encounters").Range("A2").Value = EncounterName
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Functions
+VBA Filename: Functions.bas
+------------------------------------------
+Attribute VB_Name = "Functions"
+Option Explicit
+Public Sub BubbleSort(MyArray() As Variant)
+    Dim i, j, k As Long
+    Dim Temp As Variant
+    Dim LB As Long
+    
+    LB = LBound(MyArray, 2)
+     
+    For i = LBound(MyArray, 1) To UBound(MyArray) - 1
+        For j = i + 1 To UBound(MyArray)
+            If MyArray(i, LB) > MyArray(j, LB) Then
+                For k = LB To UBound(MyArray, 2)
+                    Temp = MyArray(j, k)
+                    MyArray(j, k) = MyArray(i, k)
+                    MyArray(i, k) = Temp
+                Next
+            End If
+        Next j
+    Next i
+End Sub
+Public Function N2L(N) As String
+    Dim vArr
+    vArr = Split(Cells(1, N).Address(True, False), "$")
+    N2L = vArr(0)
+End Function
+Public Sub AwardEXP(EXP As Double)
+    Dim i, j As Integer
+    'Used
+    'i
+    'Reuse
+    'i
+    
+    Dim PlayerEXP() As Variant
+    Dim Active() As Variant
+    
+    Dim NLV1() As Variant
+    Dim NLV2() As Variant
+    Dim LvUp() As String
+    Dim Alert As String
+    
+    NLV1() = Sheets("Aux Lists").Range("PlayerLevel").Value
+    
+    If EXP = 0 Then Exit Sub
+    
+    If Not EXP - Int(EXP) = 0 Then
+        EXP = RoundRight(EXP)
+    End If
+    PlayerEXP() = Sheets("Player Manager").Range("J17:CU17").Value
+    Active() = Sheets("Player Manager").Range("J13:CU13").Value
+    
+    For i = 1 To UBound(PlayerEXP(), 2) Step 9
+        If Not Active(1, i) = "" Then
+            PlayerEXP(1, i) = PlayerEXP(1, i) + EXP
+        End If
+    Next
+    
+    Sheets("Player Manager").Range("J17:CU17").Value = PlayerEXP()
+    
+    Calculate
+    NLV2() = Sheets("Aux Lists").Range("PlayerLevel").Value
+    ReDim LvUp(1 To UBound(NLV1()), 1 To 2) As String
+    
+    j = 0
+    For i = 1 To UBound(NLV1())
+        If Not NLV1(i, 2) = NLV2(i, 2) Then
+            j = j + 1
+            LvUp(j, 1) = NLV1(i, 1)
+            LvUp(j, 2) = NLV1(i, 2) & "->" & NLV2(i, 2)
+        End If
+    Next
+    
+    Sheets("Player Manager").Select
+    
+    If j > 0 Then
+        Alert = "The following characters have leveled up:" & vbCrLf
+        For i = 1 To j
+            Alert = Alert & vbCrLf & LvUp(i, 1) & ": " & LvUp(i, 2)
+        Next
+        Alert = Alert & vbCrLf & vbCrLf & "Congratulations!"
+        Alert = MsgBox(Alert, vbOKOnly, "Level UP!")
+    End If
+End Sub
+Public Function RoundRight(Numb As Double)
+    Dim Splitit() As String
+    
+    Splitit = Split(Numb, ".")
+    If CDbl(Splitit(1)) >= 5 Then
+        RoundRight = CDbl(Splitit(0)) + 1
+    Else
+        RoundRight = CDbl(Splitit(0))
+    End If
+End Function
+Public Function PMNumberOfPlayers()
+    PMNumberOfPlayers = (2 + Worksheets("Player Manager").DropDowns("CMBPlayer").Value)
+End Function
+Public Function ColumnNumber(Name)
+    ColumnNumber = Range(Name & 1).Column
+End Function
+Public Function ColumnName(Number)
+    ColumnName = Split(Cells(, Number).Address, "$")(1)
+End Function
+Public Function GetAC(Dex As Double, Armor As String, Special As Double, Shield As String, Proficiency As Integer)
+    Dim Dexmod As Double
+    Dim ArmorMod As Integer
+    Dim DexMax As Double
+    Dim ShieldMod As Double
+    Dim ProfMod As Integer
+    
+    Dim DUM As Variant
+    Dim Splitit() As String
+    
+    'dex mod
+    If Not Replace(Armor, "Dex", "") = Armor Then
+        If Not Replace(Armor, "Max", "") = Armor Then
+            Splitit() = Split(Armor, "Max ")
+            Splitit() = Split(Splitit(1), ")")
+            Dexmod = Splitit(0)
+        Else
+            Dexmod = (Dex - 10) / 2
+            DUM = CStr(Dexmod)
+            Splitit() = Split(DUM, ".")
+            Dexmod = CDbl(Splitit(0))
+        End If
+    Else
+        Dexmod = 0
+    End If
+    
+    'proficiency mod
+    If Not Replace(Armor, "Proficiency", "") = Armor Then
+        ProfMod = Proficiency
+    Else
+        ProfMod = 0
+    End If
+    
+    'armor mod
+    If Armor = "" Then
+        ArmorMod = 10
+    Else
+        Splitit() = Split(Armor, "AC: ")
+        ArmorMod = CInt(Left(Splitit(1), 2))
+    End If
+    
+    'Shield mod
+    If Not Shield = "" Then
+        ShieldMod = 2
+    Else
+        ShieldMod = 0
+    End If
+    
+    GetAC = ArmorMod + Dexmod + Special + ShieldMod + ProfMod
+End Function
+Public Function SplitHP(Dice As Variant, NumberDieAdd As Integer)
+    Dim Splitit() As String
+    Dim BoiledDown As String
+    
+    Dim Numb As Double
+    Dim Die As Double
+    Dim Con As Double
+    
+    Dim DUM As Variant
+    
+    If IsNumeric(Dice) = True Then
+        ReDim Splitit(0 To 2) As String
+        Splitit(2) = "0"
+        Splitit(2) = "0"
+        Splitit(2) = CStr(Dice)
+        SplitHP = Splitit(NumberDieAdd)
+        Exit Function
+    End If
+    
+    DUM = Replace(Dice, " ", "")
+    Splitit() = Split(DUM, "(")
+    DUM = Replace(Splitit(1), ")", "")
+    DUM = Replace(DUM, "d", "+")
+    DUM = Replace(DUM, "-", "+-")
+    Splitit() = Split(DUM, "+")
+    If UBound(Splitit(), 1) < 2 Then
+        ReDim Preserve Splitit(0 To 2)
+        Splitit(2) = 0
+    End If
+    
+    SplitHP = Splitit(NumberDieAdd)
+    
+End Function
+Public Function RandomValue(Low As Variant, High As Variant)
+    Randomize
+    
+    RandomValue = Int((High - Low + 1) * Rnd + Low)
+End Function
+Public Function RandomHP(Dice)
+    Dim i As Integer
+    'Used
+    'i
+    'Replacable
+    'i
+    
+    Dim Numb As Integer
+    Dim Die As Integer
+    Dim Add As Integer
+    
+    Dim Health As Double
+    
+    If IsNumeric(Dice) = True Then
+        RandomHP = Dice
+        Exit Function
+    End If
+    
+    Numb = SplitHP(Dice, 0)
+    Die = SplitHP(Dice, 1)
+    Add = SplitHP(Dice, 2)
+    
+    For i = 1 To Numb
+        Health = Health + RandomValue(1, Die)
+    Next
+    
+    Health = Health + Add
+    
+    If Health <= 0 Then
+        Health = 1
+    End If
+    
+    RandomHP = Health
+End Function
+Public Function GetCreatureInfo(Name)
+    
+    Dim i, j, k, m, p As Double
+    'Used:
+    'i,j,k
+    'Replacable
+    'i,k
+    
+    Dim Creature() As Variant
+    Dim CreatureTable() As Variant
+    
+    Dim Dum1 As Variant
+    Dim Splitit() As String
+    Dim Health As Double
+    Dim HPInfo(1 To 3) As Double
+    
+    CreatureTable() = Sheets("Enemy Library").Range("Creatures").Value
+    
+    j = UBound(CreatureTable(), 1)
+    m = UBound(CreatureTable(), 2)
+    
+    ReDim Creature(1 To 1, 1 To m) As Variant
+    
+    For i = 1 To j
+        If UCase(Name) = UCase(CreatureTable(i, 1)) Then
+            For k = 1 To m
+                Creature(1, k) = CreatureTable(i, k)
+            Next
+            Exit For
+        End If
+    Next
+    
+    GetCreatureInfo = Creature()
+End Function
+Public Function RemoveDupes(MyArray As Variant) As Variant
+    Dim i, j As Long
+    
+    Dim NewArray() As Variant
+    
+    ReDim NewArray(1 To UBound(MyArray, 1), 1 To UBound(MyArray, 2))
+    
+    j = UBound(MyArray, 1)
+    
+    For i = 1 To j
+        For k = 1 To j
+            
+        Next
+    Next
+    
+End Function
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/PlayerSheet
+VBA Filename: PlayerSheet.bas
+------------------------------------------
+Attribute VB_Name = "PlayerSheet"
+Option Explicit
+Public Sub ShowCharacterLists()
+    Sheets("Character Lists").Visible = True
+    Sheets("Character Lists").Select
+End Sub
+Public Sub HideCharacterLists()
+    Sheets("Character Lists").Visible = False
+    Sheets("Player Manager").Select
+End Sub
+Public Function DexModifier(Dex As Integer)
+    Dim Result As Double
+    
+    Result = (Dex - 10) / 2
+    
+    If Result < 0 And Abs(Result) - Int(Abs(Result)) = 0.5 Then
+        Result = Result - 0.5
+    ElseIf Result > 0 And Result - Int(Result) = 0.5 Then
+        Result = Result - 0.5
+    End If
+    
+    DexModifier = Result
+End Function
+Public Function LiftingCarrying(STR, Race, RaceTable)
+    Dim i As Integer
+    
+    Dim RaceMods() As Variant
+    Dim Modifier As Integer
+    
+    Dim Output(0 To 1) As String
+    
+    RaceMods() = RaceTable.Value
+    
+    Modifier = 1
+    For i = 1 To UBound(RaceMods(), 1)
+        If Race = RaceMods(i, 1) Then
+            Modifier = RaceMods(i, 3)
+            Exit For
+        End If
+    Next
+    
+    Output(0) = 15 * STR * Modifier
+    Output(1) = 2 * Output(0)
+    
+    LiftingCarrying = "Push/Drag/Lift: " & Output(0) & vbCrLf & _
+        " Carrying Capacity: " & Output(1)
+    
+End Function
+Public Sub ClearPlayerSheet()
+    Dim ClearRange As Range
+    
+    Dim Confirm As String
+    
+    Confirm = MsgBox("Are you sure you would like to completely reset all player information?", vbOKCancel, "Reset Player Manager")
+    If Confirm = 2 Then End
+    
+    Sheets("Player Manager").Select
+    
+    Set ClearRange = Sheets("Player Manager").Range("J9:CU9,J11:CU11,J17:CU17,J19:CU19,J21:CU21,J30:CU34,J47:CU51,J56:CU57,J62:CU62")
+    
+    ClearRange.Value = ""
+    
+    Sheets("Player Manager").Range("J13:CU13").Value = Worksheets("Aux Lists").Range("A4").Value
+    
+    Sheets("Readied Encounter").Range("E5:F14").Value = ""
+    Call LongRest
+    
+    Worksheets("Player Manager").DropDowns("CMBPlayer").Value = 8
+    Call NumberPlayers
+    
+End Sub
+Public Sub ResetCurrentHP()
+    Dim i As Integer
+    
+    Dim Formu As String
+    Dim Column As String
+    
+    For i = 1 To 90 Step 9
+        Column = ColumnName(9 + i)
+        
+        Formu = "=" & Column & "19"
+        
+        'Range(Column & 20).Select
+        Range(Column & 20).Formula = Formu
+    Next
+End Sub
+Public Sub ConditionButton()
+    LibrarySearch.Show
+End Sub
+Public Sub SanityToggle()
+    If Worksheets("Player Manager").Shapes("Sanity").OLEFormat.Object.Value = 1 Then
+        Sheets("Player Manager").Rows(47).EntireRow.Hidden = False
+    Else
+        Sheets("Player Manager").Rows(47).EntireRow.Hidden = True
+    End If
+End Sub
+Public Sub HonorToggle()
+    If Worksheets("Player Manager").Shapes("Honor").OLEFormat.Object.Value = 1 Then
+        Sheets("Player Manager").Rows(48).EntireRow.Hidden = False
+    Else
+        Sheets("Player Manager").Rows(48).EntireRow.Hidden = True
+    End If
+End Sub
+Public Sub NumberPlayers()
+    Dim i, j, k As Integer
+    'Used
+    'i,j,k
+    'replacable
+    'i
+    Dim RangeX As String
+    Dim RangeY As String
+    Dim Splitit() As String
+    
+    Application.ScreenUpdating = False
+    
+    Sheets("Player Manager").Columns("A:CU").Hidden = False
+    k = PMNumberOfPlayers
+    
+    If k = 10 Then
+        Sheets("Player Manager").Shapes("Player 1").Visible = True
+        Sheets("Player Manager").Shapes("Player 2").Visible = True
+        Sheets("Player Manager").Shapes("Player 3").Visible = True
+        
+        'Format
+        With Sheets("Player Manager").Range("BU1:CU8").Interior
+            .Pattern = xlSolid
+            .PatternColorIndex = xlAutomatic
+            .ThemeColor = xlThemeColorDark1
+            .TintAndShade = -4.99893185216834E-02
+            .PatternTintAndShade = 0
+        End With
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlDiagonalDown).LineStyle = xlNone
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlDiagonalUp).LineStyle = xlNone
+        With Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeLeft)
+            .LineStyle = xlContinuous
+            .Color = -13683110
+            .TintAndShade = 0
+            .Weight = xlMedium
+        End With
+        With Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeTop)
+            .LineStyle = xlContinuous
+            .Color = -13683110
+            .TintAndShade = 0
+            .Weight = xlMedium
+        End With
+        With Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeBottom)
+            .LineStyle = xlContinuous
+            .Color = -13683110
+            .TintAndShade = 0
+            .Weight = xlMedium
+        End With
+        With Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeRight)
+            .LineStyle = xlContinuous
+            .Color = -13683110
+            .TintAndShade = 0
+            .Weight = xlMedium
+        End With
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlInsideVertical).LineStyle = xlNone
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlInsideHorizontal).LineStyle = xlNone
+        Sheets("Readied Encounter").Rows("5:14").EntireRow.Hidden = False
+    Else
+        j = 10 + 9 * k
+        
+        Splitit() = Split(CStr(Cells(1, (j)).Address), "$")
+        RangeX = Splitit(1) & ":CU"
+        RangeY = Splitit(1) & "13:CU13"
+        
+        Sheets("Player Manager").Range(RangeY).Value = ""
+        Sheets("Player Manager").Columns(RangeX).Hidden = True
+        
+        'hide 1st pic
+        Sheets("Player Manager").Shapes("Player 1").Visible = False
+        With Sheets("Player Manager").Range("BU1:CU8").Interior
+            .Pattern = xlSolid
+            .PatternColorIndex = xlAutomatic
+            .ThemeColor = xlThemeColorAccent3
+            .TintAndShade = 0.399975585192419
+            .PatternTintAndShade = 0
+        End With
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlDiagonalDown).LineStyle = xlNone
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlDiagonalUp).LineStyle = xlNone
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeLeft).LineStyle = xlNone
+        Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeTop).LineStyle = xlNone
+        With Sheets("Player Manager").Range("BU1:CU8").Borders(xlEdgeBottom)
+            .LineStyle = xlContinuous
+            .Color = -13683110
+            .TintAndShade = 0
+            .Weight = xlMedium
+        End With
+        
+        'check 2nd pic
+        If k < 7 Then
+            Sheets("Player Manager").Shapes("Player 2").Visible = False
+            
+            'format
+            With Sheets("Player Manager").Range("AT1:BT8").Interior
+                .Pattern = xlSolid
+                .PatternColorIndex = xlAutomatic
+                .ThemeColor = xlThemeColorAccent3
+                .TintAndShade = 0.399975585192419
+                .PatternTintAndShade = 0
+            End With
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlDiagonalDown).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlDiagonalUp).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeLeft).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeTop).LineStyle = xlNone
+            With Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeBottom)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeRight).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlInsideVertical).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlInsideHorizontal).LineStyle = xlNone
+        Else
+            Sheets("Player Manager").Shapes("Player 2").Visible = True
+            
+            'Format
+            With Sheets("Player Manager").Range("AT1:BT8").Interior
+                .Pattern = xlSolid
+                .PatternColorIndex = xlAutomatic
+                .ThemeColor = xlThemeColorDark1
+                .TintAndShade = -4.99893185216834E-02
+                .PatternTintAndShade = 0
+            End With
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlDiagonalDown).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlDiagonalUp).LineStyle = xlNone
+            With Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeLeft)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+            With Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeTop)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+            With Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeBottom)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+            With Sheets("Player Manager").Range("AT1:BT8").Borders(xlEdgeRight)
+                .LineStyle = xlContinuous
+                .Color = -13683110
+                .TintAndShade = 0
+                .Weight = xlMedium
+            End With
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlInsideVertical).LineStyle = xlNone
+            Sheets("Player Manager").Range("AT1:BT8").Borders(xlInsideHorizontal).LineStyle = xlNone
+        End If
+        
+        If k < 4 Then
+            Sheets("Player Manager").Shapes("Player 3").Visible = False
+            Sheets("Player Manager").Shapes("DMGuild").Visible = False
+        Else
+            Sheets("Player Manager").Shapes("Player 3").Visible = True
+            Sheets("Player Manager").Shapes("DMGuild").Visible = True
+        End If
+        
+        'readied encounter hiding
+        Sheets("Readied Encounter").Rows("5:" & 14 - 10 + k).EntireRow.Hidden = False
+        Sheets("Readied Encounter").Rows(5 + k & ":14").EntireRow.Hidden = True
+    End If
+    
+    Call InitiativePlayers(k)
+    
+    Calculate
+    Application.ScreenUpdating = True
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet7
+VBA Filename: Sheet7.cls
+------------------------------------------
+Attribute VB_Name = "Sheet7"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/EncounterBrowser
+VBA Filename: EncounterBrowser.frm
+------------------------------------------
+Attribute VB_Name = "EncounterBrowser"
+Attribute VB_Base = "0{A52708C3-C604-4A12-A4D1-55E87834E2F7}{463B12FB-A4B7-455E-9EBF-EDC606FE837F}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+
+Private Sub CMDDelete_Click()
+    Dim i As Double
+    Dim Conf As String
+    
+    Dim Encounter As String
+    
+    Dim SavedE() As Variant
+    
+    If LstEncounters.ListIndex = 0 Then Exit Sub
+    
+    Encounter = LstEncounters.Value
+    
+    Conf = MsgBox("Are you sure that you want to delete the selected encounter?", vbYesNo, "Delete Encounter?")
+    If Conf = vbNo Then Exit Sub
+    
+    If Sheets("Saved Encounters").Range("A3").Value = "" Then
+        i = 1
+        Sheets("Saved Encounters").Rows(i + 1).EntireRow.Delete
+        End
+    Else
+        SavedE() = Range("SavedEncounters[Encounter Name]").Value
+        
+        For i = 1 To UBound(SavedE(), 1)
+            If Encounter = SavedE(i, 1) Then Exit For
+        Next
+    End If
+    
+    Sheets("Saved Encounters").Rows(i + 1).EntireRow.Delete
+    
+    Call GetLstEncountersVals
+End Sub
+
+Private Sub CMDLoad_Click()
+    Dim i, j, k As Double
+    'Used
+    'i,j,k
+    'Replacable
+    'j,k
+    
+    Dim Encounter As String
+    
+    Dim SavedE() As Variant
+    Dim Load(1 To 30, 1 To 11) As Variant
+    
+    If IsNull(LstEncounters.Value) = True Then Exit Sub
+    If LstEncounters.ListIndex = 0 Then Exit Sub
+    
+    Application.ScreenUpdating = False
+    
+    Encounter = LstEncounters.Value
+    SavedE() = Range("SavedEncounters").Value
+    
+    i = 1
+    Do Until Encounter = SavedE(i, 1) Or i > 10000
+        i = i + 1
+    Loop
+    
+    k = 2
+    For j = 1 To 30
+        Load(j, 1) = SavedE(i, k)
+        Load(j, 11) = SavedE(i, k + 1)
+        k = k + 2
+    Next
+    
+    Sheets("Encounter Builder").Range("A19:K48").Value = Load()
+    Sheets("Xanathar's Encounter Builder").Range("A34:K63").Value = Load()
+    
+    Calculate
+    
+    Application.ScreenUpdating = True
+    End
+End Sub
+
+Private Sub UserForm_Initialize()
+    Call GetLstEncountersVals
+End Sub
+Private Sub GetLstEncountersVals()
+    
+    Dim cc As Integer
+    Dim i, j, k As Integer
+    
+    'setup lstbox
+    LstEncounters.Clear
+    
+    cc = 61
+    
+    LstEncounters.ColumnCount = cc
+    'LstEncounters.ColumnWidths = "90,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14,90,14"
+    LstEncounters.ColumnWidths = "90;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14;90;14"
+    
+    LstEncounters.list = Sheets("Saved Encounters").Range("SavedEncounters[#ALL]").Value
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet8
+VBA Filename: Sheet8.cls
+------------------------------------------
+Attribute VB_Name = "Sheet8"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+    Dim FG As Range
+    Set FG = Range("E5:E16")
+    If Intersect(Target, FG) Is Nothing Then Exit Sub
+    Cancel = True
+    'declare variable to hold value returned by InputBox
+    
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    
+    hp_var = InputBox(Prompt:="How much damage was dealt?", Title:="Hitbox", Default:="0")
+ Target.Value = Target.Value - hp_var
+ 
+
+    'Ultimate Charge
+    
+    Cells(Selection.Row, "J") = Cells(Selection.Row, "J") + (hp_var / (Cells(Selection.Row, "C")) / 2)
+    
+    'Ultimate Message
+    
+    If Cells(Selection.Row, "J").Value >= 1 Then
+        MsgBox ("Limit Break Ready!")
+
+GoTo Wounded
+
+    End If
+    
+    'Wounded Message
+Wounded:
+
+    If Cells(Selection.Row, "E").Value <= (Cells(Selection.Row, "C").Value / 2) Then
+        MsgBox ("Wounded!")
+    End If
+
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XanatharsEncounterGenerator
+VBA Filename: XanatharsEncounterGenerator.bas
+------------------------------------------
+Attribute VB_Name = "XanatharsEncounterGenerator"
+Option Explicit
+Public Sub ClearEncounterX()
+    Sheets("Xanathar's Encounter Builder").Range("A34:K63").Value = ""
+    
+    Call ClearReady
+End Sub
+'other
+Public Function FractionToDecimal(Value As Variant)
+    Dim Splitit() As String
+    
+    If IsNumeric(Value) = False Then
+        Splitit() = Split(Value, "/")
+        FractionToDecimal = Splitit(0) / Splitit(1)
+    Else
+        FractionToDecimal = Value
+    End If
+    
+End Function
+Public Function GetCreaturePlayer(Level As Range, Table As Range)
+    Dim i, j, k As Integer
+    'Used
+    'i
+    'Replacable
+    'i
+    
+    Dim PCR() As Variant
+    Dim LV As Variant
+    Dim Output(1 To 1, 1 To 22)
+    
+    LV = Level.Value
+    If LV = "" Then
+        For i = 1 To 22
+            Output(1, i) = ""
+        Next
+    Else
+        PCR() = Table.Value
+        
+        For i = 1 To 22
+            If ModX(PCR(LV, i + 1), 1) > 0 Then
+                Output(1, i) = WorksheetFunction.Text(PCR(LV, i + 1), "# ?/?")
+                Output(1, i) = Right(Output(1, i), Len(Output(1, i)) - 1)
+            Else
+                Output(1, i) = PCR(LV, i + 1)
+            End If
+        Next
+    End If
+    
+    GetCreaturePlayer = Output()
+    
+End Function
+
+Private Function ModX(A As Variant, B As Variant)
+    ModX = A - (B * Fix(A \ B))
+End Function
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Formatting
+VBA Filename: Formatting.bas
+------------------------------------------
+Attribute VB_Name = "Formatting"
+Option Explicit
+Private Sub FormatRemaining()
+    Dim i, j As Integer
+    Dim Col As String
+    Dim Edit As Range
+    
+    j = 8
+    
+    Range("H30:AY30").FormatConditions.Delete
+    
+    For i = 2 To 44 Step 2
+        Col = ColumnName(j)
+        
+        Set Edit = Range(Col & "30")
+        
+        Application.CutCopyMode = False
+        Edit.FormatConditions.AddColorScale ColorScaleType:=3
+        Edit.FormatConditions(Edit.FormatConditions.Count).SetFirstPriority
+        Edit.FormatConditions(1).ColorScaleCriteria(1).Type = xlConditionValueNumber
+        Edit.FormatConditions(1).ColorScaleCriteria(1).Value = "=-'Xanathar''s Encounter Builder'!$" & Col & "$26"
+        With Edit.FormatConditions(1).ColorScaleCriteria(1).FormatColor
+            .Color = 192
+            .TintAndShade = 0
+        End With
+        Edit.FormatConditions(1).ColorScaleCriteria(2).Type = xlConditionValueNumber
+        Edit.FormatConditions(1).ColorScaleCriteria(2).Value = 0
+        With Edit.FormatConditions(1).ColorScaleCriteria(2).FormatColor
+            .ThemeColor = xlThemeColorDark1
+            .TintAndShade = 0
+        End With
+        Edit.FormatConditions(1).ColorScaleCriteria(3).Type = xlConditionValueNumber
+        Edit.FormatConditions(1).ColorScaleCriteria(3).Value = "='Xanathar''s Encounter Builder'!$" & Col & "$26"
+        With Edit.FormatConditions(1).ColorScaleCriteria(3).FormatColor
+            .Color = 15773696
+            .TintAndShade = 0
+        End With
+        
+        Edit.FormatConditions.Add Type:=xlExpression, Formula1:="=$" & Col & "$26=0"
+        Edit.FormatConditions(Edit.FormatConditions.Count).SetFirstPriority
+        With Edit.FormatConditions(1).Font
+            .ThemeColor = xlThemeColorDark1
+            .TintAndShade = -4.99893185216834E-02
+        End With
+        With Edit.FormatConditions(1).Interior
+            .PatternColorIndex = xlAutomatic
+            .ThemeColor = xlThemeColorDark1
+            .TintAndShade = -4.99893185216834E-02
+        End With
+        Edit.FormatConditions(1).StopIfTrue = False
+        j = j + 2
+    Next
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/LibrarySearch
+VBA Filename: LibrarySearch.frm
+------------------------------------------
+Attribute VB_Name = "LibrarySearch"
+Attribute VB_Base = "0{FC4E1D44-3948-4233-9070-7828A8F7515F}{67EFEED8-D324-4490-A4E0-08FBF462A90C}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+
+Private Sub CMBBeholder_Change()
+    Dim i As Integer
+    Dim TBL() As Variant
+    
+    TBL() = Sheets("Aux Lists").Range("BeholderEyeRays").Value
+    
+    For i = 1 To UBound(TBL(), 1)
+        If CMBBeholder.Value = TBL(i, 1) Then
+            TXTBeholder.Value = TBL(i, 2)
+            Exit Sub
+        End If
+    Next
+End Sub
+
+Private Sub CMBConditions_Change()
+    Dim i As Integer
+    
+    Dim Effect() As Variant
+    
+    Effect() = Sheets("Character Lists").Range("Conditions").Value
+    
+    LBLEffect.Caption = ""
+    
+    For i = 1 To UBound(Effect, 1)
+        If CMBConditions.Value = Effect(i, 1) Then
+            LBLEffect.Caption = Effect(i, 2)
+            Exit For
+        End If
+    Next
+End Sub
+
+Private Sub CMBEnvironments_Change()
+    Dim i As Integer
+    
+    Dim Listy() As Variant
+    Dim Valerie As String
+    Dim Yea As Boolean
+    
+    If CMBEnvironments.Value = "" Then
+        TXTEnvironments.Value = ""
+        Exit Sub
+    End If
+    
+    Listy() = Sheets("Environmental").Range("Environments").Value
+    
+    Valerie = CMBEnvironments.Value
+    
+    Yea = False
+    For i = 1 To UBound(Listy())
+        If Valerie = Listy(i, 1) Then
+            Yea = True
+            Exit For
+        End If
+    Next
+    
+    If Yea = False Then Exit Sub
+    
+    TXTEnvironments.Value = Listy(i, 2)
+End Sub
+
+Private Sub CMBHazards_Change()
+    Dim i As Integer
+    
+    Dim Listy() As Variant
+    Dim Valerie As String
+    Dim Yea As Boolean
+    
+    If CMBHazards.Value = "" Then
+        TXTHazards.Value = ""
+        Exit Sub
+    End If
+    
+    Listy() = Sheets("Environmental").Range("Hazards").Value
+    
+    Valerie = CMBHazards.Value
+    
+    Yea = False
+    For i = 1 To UBound(Listy())
+        If Valerie = Listy(i, 1) Then
+            Yea = True
+            Exit For
+        End If
+    Next
+    
+    If Yea = False Then Exit Sub
+    
+    TXTHazards.Value = Listy(i, 2)
+End Sub
+
+Private Sub CMBIncident_Change()
+    Dim i, j As Integer
+    
+    Dim Incidents() As Variant
+    
+    If CMBIncident.Value = "" Then
+        TXTAdditionalOptions.Value = ""
+        Exit Sub
+    End If
+    
+    Incidents = Sheets("Random Encounters").Range("RandomEncounters").Value
+    
+    For i = 1 To UBound(Incidents(), 1)
+        If Incidents(i, 2) = CMBIncident.Value Then
+            TXTAdditionalOptions.Value = Incidents(i, 3)
+            Exit Sub
+        End If
+    Next
+    
+    LBLScroll3.Visible = True
+End Sub
+
+Private Sub CMBInjuries_Change()
+    Dim i As Integer
+    
+    Dim Effect() As Variant
+    
+    Effect() = Sheets("Character Lists").Range("LingeringInjuries").Value
+    
+    LBLInjuries.Caption = ""
+    
+    For i = 1 To UBound(Effect, 1)
+        If CMBInjuries.Value = Effect(i, 1) Then
+            LBLInjuries.Caption = Effect(i, 2)
+            Exit For
+        End If
+    Next
+End Sub
+
+Private Sub CMBItems_Change()
+    Dim i, j As Integer
+    Dim Items() As Variant
+    Dim ItemInf As String
+    
+    Items() = Sheets("Item Library").Range("Items").Value
+    
+    For i = 1 To UBound(Items(), 1)
+        If CMBItems.Value = Items(i, 1) Then Exit For
+        
+        If i + 1 > UBound(Items(), 1) Then Exit Sub
+    Next
+    
+    ItemInf = "Name: " & Items(i, 1) & vbCrLf & _
+        "Value: " & Items(i, 2)
+    
+    If Not Items(i, 3) = "" Then
+        ItemInf = ItemInf & vbCrLf & _
+            "Damage: " & Items(i, 3)
+    End If
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Weight: " & Items(i, 4)
+    
+    If Not Items(i, 5) = "" Then
+        ItemInf = ItemInf & vbCrLf & _
+            "Properties: " & Items(i, 5)
+    End If
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Item Type: " & Items(i, 6)
+    
+    LBLItems.Caption = ItemInf
+        
+End Sub
+
+Private Sub CMBMagicItems_Change()
+    Dim i, j As Integer
+    Dim Items() As Variant
+    Dim ItemInf As String
+    
+    Items() = Sheets("Magic Item Library").Range("MagicItems").Value
+    
+    For i = 1 To UBound(Items(), 1)
+        If CMBMagicItems.Value = Items(i, 1) Then Exit For
+        
+        If i + 1 > UBound(Items(), 1) Then Exit Sub
+    Next
+    
+    ItemInf = "Name: " & Items(i, 1) & vbCrLf & _
+        "Item Type: " & Items(i, 2)
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Consumable: " & Items(i, 3)
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Rarity: " & Items(i, 4)
+        
+    ItemInf = ItemInf & vbCrLf & _
+        "Attunement: " & Items(i, 5)
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Sourcebook: " & Items(i, 6)
+    
+    ItemInf = ItemInf & vbCrLf & _
+        "Notes: " & Items(i, 7)
+        
+    ItemInf = ItemInf & vbCrLf & _
+        "Cursed: " & Items(i, 8)
+    
+    If Not Items(i, 9) = "" Then
+        ItemInf = ItemInf & vbCrLf & _
+            "Attunement Requirements: " & Items(i, 9)
+    End If
+    
+    ItemInf = ItemInf & vbCrLf & vbCrLf & _
+        "Description: " & vbCrLf & _
+            Items(i, 10)
+    
+    
+    TXTMagicItems.Value = ItemInf
+    LBLScroll.Visible = True
+End Sub
+
+Private Sub CMBSpells_Change()
+    Dim i, j As Integer
+    Dim Spells() As Variant
+    Dim SpellInf As String
+    Dim Components As String
+    
+    Spells() = Sheets("Spell Library").Range("Spells").Value
+    
+    For i = 1 To UBound(Spells(), 1)
+        If CMBSpells.Value = Spells(i, 1) Then Exit For
+        
+        If i + 1 > UBound(Spells(), 1) Then Exit Sub
+    Next
+    
+    SpellInf = "Name: " & Spells(i, 1)
+
+    If Spells(i, 2) = 0 Then
+        SpellInf = SpellInf & vbCrLf & _
+            "Level: Cantrip"
+    Else
+        SpellInf = SpellInf & vbCrLf & _
+            "Level: " & Spells(i, 2)
+    End If
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "Spell School: " & Spells(i, 5)
+    
+    'Components Fix
+    For j = 6 To 8
+        If Not Spells(i, j) = "" Then
+            If Components = "" Then
+                Components = Spells(i, j)
+            Else
+                Components = Components & ", " & Spells(i, j)
+            End If
+        End If
+    Next
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "Components: " & Components
+    
+    If Not Components = Replace(Components, "M", "WOAH") And Spells(i, 19) = "" And Spells(i, 17) = "" Then
+        SpellInf = SpellInf & vbCrLf & _
+            "    Consumed: " & Spells(i, 18)
+    ElseIf Not Components = Replace(Components, "M", "WOAH") And Not Spells(i, 19) = "" And Spells(i, 17) = "" Then
+        SpellInf = SpellInf & vbCrLf & _
+            "    Component(s): " & Spells(i, 19) & vbCrLf & _
+            "    Consumed: " & Spells(i, 18)
+    ElseIf Not Components = Replace(Components, "M", "WOAH") And Not Spells(i, 19) = "" And Not Spells(i, 17) = "" Then
+        SpellInf = SpellInf & vbCrLf & _
+            "    Component(s): " & Spells(i, 19) & vbCrLf & _
+            "    Cost: " & Spells(i, 17) & vbCrLf & _
+            "    Consumed: " & Spells(i, 18)
+    End If
+    
+    SpellInf = SpellInf & vbCrLf & _
+            "Concentration: " & Spells(i, 16)
+    
+    SpellInf = SpellInf & vbCrLf & vbCrLf & _
+        "Description: " & Spells(i, 3) & vbCrLf
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "At Higher Levels: " & Spells(i, 4) & vbCrLf
+    
+    'Other
+    SpellInf = SpellInf & vbCrLf & _
+        "Ritual: " & Spells(i, 10)
+        
+    SpellInf = SpellInf & vbCrLf & _
+        "Casting Time: " & Spells(i, 9)
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "Duration: " & Spells(i, 12) & vbCrLf
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "Range: " & Spells(i, 11)
+    'Units on range
+    If Not Spells(i, 11) = "Self" Then
+        SpellInf = SpellInf & "'"
+    End If
+    
+    If Not Spells(i, 14) = "" Then
+        SpellInf = SpellInf & vbCrLf & vbCrLf & _
+            "Damage Type: " & Spells(i, 14)
+    End If
+    
+    If Not Spells(i, 15) = "" Then
+        SpellInf = SpellInf & vbCrLf & _
+            "Saving Throw: " & Spells(i, 15)
+    End If
+    
+    SpellInf = SpellInf & vbCrLf & vbCrLf & _
+        "Classes With This Spell: " & Spells(i, 20) & vbCrLf
+    
+    SpellInf = SpellInf & vbCrLf & _
+        "Source book: " & Spells(i, 21)
+    
+    TXTSpells.Value = SpellInf
+    LBLScroll2.Visible = True
+End Sub
+
+Private Sub CMBType_Change()
+    Dim i As Double
+    
+    Dim Vals() As Variant
+    
+    CMBIncident.Enabled = True
+    
+    CMBIncident.Clear
+    
+    Vals() = Sheets("Random Encounters").Range("RandomEncounters").Value
+    
+    For i = 1 To UBound(Vals(), 1)
+        If Vals(i, 1) = CMBType.Value Then
+            CMBIncident.AddItem (Vals(i, 2))
+        End If
+    Next
+    
+    CMBIncident.Value = ""
+    
+End Sub
+
+Private Sub CMBVision_Change()
+    Dim i As Integer
+    
+    Dim Listy() As Variant
+    Dim Valerie As String
+    Dim Yea As Boolean
+    
+    If CMBVision.Value = "" Then
+        TXTVision.Value = ""
+        Exit Sub
+    End If
+    
+    Listy() = Sheets("Environmental").Range("Vision").Value
+    
+    Valerie = CMBVision.Value
+    
+    Yea = False
+    For i = 1 To UBound(Listy())
+        If Valerie = Listy(i, 1) Then
+            Yea = True
+            Exit For
+        End If
+    Next
+    
+    If Yea = False Then Exit Sub
+    
+    TXTVision.Value = Listy(i, 2)
+End Sub
+
+Private Sub CMDBeholder_Click()
+    Dim Rays() As String
+    Dim i, j As Integer
+    
+    If TXTRays.Value = "" Then
+        TXTRays.Value = 3
+    End If
+    
+    TXTBeholder.Value = ""
+    
+    Call GenerateEyeRays(Rays(), TXTRays.Value)
+    
+    j = TXTRays.Value
+    
+    For i = 1 To j
+        If Not i = j Then
+            TXTBeholder.Value = TXTBeholder.Value & i & ".   " & Rays(i) & vbNewLine & vbNewLine
+        Else
+            TXTBeholder.Value = TXTBeholder.Value & i & ".   " & Rays(i)
+        End If
+    Next
+    
+End Sub
+
+Public Sub GenerateEyeRays(ER() As String, RayCount As Integer)
+    Dim TBL() As Variant
+    Dim Rays(3, 1) As Variant
+    Dim UT() As String
+    
+    Dim i, j, k, m As Integer
+    
+    TBL() = Sheets("Aux Lists").Range("BeholderEyeRays[Beholder Eye Rays]").Value
+    m = RayCount
+    
+    ReDim UT(1 To m) As String
+    
+    For i = 1 To m
+        k = 0
+        
+        Do
+            Randomize
+            j = Int(1 + Rnd * (UBound(TBL(), 1)))
+            
+            k = k + 1
+        Loop Until Not TBL(j, 1) = "" Or k > 100000
+        
+        UT(i) = TBL(j, 1)
+        TBL(j, 1) = ""
+    Next
+    
+    ER() = UT()
+    
+End Sub
+
+Private Sub CMDMagicRandom_Click()
+    Dim i, j, k, m As Double
+    'Used
+    'i,j,k,m
+    'Reusable
+    'i,k,m
+    Dim Parameters(1 To 7) As Boolean
+    Dim Consumable As Boolean
+    
+    Dim MITable() As Variant
+    Dim ItemBoo() As Boolean
+    Dim ChoosableItems() As Variant
+    
+    Dim Err As String
+    
+    Dim Randy As Double
+    
+    Parameters(1) = CHKCommon.Value
+    Parameters(2) = CHKUncommon.Value
+    Parameters(3) = CHKRare.Value
+    Parameters(4) = CHKVRare.Value
+    Parameters(5) = CHKLegendary.Value
+    Parameters(6) = CHKUnique.Value
+    Parameters(7) = CHKArtifact.Value
+    
+    Consumable = OPTConsumable.Value
+    
+    MITable() = Sheets("Magic Item Library").Range("MagicItems").Value
+    ReDim ItemBoo(1 To UBound(MITable(), 1)) As Boolean
+    
+    For i = 1 To UBound(MITable(), 1)
+        If MITable(i, 3) = Consumable Then
+            If Parameters(1) = True And MITable(i, 4) = "Common" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(2) = True And MITable(i, 4) = "Uncommon" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(3) = True And MITable(i, 4) = "Rare" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(4) = True And MITable(i, 4) = "Very Rare" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(5) = True And MITable(i, 4) = "Legendary" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(6) = True And MITable(i, 4) = "Unique" Then
+                j = j + 1
+                ItemBoo(i) = True
+            ElseIf Parameters(7) = True And MITable(i, 4) = "Artifact" Then
+                j = j + 1
+                ItemBoo(i) = True
+            Else
+                ItemBoo(i) = False
+            End If
+        End If
+    Next
+    
+    If j = 0 Then
+        Err = MsgBox("Your parameters have yeilded no items. Please consider widening your choices.", , "Error")
+        Exit Sub
+    End If
+    
+    ReDim ChoosableItems(1 To j) As Variant
+    
+    k = 0
+    For i = 1 To UBound(MITable(), 1)
+        If ItemBoo(i) = True Then
+            k = k + 1
+            ChoosableItems(k) = MITable(i, 1)
+        End If
+    Next
+    
+    Randy = RandomValue(1, j)
+    
+    CMBMagicItems.Value = ChoosableItems(Randy)
+    
+End Sub
+
+Private Sub CMDRandomEncounter_Click()
+    Dim i As Integer
+    
+    Dim Listy() As Variant
+    
+    Listy() = Sheets("Random Encounters").Range("RandomEncounters").Value
+    
+    i = RandomValue(1, UBound(Listy(), 1))
+    
+    CMBType.Value = Listy(i, 1)
+    CMBIncident.Value = Listy(i, 2)
+End Sub
+
+Private Sub CMDRandomInjury_Click()
+    Dim i As Double
+    
+    Dim Injuries() As Variant
+    
+    Injuries() = Sheets("Character Lists").Range("LingeringInjuries").Value
+    
+    CMBInjuries.Value = Injuries(RandomValue(1, UBound(Injuries, 1)), 1)
+End Sub
+
+Private Sub CMDRandomItem_Click()
+    Dim i As Double
+    
+    Dim Items() As Variant
+    
+    Items() = Sheets("Item Library").Range("Items").Value
+    
+    CMBItems.Value = Items(RandomValue(1, UBound(Items, 1)), 1)
+End Sub
+
+Private Sub TextBox1_Change()
+
+End Sub
+
+Private Sub TXTRays_Change()
+    Dim DUM As String
+    Dim Count As Variant
+    Dim TBL() As Variant
+    Dim i As Integer
+    
+    TBL() = Sheets("Aux Lists").Range("BeholderEyeRays[Beholder Eye Rays]").Value
+    i = UBound(TBL(), 1)
+    
+    Count = TXTRays.Value
+    
+    If IsNumeric(Count) = False And Not Count = "" Then
+        TXTRays.Value = 3
+        GoTo ErrorHandler
+    ElseIf Count < 1 And Not Count = "" Or Count > i - 1 And Not Count = "" Then
+        TXTRays.Value = 3
+        GoTo ErrorHandler
+    ElseIf IsNumeric(Count) = True And Not Count = "" Then
+        If Not Count - Int(Count) = 0 Then
+            TXTRays.Value = Int(Count)
+            GoTo ErrorHandler
+        End If
+    End If
+    
+    
+    Exit Sub
+ErrorHandler:
+    DUM = MsgBox("Please enter a valid integer that is greater than 0 and less than " & i - 1, vbOKOnly, "Error")
+
+End Sub
+
+Private Sub TXTRays_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    TXTRays.Value = ""
+End Sub
+
+Private Sub UserForm_Initialize()
+    Dim ItemRange As String
+    
+    MultiPage1.Value = 0
+    MultiPage2.Value = 0
+    
+    CMDMagicRandom.Font.Size = 7
+    CMDRandomItem.Font.Size = 7
+    CMDRandomEncounter.Font.Size = 7
+    
+    Call AddVals(CMBItems, "'Item Library'!Items[Name]", 1)
+    'ItemRange = "'Item Library'!Items[Name]"
+    'CMBItems.RowSource = ItemRange
+    
+    Call AddVals(CMBMagicItems, "'Magic Item Library'!MagicItems[Name]", 1)
+    'ItemRange = "'Magic Item Library'!MagicItems[Name]"
+    'CMBMagicItems.RowSource = ItemRange
+    
+    Call AddVals(CMBSpells, "'Spell Library'!Spells[Name]", 1)
+    'ItemRange = "'Spell Library'!Spells[Name]"
+    'CMBSpells.RowSource = ItemRange
+    
+    Call AddVals(CMBConditions, "'Character Lists'!Conditions[Condition]", 1)
+    'ItemRange = "'Character Lists'!Conditions[Condition]"
+    'CMBConditions.RowSource = ItemRange
+    CMBConditions.Value = "None"
+    
+    Call AddVals(CMBInjuries, "'Character Lists'!LingeringInjuries[Injury]", 1)
+    
+    Call AddVals(CMBBeholder, "'Aux Lists'!BeholderEyeRays[Names]", 1)
+    
+    Call PullEncounterTypes
+    Call GetEnvironmental
+    
+    TXTRays.Value = 3
+End Sub
+Private Sub AddVals(CMBNAME As Object, RNGX As String, Col As Integer)
+    Dim i As Integer
+    
+    Dim RNGY() As Variant
+    
+    RNGY() = Range(RNGX).Value
+    
+    For i = 1 To UBound(RNGY(), 1)
+        CMBNAME.AddItem (RNGY(i, Col))
+    Next
+End Sub
+Private Sub GetEnvironmental()
+    Dim i, j, k
+    
+    Dim WHAT As Boolean
+    
+    i = 2
+    WHAT = False
+    Do Until i > 100 Or WHAT = True
+        i = i + 1
+        If Sheets("Environmental").Range("A" & i).Value = "" And Sheets("Environmental").Range("D" & i).Value = "" And Sheets("Environmental").Range("G" & i).Value = "" Then
+            WHAT = True
+        End If
+    Loop
+    
+    For j = 3 To i
+        If Not Sheets("Environmental").Range("A" & j).Value = "" Then
+            CMBVision.AddItem Sheets("Environmental").Range("A" & j).Value
+        End If
+        If Not Sheets("Environmental").Range("D" & j).Value = "" Then
+            CMBEnvironments.AddItem Sheets("Environmental").Range("D" & j).Value
+        End If
+        If Not Sheets("Environmental").Range("G" & j).Value = "" Then
+            CMBHazards.AddItem Sheets("Environmental").Range("G" & j).Value
+        End If
+    Next
+End Sub
+Private Sub PullEncounterTypes()
+    Dim i, j, k As Long
+    
+    Dim FullList() As Variant
+    Dim PullList() As Variant
+    
+    Dim BooTemp As Boolean
+    
+    FullList() = Sheets("Random Encounters").Range("RandomEncounters[Type]").Value
+    ReDim PullList(1 To UBound(FullList(), 1))
+    
+    PullList(1) = FullList(1, 1)
+    
+    k = 1
+    For i = 2 To UBound(FullList(), 1)
+        BooTemp = True
+        For j = 1 To i - 1
+            If FullList(i, 1) = PullList(j) Then
+                BooTemp = False
+                Exit For
+            End If
+        Next
+        If BooTemp = True Then
+            k = k + 1
+            PullList(k) = FullList(i, 1)
+        End If
+    Next
+    
+    For i = 1 To k
+        CMBType.AddItem (PullList(i))
+    Next
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/ReadiedEncounter
+VBA Filename: ReadiedEncounter.bas
+------------------------------------------
+Attribute VB_Name = "ReadiedEncounter"
+Option Explicit
+Public Sub LongRest()
+    Dim ResetRange As Range
+    Dim Confirm As String
+    Dim ELV As Integer
+    Dim ELVS As String
+    
+    Dim i As Integer
+    
+    If Not ActiveSheet.Name = "Player Manager" Then
+        Confirm = MsgBox("Are you sure you would like to allow the PCs to long rest?", vbOKCancel, "Long Rest")
+        If Confirm = 2 Then End
+    End If
+    
+    For i = 5 To 14
+        Sheets("Readied Encounter").Range("D" & i).Formula = "=C" & i
+        
+        'Condition rest
+        ELVS = Sheets("Readied Encounter").Range("E" & i).Value
+        If Not Replace(ELVS, "Exhausted (LV", "") = ELVS And Not ELVS = "Exhausted (LV1)" Then
+            ELVS = Replace(ELVS, "Exhausted (LV", "")
+            ELVS = Replace(ELVS, ")", "")
+            ELV = CInt(ELVS)
+            ELV = ELV - 1
+            ELVS = "Exhausted (LV" & ELV & ")"
+            Sheets("Readied Encounter").Range("E" & i).Value = ELVS
+        Else
+            Sheets("Readied Encounter").Range("E" & i).Value = ""
+        End If
+    Next
+    
+    'clear concentration
+    Sheets("Readied Encounter").Range("F5:F14").Value = ""
+    
+    'Reset Round
+    Sheets("Initiative Tracker").Range("Round").Value = 1
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet13
+VBA Filename: Sheet13.cls
+------------------------------------------
+Attribute VB_Name = "Sheet13"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet10
+VBA Filename: Sheet10.cls
+------------------------------------------
+Attribute VB_Name = "Sheet10"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet11
+VBA Filename: Sheet11.cls
+------------------------------------------
+Attribute VB_Name = "Sheet11"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet12
+VBA Filename: Sheet12.cls
+------------------------------------------
+Attribute VB_Name = "Sheet12"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Loadem
+VBA Filename: Loadem.bas
+------------------------------------------
+Attribute VB_Name = "Loadem"
+Option Explicit
+Public Sub LoadLootGenerator()
+    LootGenerator.Show
+End Sub
+Public Sub LoadLibrarySearch()
+Attribute LoadLibrarySearch.VB_Description = "Opens library search window"
+Attribute LoadLibrarySearch.VB_ProcData.VB_Invoke_Func = "l\n14"
+    LibrarySearch.Show
+End Sub
+Public Sub AddCreature()
+    AddCombatant.Show
+End Sub
+Public Sub NewWindowRE()
+    ActiveWindow.NewWindow
+    Sheets("Readied Encounter").Select
+End Sub
+Public Sub NewWindowIT()
+    ActiveWindow.NewWindow
+    Sheets("Initiative Tracker").Select
+End Sub
+Public Sub EncounterExp()
+    Call AwardEXP(Sheets("Readied Encounter").Range("D1").Value)
+End Sub
+Public Sub AwardIt()
+    AwardEXPForm.Show
+End Sub
+Public Sub BrowseEncounters()
+    EncounterBrowser.Show
+End Sub
+Public Sub AddCreatureX()
+    AddNewCreature.Show
+End Sub
+Public Sub ShowHideRowsX()
+    ShowHideRows.Show
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/AddCombatant
+VBA Filename: AddCombatant.frm
+------------------------------------------
+Attribute VB_Name = "AddCombatant"
+Attribute VB_Base = "0{6A2A1053-39EB-4839-9B33-7B0D5E6F9DE9}{06C8D178-02F9-4E6D-8FA7-AEB4AF96D230}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+Private Sub CMDAdd_Click()
+    Dim i, j, k, m, N As Long
+    
+    Dim msg As String
+    Dim Quant As Long
+    Dim Block(1 To 1, 1 To 10) As Variant
+    Dim AllBlocks() As Variant
+    
+    Dim RowAdd As Long
+    Dim AllCurr() As Variant
+    
+    Dim Check129 As String
+    Dim Encounter() As Variant
+    
+    'check max monsters
+    Encounter() = Sheets("Readied Encounter").Range("C17:C150").Value
+    
+    j = 0
+    For i = 1 To UBound(Encounter(), 1)
+        If Not Encounter(i, 1) = "" Then
+            j = j + 1
+        End If
+    Next
+    
+    If j >= 129 Then
+        Check129 = MsgBox("The encounter creature cap is 129. Please reduce the number of enemy combatants before continuing. I apologize for any inconvenience.", vbOKOnly, "Error")
+        End
+    End If
+    'end max check
+    
+    If CMBBlocks.Value = "" Then
+        msg = MsgBox("Please select a creature to add", vbOKOnly, "Error")
+        Exit Sub
+    End If
+    
+    If IsNumeric(TXTQuantity.Value) = False Then
+        msg = MsgBox("Please enter a positive integer for quantity", vbOKOnly, "Error")
+        Exit Sub
+    ElseIf TXTQuantity.Value > 25 Then
+        msg = MsgBox("are you sure you would like to add " & TXTQuantity.Value & " " & CMBBlocks.Value & " To the combat?", vbOKCancel, "Are you sure?")
+        If msg = 2 Then Exit Sub
+    End If
+    
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    
+    Quant = TXTQuantity.Value
+    
+    Block(1, 1) = CMBBlocks.Value
+    AllBlocks() = Sheets("Enemy Library").Range("Creatures").Value
+    
+    i = 0
+    Do
+        i = i + 1
+    Loop Until i = UBound(AllBlocks(), 1) Or Block(1, 1) = AllBlocks(i, 1)
+    
+    If i = UBound(AllBlocks(), 1) And Not Block(1, 1) = AllBlocks(i, 1) Then
+        msg = MsgBox("Please select a creature from the list to add", vbOKOnly, "Error")
+        CMBBlocks.Value = ""
+        Exit Sub
+    End If
+    k = i
+    
+    Block(1, 5) = ""
+    Block(1, 6) = AllBlocks(i, 2)
+    Block(1, 7) = AllBlocks(i, 3)
+    Block(1, 8) = AllBlocks(i, 5)
+    Block(1, 9) = "=" & AllBlocks(i, 6) & "*L1"
+    Block(1, 10) = AllBlocks(i, 7)
+    
+    AllCurr() = Sheets("Readied Encounter").Range("A17:A10000").Value
+    
+    i = 1
+    Do Until i = UBound(AllCurr(), 1) Or AllCurr(i, 1) = ""
+        i = i + 1
+    Loop
+    i = i + 3
+    
+    N = 0
+    For m = 1 To i - 3
+        If Block(1, 1) = AllCurr(m, 1) Then
+            N = N + 1
+        End If
+    Next
+    
+    For j = 1 To Quant
+        Block(1, 2) = j + N
+        Block(1, 3) = RandomHP(AllBlocks(k, 4))
+        Block(1, 4) = "=" & Block(1, 3)
+        Sheets("Readied Encounter").Range("A" & i + j + 12 & ":J" & i + j + 12).Value = Block()
+        'Color Scale
+        Call HealthScale(Sheets("Readied Encounter").Range("D" & i + j + 12), "$C$" & i + j + 12)
+    Next
+    
+    With Sheets("Readied Encounter").Range("A" & i + j - 1 + 12 & ":J" & i + j - 1 + 12).Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    
+    Application.EnableEvents = True
+    Application.Calculate
+    
+    Sheets("Readied Encounter").Columns("B:J").EntireColumn.AutoFit
+    Sheets("Readied Encounter").Columns("E").EntireColumn.ColumnWidth = 17.57
+    
+    Application.ScreenUpdating = True
+    End
+End Sub
+
+Private Sub TXTQuantity_Change()
+    Dim msg As String
+    
+    If TXTQuantity.Value = "" Then
+        Exit Sub
+    ElseIf TXTQuantity.Value < 1 Or IsNumeric(TXTQuantity.Value) = False Then
+        msg = MsgBox("Please enter a positive integer for quantity", vbOKOnly, "Error")
+        TXTQuantity.Value = ""
+        Exit Sub
+    ElseIf TXTQuantity.Value - Int(TXTQuantity.Value) > 0 Then
+        msg = MsgBox("Please enter whole number", vbOKOnly, "Error")
+        TXTQuantity.Value = ""
+        Exit Sub
+    End If
+        
+End Sub
+
+Private Sub UserForm_Initialize()
+    Dim i, j, k As Long
+    'Used
+    'i
+    'Reusable
+    'i
+    Dim Blocks() As Variant
+    Dim DUM As Double
+    
+    Blocks() = Worksheets("Enemy Library").Range("Creatures[Block]").Value
+    
+    For i = 1 To UBound(Blocks(), 1)
+        CMBBlocks.AddItem (Blocks(i, 1))
+    Next
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet9
+VBA Filename: Sheet9.cls
+------------------------------------------
+Attribute VB_Name = "Sheet9"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/InitiativeTracker
+VBA Filename: InitiativeTracker.bas
+------------------------------------------
+Attribute VB_Name = "InitiativeTracker"
+Option Explicit
+Public Sub IncreaseRound()
+    Dim R As Double
+    R = Sheets("Initiative Tracker").Range("Round").Value
+    
+    R = R + 1
+    
+    Sheets("Initiative Tracker").Range("Round").Value = R
+End Sub
+Public Sub DecreaseRound()
+    Dim R As Double
+    R = Sheets("Initiative Tracker").Range("Round").Value
+    
+    If Not R - 1 < 0 Then
+        R = R - 1
+    End If
+    
+    Sheets("Initiative Tracker").Range("Round").Value = R
+End Sub
+
+Public Sub InitiativePlayers(NumbIt As Integer)
+    Dim i, j As Integer
+    
+    Dim Players As Range
+    Dim STR As String
+    
+    'clear old
+    Set Players = Sheets("Initiative Tracker").Range("C8:C17")
+    Players.Validation.Delete
+    Players.Value = ""
+    Set Players = Sheets("Initiative Tracker").Range("A8:C17")
+    Players.ClearFormats
+    With Players.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 13224393
+    End With
+    With Players.Font
+        .Color = -3552823
+        .TintAndShade = 0
+    End With
+    
+    'set new validation
+    Set Players = Sheets("Initiative Tracker").Range("C8:C" & 7 + NumbIt)
+    With Players.Validation
+        .Delete
+        .Add Type:=xlValidateInputOnly, AlertStyle:=xlValidAlertStop, Operator _
+        :=xlBetween
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .InputTitle = "Input Roll"
+        .ErrorTitle = ""
+        .InputMessage = _
+        "When using this sheet please input the roll AFTER modifiers. The initiative modifier is NOT automatically added."
+        .ErrorMessage = ""
+        .ShowInput = True
+        .ShowError = True
+    End With
+    
+    'Format
+    Set Players = Sheets("Initiative Tracker").Range("A8:C" & 7 + NumbIt)
+    Players.Borders(xlDiagonalDown).LineStyle = xlNone
+    Players.Borders(xlDiagonalUp).LineStyle = xlNone
+    With Players.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    With Players.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    With Players.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    With Players.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlMedium
+    End With
+    With Players.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Players.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .Color = -13683110
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Players
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = False
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    With Players.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 15921906
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    With Players.Font
+        .Color = -13683110
+        .TintAndShade = 0
+    End With
+    
+    'conditional formatting
+    j = 0
+    For i = 10 To 9 + NumbIt * 9 Step 9
+        'step down on initiative tracker
+        j = j + 1
+        Set Players = Sheets("Initiative Tracker").Range("A" & 7 + j & ":C" & 7 + j)
+        
+        'set ref
+        STR = "='Player Manager'!$" & ColumnName(i) & "$13="""""
+        Players.FormatConditions.Add Type:=xlExpression, Formula1:=STR
+        
+        'set validation
+        Players.FormatConditions(Players.FormatConditions.Count).SetFirstPriority
+        With Players.FormatConditions(1).Font
+            .Color = -3552823
+            .TintAndShade = 0
+        End With
+        With Players.FormatConditions(1).Interior
+            .PatternColorIndex = xlAutomatic
+            .Color = 15921906
+            .TintAndShade = 0
+        End With
+        Players.FormatConditions(1).StopIfTrue = True
+    Next
+End Sub
+Public Sub AutoRollMonsters()
+    Dim i, j, k As Integer
+    
+    Dim Roll As Integer
+    Dim Infor() As Variant
+    Dim Rolls() As Variant
+    Dim Dead() As Variant
+    
+    Infor() = Sheets("Initiative Tracker").Range("G8:G136").Value
+    Dead() = Sheets("Initiative Tracker").Range("H8:H136").Value
+    ReDim Rolls(1 To UBound(Infor(), 1), 1 To 1)
+    
+    For i = 1 To UBound(Infor(), 1)
+        If Infor(i, 1) = "" Then Exit For
+        
+        If Dead(i, 1) <= 0 Then
+            Rolls(i, 1) = ""
+        Else
+            Randomize
+            Roll = Int((20 - 1 + 1) * Rnd + 1)
+            Roll = Roll + Infor(i, 1)
+            Rolls(i, 1) = Roll
+        End If
+    Next
+    
+    
+    Sheets("Initiative Tracker").Range("I8:I136").Value = Rolls()
+End Sub
+Public Sub AutoRollPlayers()
+    Dim i, j, k As Integer
+    
+    Dim Roll As Integer
+    Dim Infor() As Variant
+    Dim Rolls() As Variant
+    Dim Active() As Variant
+    
+    Infor() = Sheets("Initiative Tracker").Range("B8:B17").Value
+    Active() = Sheets("Aux Lists").Range("ActivePlayers").Value
+    ReDim Rolls(1 To UBound(Infor(), 1), 1 To 1)
+    
+    For i = 1 To UBound(Infor(), 1)
+        If Infor(i, 1) = "" Then Exit For
+        
+        If Active(i, 2) = 0 Then
+            Rolls(i, 1) = ""
+        Else
+            Randomize
+            Roll = Int((20 - 1 + 1) * Rnd + 1)
+            Roll = Roll + Infor(i, 1)
+            Rolls(i, 1) = Roll
+        End If
+    Next
+    
+    
+    Sheets("Initiative Tracker").Range("C8:C17").Value = Rolls()
+End Sub
+Public Sub ClearInitiatives()
+    Sheets("Initiative Tracker").Range("C8:C17,I8:I136").Value = ""
+End Sub
+Public Function InitiativeOrder(Playerl, Monsterl, Out) As Variant
+    Dim i, j, k, m, N As Integer
+    
+    Dim Order() As Variant
+    Dim Sort As Integer
+    Dim DUM As Variant
+    Dim Players() As Variant
+    Dim Monsters() As Variant
+    
+    Players() = Playerl.Value
+    Monsters() = Monsterl.Value
+    
+    i = 0
+    j = 0
+    k = 1
+    Do Until i = UBound(Monsters(), 1) Or k = UBound(Monsters(), 1)
+        If Not Monsters(k, 4) = "" Then
+            i = i + 1
+        End If
+        k = k + 1
+    Loop
+    k = 1
+    Do Until j = UBound(Players(), 1) Or k = UBound(Players(), 1)
+        If Not Players(k, 3) = "" Then
+            j = j + 1
+        End If
+        k = k + 1
+    Loop
+    
+    ReDim Order(1 To Out, 1 To 4)
+    
+    If i + j = 0 Then
+        For i = 1 To Out
+            Order(i, 1) = ""
+            Order(i, 2) = ""
+            Order(i, 3) = ""
+            Order(i, 4) = ""
+        Next
+        InitiativeOrder = Order
+        Exit Function
+    End If
+    
+    j = 1
+    For i = 1 To 10
+        If Not Players(i, 3) = "" Then
+            Order(j, 1) = Players(i, 1)
+            Order(j, 2) = "-"
+            Order(j, 3) = Players(i, 2)
+            Order(j, 4) = Players(i, 3)
+            j = j + 1
+        End If
+    Next
+    
+    N = j
+    For i = 1 To UBound(Monsters(), 1)
+        If Not Monsters(i, 5) = "" And Monsters(i, 4) > 0 Then
+            Order(N, 1) = Monsters(i, 1)
+            Order(N, 2) = Monsters(i, 2)
+            Order(N, 3) = Monsters(i, 3)
+            Order(N, 4) = Monsters(i, 5)
+            N = N + 1
+        End If
+    Next
+    
+    Sort = 0
+    m = 0
+    Do Until Sort = UBound(Order(), 1) - 1 Or m > 1000
+        Sort = 0
+        For k = 1 To UBound(Order(), 1) - 1
+            If Order(k, 4) < Order(k + 1, 4) Then
+                For j = 1 To 4
+                    DUM = Order(k, j)
+                    Order(k, j) = Order(k + 1, j)
+                    Order(k + 1, j) = DUM
+                Next
+            ElseIf Order(k, 4) = Order(k + 1, 4) And Order(k, 3) < Order(k + 1, 3) Then
+                For j = 1 To 4
+                    DUM = Order(k, j)
+                    Order(k, j) = Order(k + 1, j)
+                    Order(k + 1, j) = DUM
+                Next
+            Else
+                Sort = Sort + 1
+            End If
+        Next
+        m = m + 1
+    Loop
+    
+    For i = N To Out
+        Order(i, 1) = ""
+        Order(i, 2) = ""
+        Order(i, 3) = ""
+        Order(i, 4) = ""
+    Next
+    
+    InitiativeOrder = Order
+End Function
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/AwardEXPForm
+VBA Filename: AwardEXPForm.frm
+------------------------------------------
+Attribute VB_Name = "AwardEXPForm"
+Attribute VB_Base = "0{6D426CE1-2BDB-4994-85F7-E44281DA5224}{7C69B9BA-6049-4EBD-934D-46E6E5FF53FA}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+
+Private Sub CMDAward_Click()
+    Dim i, j As Long
+    
+    Dim EXPER As Double
+    Dim Active() As Variant
+    
+    EXPER = Round(TXTAward.Value, 0)
+    
+    If OPTPartyEXP.Value = True Then
+        j = CountActive()
+        
+        EXPER = Round(EXPER / j, 0)
+    End If
+    
+    Call AwardEXP(EXPER)
+    End
+End Sub
+Private Function CountActive()
+    Dim i, j As Integer
+    
+    Dim Active() As Variant
+    
+    Active() = Sheets("Player Manager").Range("J13:CM13").Value
+    
+    j = 0
+    For i = 1 To UBound(Active(), 2)
+        If Not Active(1, i) = "" Then
+            j = j + 1
+        End If
+    Next
+    
+    CountActive = j
+End Function
+
+Private Sub LBLExperienceThresholds_Click()
+
+End Sub
+
+Private Sub OPTExpEach_Click()
+
+End Sub
+
+Private Sub TXTAward_Change()
+    Dim Valerie As Variant
+    Dim Ox As String
+    
+    Valerie = TXTAward.Value
+    
+    If Valerie = "" Then
+        Exit Sub
+    ElseIf Valerie <= 0 Or Valerie = "-" Then
+        Ox = MsgBox("Please enter a value greater than zero", , "Error")
+        TXTAward.Value = ""
+    ElseIf IsNumeric(Valerie) = False Then
+        Ox = MsgBox("Please enter a numerical value", , "Error")
+        TXTAward.Value = ""
+    End If
+End Sub
+
+Private Sub UserForm_Initialize()
+    Dim i As Integer
+    
+    OPTPartyEXP.Value = 1
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/RunOnStart
+VBA Filename: RunOnStart.bas
+------------------------------------------
+Attribute VB_Name = "RunOnStart"
+Option Explicit
+Sub Auto_Open()
+    If CommandBars("Ribbon").Height > 100 Then
+       CommandBars.ExecuteMso "MinimizeRibbon"
+    End If
+    
+    Sheets("Player Manager").Select
+    Sheets("Player Manager").Range("A1").Select
+    Application.DisplayFormulaBar = True
+    ActiveWindow.DisplayHeadings = False
+    ActiveWindow.DisplayGridlines = False
+    ActiveWindow.Zoom = 100
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/AddNewCreature
+VBA Filename: AddNewCreature.frm
+------------------------------------------
+Attribute VB_Name = "AddNewCreature"
+Attribute VB_Base = "0{59DDFE3F-5D5D-4C1A-84C1-1BA92B6F13CE}{40B82B15-B96D-478D-A3AC-2F0318ED969D}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+Private Sub CMD_AddCreature_Click()
+    Dim Arra() As Variant
+    Dim Existing() As Variant
+    
+    Dim i As Integer
+    
+    Dim DUM As String
+    
+    Arra() = GetValsx()
+    
+    Existing() = Sheets("Enemy Library").Range("Creatures[Block]").Value
+    For i = 1 To UBound(Existing(), 1)
+        If Arra(1, 1) = Existing(i, 1) Then
+            DUM = MsgBox("This creature is already catalogued. Would you like to continue?", vbOKCancel, "This creature appears to exist already")
+            If DUM = vbCancel Then
+                Exit Sub
+            Else
+                DUM = ""
+                Exit For
+            End If
+        End If
+    Next
+    
+    For i = 1 To 9
+        If Arra(1, i) = "" Then
+            DUM = MsgBox("One or more required feilds is empty.", , "Error")
+            Exit Sub
+        End If
+    Next
+    
+    Range("Creatures[[#Headers],[Block]]").Offset(2, 0).Select
+    Selection.End(xlDown).Select
+    Selection.ListObject.ListRows.Add AlwaysInsert:=True
+    
+    Range(ActiveCell.Offset(1, 0).Address & ":" & ActiveCell.Offset(1, 8).Address).Value = Arra()
+    
+    Call ClearVals
+    Call SetCMBs
+End Sub
+Private Sub ClearVals()
+    TXT_CreatureName.Value = ""
+    CMB_Size.Value = ""
+    TXT_AC.Value = ""
+    CMB_Health.Value = ""
+    TXT_CR.Value = ""
+    CMB_Source.Value = ""
+    TXT_DexterityScore.Value = ""
+    TXT_InitiativeModifier.Value = ""
+End Sub
+Private Function GetValsx()
+    Dim Arra(1 To 1, 1 To 9) As Variant
+    
+    Dim i As Integer
+    Dim DUM As String
+    
+    Arra(1, 1) = TXT_CreatureName.Value
+    Arra(1, 2) = CMB_Size.Value
+    Arra(1, 3) = TXT_AC.Value
+    Arra(1, 4) = CMB_Health.Value
+    
+    If Replace(TXT_CR.Value, "/", "") = TXT_CR.Value Then
+        Arra(1, 5) = TXT_CR.Value
+    Else
+        Arra(1, 5) = "'" & TXT_CR.Value
+    End If
+    
+    Arra(1, 6) = "=IF([@CR]=" & """" & """" & "," & """" & """" & ",VLOOKUP([@CR],CREXP[#All],2,FALSE))"
+    Arra(1, 7) = CMB_Source.Value
+    Arra(1, 8) = TXT_DexterityScore.Value
+    If TXT_InitiativeModifier.Value = "" Or IsNumeric(TXT_InitiativeModifier) = False Then
+        Arra(1, 9) = "=IFERROR(DexModifier([@[Dex Score]]),NA())"
+    Else
+        Arra(1, 9) = TXT_InitiativeModifier.Value
+    End If
+    
+    GetValsx = Arra()
+End Function
+
+Private Sub Label11_Click()
+
+End Sub
+
+Private Sub TXT_AC_Change()
+    Dim DUM As String
+    
+    If TXT_AC = "" Or IsNumeric(TXT_AC.Value) = True Then
+        
+    Else
+        DUM = MsgBox("Please enter a positive numeric value.", , "Error")
+        TXT_AC.Value = ""
+    End If
+End Sub
+
+Private Sub TXT_CR_Change()
+    Dim DUM As String
+    
+    If TXT_CR = "" Or IsNumeric(TXT_CR.Value) = True Or Right(TXT_CR.Value, 1) = "/" Or TXT_CR = "1/8" Or TXT_CR = "1/4" Or TXT_CR = "1/2" Then
+        
+    Else
+        DUM = MsgBox("Please enter a valid CR between 0 and 30.", , "Error")
+        TXT_CR.Value = ""
+    End If
+End Sub
+
+Private Sub TXT_DexterityScore_Change()
+    Dim DUM As Variant
+    
+    If TXT_DexterityScore.Value = "" Then
+        
+        TXT_InitiativeModifier.Value = ""
+        
+    ElseIf IsNumeric(TXT_DexterityScore.Value) = True Then
+        DUM = TXT_DexterityScore.Value
+        
+        If DUM < 10 Then DUM = DUM - 1
+        
+        DUM = Application.WorksheetFunction.RoundDown((DUM - 10) / 2, 0)
+        
+        TXT_InitiativeModifier.Value = DUM
+    Else
+        DUM = MsgBox("Please enter a positive numeric value.", , "Error")
+        TXT_DexterityScore.Value = ""
+    End If
+End Sub
+
+Private Sub TXT_InitiativeModifier_Change()
+    Dim DUM As String
+    
+    If TXT_InitiativeModifier.Value = "" Or IsNumeric(TXT_InitiativeModifier.Value) = True Or TXT_InitiativeModifier.Value = "-" Then
+    
+    ElseIf IsNumeric(TXT_InitiativeModifier.Value) = False Then
+        If Left(TXT_InitiativeModifier.Value, 1) = "-" And IsNumeric(Right(TXT_InitiativeModifier.Value, Len(TXT_InitiativeModifier.Value) - 1)) = True Then
+            
+        Else
+            DUM = MsgBox("Please enter a numeric value.", , "Error")
+            TXT_InitiativeModifier.Value = ""
+        End If
+    Else
+        DUM = MsgBox("Please enter a numeric value.", , "Error")
+        TXT_InitiativeModifier.Value = ""
+    End If
+End Sub
+Private Sub UserForm_Initialize()
+    Call SetCMBs
+End Sub
+Private Sub SetCMBs()
+    Dim SRCO(), SRCN(), SZO(), SZN(), HPO(), HPN() As Variant
+    
+    CMB_Size.Clear
+    CMB_Source.Clear
+    CMB_Health.Clear
+    
+    SRCO() = Sheets("Enemy Library").Range("Creatures[Source]").Value
+    SZO() = Sheets("Enemy Library").Range("Creatures[Size]").Value
+    HPO() = Sheets("Enemy Library").Range("Creatures[HP]").Value
+    
+    SRCN() = RemoveDupes(SRCO())
+    SZN() = RemoveDupes(SZO())
+    HPN() = RemoveDupes(HPO())
+    
+    Call BubbleSort(SRCN())
+    Call BubbleSort(SZN())
+    Call BubbleSort(HPN())
+    
+    CMB_Size.list = SZN()
+    CMB_Source.list = SRCN()
+    CMB_Health.list = HPN()
+End Sub
+
+Private Function RemoveDupes(InputArray()) As Variant
+    Dim Array_2() As Variant
+    
+    Dim DUM As Variant
+    Dim InArr As Boolean
+    
+    Dim i, j, x As Integer
+    
+    i = 0
+    j = 0
+    x = 1
+    
+    ReDim Preserve Array_2(1 To 1)
+    Array_2(1) = InputArray(1, 1)
+    
+    On Error Resume Next
+    For i = 1 To UBound(InputArray(), 1)
+        InArr = False
+        For j = 1 To x
+            If Array_2(j) = InputArray(i, 1) Then
+                InArr = True
+                Exit For
+            End If
+        Next
+        
+        If InArr = False Then
+            x = x + 1
+            ReDim Preserve Array_2(1 To x)
+            
+            Array_2(x) = InputArray(i, 1)
+        End If
+    Next
+    
+    RemoveDupes = Array_2
+End Function
+Private Sub BubbleSort(list() As Variant)
+'   Sorts an array using bubble sort algorithm
+    Dim First As Integer, Last As Long
+    Dim i As Long, j As Long
+    Dim Temp As Variant
+    
+    First = LBound(list())
+    Last = UBound(list())
+    
+    For i = First To Last - 1
+        For j = i + 1 To Last
+            If list(i) > list(j) Then
+                Temp = list(j)
+                list(j) = list(i)
+                list(i) = Temp
+            End If
+        Next j
+    Next i
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/ShowHideRows
+VBA Filename: ShowHideRows.frm
+------------------------------------------
+Attribute VB_Name = "ShowHideRows"
+Attribute VB_Base = "0{A0071402-2CA5-4882-8134-540998392849}{2B5DE5C6-5F61-442D-9305-15F38953062A}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+
+Private Sub LST_Rows_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim Header As String
+    Dim i, j, k As Integer
+    
+    Dim DUM As Variant
+    
+    Header = LST_Rows.Value
+    k = LST_Rows.ListIndex
+    
+    i = 17
+    Do Until Sheets("Player Manager").Range("A" & i).Value = Header Or Sheets("Player Manager").Range("A" & i).Value = "Stop"
+        DUM = Sheets("Player Manager").Range("A" & i).Value
+        i = i + 1
+    Loop
+    
+    j = i + 1
+    Do Until Not Sheets("Player Manager").Range("A" & j).Value = "" Or j - i > 60 Or Sheets("Player Manager").Range("A" & j).Value = "Stop"
+        j = j + 1
+    Loop
+    If Sheets("Player Manager").Range("A" & j).Value = "Stop" Then
+        j = j - 3
+    Else
+        j = j - 1
+    End If
+    
+    If Sheets("Player Manager").Rows(i & ":" & j).Hidden = True Then
+        Sheets("Player Manager").Rows(i & ":" & j).Hidden = False
+    Else
+        Sheets("Player Manager").Rows(i & ":" & j).Hidden = True
+    End If
+    
+    LST_Rows.Clear
+    Call GetList
+    LST_Rows.ListIndex = k
+End Sub
+
+Private Sub GetList()
+    Dim RowsX() As Variant
+    Dim Reduced() As Variant
+    Dim Blacklist(1 To 2) As Variant
+    
+    Dim i, j, k As Integer
+    Dim UbRows, UbBlacklist, UbR As Integer
+    Dim TF As Boolean
+    
+    'get headers
+    RowsX() = Sheets("Player Manager").Range("A18:A63").Value
+    
+    UbRows = UBound(RowsX(), 1)
+    
+    ReDim Preserve RowsX(1 To UbRows, 1 To 2) As Variant
+    
+    For i = 1 To UbRows
+        If Not RowsX(i, 1) = "" Then
+            j = j + 1
+        End If
+    Next
+    
+    ReDim Reduced(1 To j, 1 To 2)
+    UbR = j
+    j = 0
+    
+    UbBlacklist = UBound(Blacklist(), 1)
+    
+    'populate the reduced list
+    For i = 1 To UbRows
+        If Rows(i + 17).Hidden = True And Not RowsX(i, 1) = "" And Not RowsX(i, 1) = Empty Then
+            j = j + 1
+            Reduced(j, 1) = RowsX(i, 1)
+            Reduced(j, 2) = "Hidden"
+        ElseIf Not RowsX(i, 1) = "" And Not RowsX(i, 1) = Empty Then
+            j = j + 1
+            Reduced(j, 1) = RowsX(i, 1)
+        Else
+            
+        End If
+        If i = 27 Then
+            i = i
+        End If
+    Next
+    
+    LST_Rows.ColumnCount = 2
+    LST_Rows.list = Reduced()
+End Sub
+
+Private Sub UserForm_Initialize()
+    Call GetList
+    
+    LST_Rows.ColumnWidths = "150,15"
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet14
+VBA Filename: Sheet14.cls
+------------------------------------------
+Attribute VB_Name = "Sheet14"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/LootGenerator
+VBA Filename: LootGenerator.frm
+------------------------------------------
+Attribute VB_Name = "LootGenerator"
+Attribute VB_Base = "0{F650528E-7817-442C-9531-07B9B807947B}{92532354-4EA0-4DB2-86FF-3B7B731B4AF8}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Option Explicit
+Private Sub CMD_Go_Click()
+    Dim i, j, k, m As Long
+    Dim Z, Y As Double
+    Dim A, B As String
+    Dim LTC() As Variant
+    Dim Items() As Variant
+    Dim DblChk() As Long
+    Dim LstBx() As Variant
+    Dim Gold As Double
+    Dim CT As String
+    Dim CD As Double
+    Dim Splitit() As String
+    
+    Dim DUM As String
+    Dim DumI As Integer
+    Dim BOO As Boolean
+    
+    'clear listbox
+    LST_Items.Clear
+    
+    'confirm number
+    If IsNumeric(CMB_Numbers.Value) = False Then
+        DUM = MsgBox("Please enter a positive whole number for the item quantity.", , "Error")
+        CMB_Numbers.Value = "#"
+        Exit Sub
+    End If
+    
+    'get first column of loot table
+    i = 0
+    Do
+        i = i + 1
+        A = N2L(i)
+    Loop Until i = 16384 Or Sheets("Loot Tables").Range(A & "1").Value = CMB_Loot_Tables.Value
+    
+    'confirm real loot table
+    If i = 16384 Then
+        DUM = MsgBox("Please select a valid loot table from the dropdown.", , "Error")
+        CMB_Loot_Tables = "--Please Select A Loot Table--"
+        Exit Sub
+    End If
+    
+    'get the rest of the table address
+    j = 3
+    Do
+        j = j + 1
+        B = Sheets("Loot Tables").Range(A & j).Value
+    Loop Until j = 1048576 Or B = ""
+    j = j - 1
+    
+    'get tables
+    LTC() = Sheets("Loot Tables").Range(A & "3:" & N2L(i + 3) & j).Value
+    Items() = Sheets("Item Library").Range("Items[#ALL]").Value
+    
+    'set lst columns
+    LST_Items.ColumnCount = UBound(Items(), 2)
+    LST_Items.ColumnWidths = "100 pt;30 pt;70 pt;35 pt;230 pt"
+    
+    ReDim DblChk(1 To UBound(LTC(), 1)) As Long
+    ReDim LstBx(1 To CMB_Numbers.Value, 0 To 5) As Variant
+    
+    'populate listbox
+    'headings
+    LST_Items.AddItem
+    LST_Items.list(0, 0) = Items(1, 1)
+    LST_Items.list(0, 1) = Items(1, 2)
+    LST_Items.list(0, 2) = Items(1, 3)
+    LST_Items.list(0, 3) = Items(1, 4)
+    LST_Items.list(0, 4) = Items(1, 5)
+    LST_Items.list(0, 5) = Items(1, 6)
+    
+    Gold = 0
+    For i = 1 To CMB_Numbers.Value
+        BOO = False
+        Randomize
+        Z = Rnd()
+        
+        Y = 0
+        For k = 1 To UBound(LTC(), 1)
+            Y = Y + LTC(k, 3)
+            If Z < Y Then
+                Exit For
+            End If
+        Next
+        Z = k
+        
+        'match items
+        j = 1
+        BOO = False
+        Do Until j = UBound(Items(), 1) Or LTC(Z, 1) = Items(j, 1)
+            j = j + 1
+            If LTC(Z, 1) = Items(j, 1) Then
+                BOO = True
+            End If
+        Loop
+        
+        'add to array
+        If BOO = True Then
+            LstBx(i, 0) = LTC(Z, 1)
+            
+            LstBx(i, 1) = Items(j, 2)
+            LstBx(i, 2) = Items(j, 3)
+            LstBx(i, 3) = Items(j, 4)
+            LstBx(i, 4) = Items(j, 5)
+            LstBx(i, 5) = Items(j, 6)
+            
+            'sum Gold
+            CT = LCase(Right(Items(j, 2), 2))
+            If CT = "cp" Then
+                CD = 100
+            ElseIf CT = "sp" Then
+                CD = 10
+            ElseIf CT = "ep" Then
+                CD = 2
+            ElseIf CT = "pp" Then
+                CD = 1 / 10
+            Else
+                CD = 1
+            End If
+            
+            Gold = Gold + CDbl(Left(Items(j, 2), Len(Items(j, 2)) - 2)) / CD
+        ElseIf Not (LTC(Z, 1)) = Replace(LCase(LTC(Z, 1)), "pouch with ", "") Then
+            Splitit() = Split(LTC(Z, 1), "with ")
+            Splitit() = Split(Splitit(1), "-")
+            
+            DumI = CInt(Splitit(0))
+            
+            Splitit() = Split(Splitit(1), " ")
+            
+            DumI = RandomValue(DumI, CInt(Splitit(0)))
+            
+            'sum Gold
+            CT = LCase(Splitit(1))
+            If CT = "cp" Then
+                CD = 100
+            ElseIf CT = "sp" Then
+                CD = 10
+            ElseIf CT = "ep" Then
+                CD = 2
+            ElseIf CT = "pp" Then
+                CD = 1 / 10
+            Else
+                CD = 1
+            End If
+            
+            LstBx(i, 0) = "Pouch with " & DumI & " " & CT
+            LstBx(i, 1) = DumI & " " & CT
+            
+            Gold = Gold + DumI / CD
+        Else
+            LstBx(i, 0) = LTC(Z, 1)
+            LstBx(i, 1) = "N/A"
+            LstBx(i, 2) = "N/A"
+            LstBx(i, 3) = "N/A"
+            LstBx(i, 4) = "N/A"
+            LstBx(i, 5) = "N/A"
+        End If
+    Next
+    
+    Call BubbleSort(LstBx())
+    
+    For i = 1 To UBound(LstBx(), 1)
+        LST_Items.AddItem
+        LST_Items.list(i, 0) = LstBx(i, 0)
+        LST_Items.list(i, 1) = LstBx(i, 1)
+        LST_Items.list(i, 2) = LstBx(i, 2)
+        LST_Items.list(i, 3) = LstBx(i, 3)
+        LST_Items.list(i, 4) = LstBx(i, 4)
+        LST_Items.list(i, 5) = LstBx(i, 5)
+    Next
+    
+    LBL_Value = DBL2Currency(Gold, "gp")
+    
+End Sub
+Private Function DBL2Currency(Nu, Optional MainUnit As String = "gp") As String
+    Dim Cu(6, 3), i, j As Integer
+    Dim MU As String
+    Dim N As Double
+    
+    Dim UT As String
+    
+    MU = MainUnit
+    
+    Cu(1, 1) = "pp"
+    Cu(2, 1) = "gp"
+    Cu(3, 1) = "ep"
+    Cu(4, 1) = "sp"
+    Cu(5, 1) = "cp"
+    
+    Cu(1, 2) = 1
+    Cu(2, 2) = 10
+    Cu(3, 2) = 2
+    Cu(4, 2) = 5
+    Cu(5, 2) = 10
+    
+    Do Until Cu(i, 1) = MU Or i = 6
+        i = i + 1
+    Loop
+    
+    If i = 6 Then
+        MU = "gp"
+        i = 2
+    End If
+    
+    N = Nu
+    
+    For j = i To 5
+        If N > 1 Then
+            Cu(j, 3) = Int(N)
+            N = (N - Cu(j, 3)) * Cu(j + 1, 2)
+        ElseIf N <= 0 Then
+            Exit For
+        Else
+            N = N * Cu(j + 1, 2)
+        End If
+    Next
+    
+    UT = ""
+    For j = i To 5
+        If Cu(j, 3) > 1 Then
+            If Not UT = "" Then
+                UT = UT & ", "
+            End If
+        
+            UT = UT & Cu(j, 3) & " " & Cu(j, 1)
+        End If
+    Next
+    
+    DBL2Currency = UT
+    
+End Function
+
+Private Sub UserForm_Initialize()
+    Dim i, j As Long
+    Dim A As String
+    Dim LTN() As Variant
+    
+    Dim Creatures() As Variant
+    
+    For i = 1 To 100
+        CMB_Numbers.AddItem i
+    Next
+    
+    'get loot tables
+    i = 0
+    Do
+        i = i + 1
+        A = N2L(i)
+    Loop Until i = 16384 Or Sheets("Loot Tables").Range(A & "2").Value = ""
+    i = i - 1
+    
+    LTN() = Sheets("Loot Tables").Range("A1:" & A & "3").Value
+    For j = 1 To i
+        If Not LTN(1, j) = "" And Not LTN(3, j) = "" Then
+            CMB_Loot_Tables.AddItem (LTN(1, j))
+        End If
+    Next
+    
+    If ActiveSheet.Name = "Readied Encounter" Then
+        Creatures() = Sheets("Readied Encounter").Range("A17:A145").Value
+        
+        For i = 1 To UBound(Creatures(), 1)
+            If Creatures(i, 1) = "" Then
+                Exit For
+            End If
+        Next
+        i = i - 1
+        
+        CMB_Numbers.Value = i
+    End If
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Module1
+VBA Filename: Module1.bas
+------------------------------------------
+Attribute VB_Name = "Module1"
+Sub Macro1()
+Attribute Macro1.VB_ProcData.VB_Invoke_Func = " \n14"
+'
+' Macro1 Macro
+'
+
+'
+    ActiveWindow.SmallScroll Down:=-27
+    Range("LootTable1[[#Headers],[Item]]").Select
+    Range(Selection, Selection.End(xlToRight)).Select
+    Range(Selection, Selection.End(xlDown)).Select
+    
+    
+End Sub
+
+
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo1
+VBA Filename: Módulo1.bas
+------------------------------------------
+Attribute VB_Name = "Módulo1"
+Sub PlayerSelect()
+
+Dim varArrayList As Variant
+Dim strSelected As String
+varArrayList = Array("value1", "value2", "value3")
+strSelected = PlayerSelect(list:=varArrayList)
+If Len(strSelected) > 0 Then
+    Debug.Print strSelected
+End If
+
+End Sub
+
+Private Sub HitPlayer1()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A5").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E5").Value = Range("E5").Value + hp_var
+ If Range("E5").Value >= Range("C5").Value Then
+ Range("E5").Value = Range("C5").Value
+End If
+End Sub
+
+Private Sub HitPlayer2()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A6").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E6").Value = Range("E6").Value + hp_var
+ If Range("E6").Value >= Range("C6").Value Then
+ Range("E6").Value = Range("C6").Value
+End If
+End Sub
+
+Private Sub HitPlayer3()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A7").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E7").Value = Range("E7").Value + hp_var
+ If Range("E7").Value >= Range("C7").Value Then
+ Range("E7").Value = Range("C7").Value
+End If
+End Sub
+
+Private Sub HitPlayer4()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A8").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E8").Value = Range("E8").Value + hp_var
+ If Range("E8").Value >= Range("C8").Value Then
+ Range("E8").Value = Range("C8").Value
+End If
+End Sub
+Private Sub HitPlayer5()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A9").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E9").Value = Range("E9").Value + hp_var
+ If Range("E9").Value >= Range("C9").Value Then
+ Range("E9").Value = Range("C9").Value
+End If
+End Sub
+Private Sub HitPlayer6()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A10").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E10").Value = Range("E10").Value + hp_var
+ If Range("E10").Value >= Range("C10").Value Then
+ Range("E10").Value = Range("C10").Value
+End If
+End Sub
+Private Sub HitPlayer7()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A11").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E11").Value = Range("E11").Value + hp_var
+ If Range("E11").Value >= Range("C11").Value Then
+ Range("E11").Value = Range("C11").Value
+End If
+End Sub
+Private Sub HitPlayer8()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A12").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E12").Value = Range("E12").Value + hp_var
+ If Range("E12").Value >= Range("C12").Value Then
+ Range("E12").Value = Range("C12").Value
+End If
+End Sub
+Private Sub HitPlayer9()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much healing converted to " & Range("A13").Value & "?", Title:="Hitbox", Default:="0")
+ Range("E13").Value = Range("E13").Value + hp_var
+ If Range("E13").Value >= Range("C13").Value Then
+ Range("E13").Value = Range("C13").Value
+End If
+End Sub
+
+
+Private Sub SpellPlayer1()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A5").Value & "?", Title:="Hitbox", Default:="0")
+   
+    If mp_var > 5 Then
+     
+        Range("F5").Value = Range("F5").Value - (mp_var ^ 2.25)
+        
+    End If
+       
+    Range("F5").Value = Range("F5").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+
+Private Sub SpellPlayer2()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A6").Value & "?", Title:="Hitbox", Default:="0")
+       
+    Range("F6").Value = Range("F6").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+
+Private Sub SpellPlayer3()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A7").Value & "?", Title:="Hitbox", Default:="0")
+ If mp_var > 5 Then
+     
+        Range("F7").Value = Range("F7").Value - (mp_var ^ 2.25)
+        
+    End If
+       
+    Range("F7").Value = Range("F7").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+
+Private Sub SpellPlayer4()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A8").Value & "?", Title:="Hitbox", Default:="0")
+If mp_var > 5 Then
+     
+        Range("F8").Value = Range("F8").Value - (mp_var ^ 2.25)
+        
+    End If
+       
+    Range("F8").Value = Range("F8").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+Private Sub SpellPlayer5()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A9").Value & "?", Title:="Hitbox", Default:="0")
+If mp_var > 5 Then
+     
+        Range("F9").Value = Range("F9").Value - (mp_var ^ 2.25)
+        
+    End If
+       
+    Range("F9").Value = Range("F9").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+Private Sub SpellPlayer6()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="Which level slot was used by " & Range("A10").Value & "?", Title:="Hitbox", Default:="0")
+If mp_var > 5 Then
+     
+        Range("F10").Value = Range("F10").Value - (mp_var ^ 2.25)
+        
+    End If
+       
+    Range("F10").Value = Range("F10").Value - (4 + (mp_var ^ 2.1))
+    
+End Sub
+Sub Turn_End()
+
+Set Rng = Range("E5:E13")
+
+For Each cell In Rng
+
+    If cell.Offset(0, 4).Value = 1 Then
+    
+        If cell.Value >= cell.Offset(0, -2).Value And cell.Value < cell.Offset(0, -2).Value * 2 Then
+        
+            cell.Value = cell.Value + cell.Offset(0, -2).Value / 10
+        
+        End If
+        
+    Else
+    
+        cell.Value = cell.Value + cell.Offset(0, 2).Value
+        
+        If cell.Value > cell.Offset(0, -2).Value Then
+        
+        answer = MsgBox("Is this temporary HP?", vbYesNo)
+        
+            If answer = vbNo Then
+            
+                cell.Value = cell.Offset(0, -2).Value
+                
+            End If
+            
+        End If
+            
+    End If
+    
+Next cell
+
+End Sub
+                
+                
+        
+        
+
+Private Sub HealMP1()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A5").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F5").Value = Range("F5").Value + mp_var
+End Sub
+
+Private Sub HealMP2()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A6").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F6").Value = Range("F6").Value + mp_var
+End Sub
+
+Private Sub HealMP3()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A7").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F7").Value = Range("F7").Value + mp_var
+End Sub
+
+Private Sub HealMP4()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A8").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F8").Value = Range("F8").Value + mp_var
+End Sub
+Private Sub HealMP5()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A9").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F9").Value = Range("F9").Value + mp_var
+End Sub
+Private Sub HealMP6()
+
+    'declare variable to hold value returned by InputBox
+    Dim mp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    mp_var = InputBox(Prompt:="How much mana restored to " & Range("A10").Value & "?", Title:="Hitbox", Default:="0")
+   
+ Range("F10").Value = Range("F10").Value + mp_var
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Hitbox
+VBA Filename: Hitbox.frm
+------------------------------------------
+Attribute VB_Name = "Hitbox"
+Attribute VB_Base = "0{8B68618E-3EF7-4323-95F1-2BE668C85FB1}{636260E7-3C07-4503-995A-922CDA226735}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Private Sub PlayerSelect()
+
+Dim varArrayList As Variant
+Dim strSelected As String
+varArrayList = Array("value1", "value2", "value3")
+strSelected = PlayerSelect(list:=varArrayList)
+If Len(strSelected) > 0 Then
+    Debug.Print strSelected
+End If
+
+End Sub
+
+Private Sub Damage_Click()
+
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+     
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much damage was caused to " & PlayerSelect & "?", Title:="Hitbox", Default:="0")
+    
+    
+
+    
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo2
+VBA Filename: Módulo2.bas
+------------------------------------------
+Attribute VB_Name = "Módulo2"
+
+Sub Rest()
+answer = MsgBox("Start Long Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+'Player 1
+
+'HP Regen'
+    If Range("I5") = 1 Then
+        Range("E5").Value = Range("C5").Value * 2
+    Else
+        Range("E5").Value = Range("C5").Value
+    End If
+
+'MP Regen'
+    Range("F5").Value = Range("D5").Value
+    
+'Ultimate Discharge'
+    Range("J5").Value = Range("J5").Value - 0.25
+    If Range("J5").Value < 0 Then
+        Range("J5").Value = 0
+    End If
+
+'Player 2
+
+'HP Regen'
+    If Range("I6") = 1 Then
+        Range("E6").Value = Range("C6").Value * 2
+    Else
+        Range("E6").Value = Range("C6").Value
+    End If
+
+'MP Regen'
+    Range("F6").Value = Range("D6").Value
+    
+'Ultimate Discharge'
+    Range("J6").Value = Range("J6").Value - 0.25
+    If Range("J6").Value < 0 Then
+        Range("J6").Value = 0
+    End If
+
+
+
+'Player 3
+
+'HP Regen'
+    If Range("I7") = 1 Then
+        Range("E7").Value = Range("C7").Value * 2
+    Else
+        Range("E7").Value = Range("C7").Value
+    End If
+
+'MP Regen'
+    Range("F7").Value = Range("D7").Value
+    
+'Ultimate Discharge'
+    Range("J7").Value = Range("J7").Value - 0.25
+    If Range("J7").Value < 0 Then
+        Range("J7").Value = 0
+    End If
+    
+'Player 4
+    
+    'HP Regen'
+    If Range("I8") = 1 Then
+        Range("E8").Value = Range("C8").Value * 2
+    Else
+        Range("E8").Value = Range("C8").Value
+    End If
+
+'MP Regen'
+    Range("F8").Value = Range("D8").Value
+    
+'Ultimate Discharge'
+    Range("J8").Value = Range("J8").Value - 0.25
+    If Range("J8").Value < 0 Then
+        Range("J8").Value = 0
+    End If
+    
+'Player 5
+    
+    'HP Regen'
+    If Range("I9") = 1 Then
+        Range("E9").Value = Range("C9").Value * 2
+    Else
+        Range("E9").Value = Range("C9").Value
+    End If
+
+'MP Regen'
+    Range("F9").Value = Range("D9").Value
+    
+'Ultimate Discharge'
+    Range("J9").Value = Range("J9").Value - 0.25
+    If Range("J9").Value < 0 Then
+        Range("J9").Value = 0
+    End If
+    
+'Player 6
+    
+    'HP Regen'
+    If Range("I10") = 1 Then
+        Range("E10").Value = Range("C10").Value * 2
+    Else
+        Range("E10").Value = Range("C10").Value
+    End If
+
+'MP Regen'
+    Range("F10").Value = Range("D10").Value
+    
+'Ultimate Discharge'
+    Range("J10").Value = Range("J10").Value - 0.25
+    If Range("J10").Value < 0 Then
+        Range("J10").Value = 0
+    End If
+    
+    
+End If
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo4
+VBA Filename: Módulo4.bas
+------------------------------------------
+Attribute VB_Name = "Módulo4"
+Sub AwardXP()
+
+Dim XP As Integer
+
+answer = MsgBox("Finish Combat and award XP?", vbQuestion + vbYesNo + vbDefaultButton2, "XP")
+
+If answer = vbYes Then
+
+XP = InputBox(Prompt:="How much XP?", Title:="Hitbox", Default:="0")
+
+
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo5
+VBA Filename: Módulo5.bas
+------------------------------------------
+Attribute VB_Name = "Módulo5"
+Sub Ultimate()
+answer = MsgBox("Use Ultimate?", vbQuestion + vbYesNo + vbDefaultButton2, "Ulti")
+
+If answer = vbYes Then
+
+Range("J5").Value = 0
+
+End If
+End Sub
+
+Sub Ultimate2()
+answer = MsgBox("Use Ultimate?", vbQuestion + vbYesNo + vbDefaultButton2, "Ulti")
+
+If answer = vbYes Then
+
+Range("J6").Value = 0
+
+End If
+End Sub
+
+Sub Ultimate3()
+answer = MsgBox("Use Ultimate?", vbQuestion + vbYesNo + vbDefaultButton2, "Ulti")
+
+If answer = vbYes Then
+
+Range("J7").Value = 0
+
+End If
+End Sub
+
+Sub Ultimate4()
+answer = MsgBox("Use Ultimate?", vbQuestion + vbYesNo + vbDefaultButton2, "Ulti")
+
+If answer = vbYes Then
+
+Range("J8").Value = 0
+
+End If
+End Sub
+
+Sub UltimateCharge()
+answer = MsgBox("Ultimate Charge?", vbQuestion + vbYesNo + vbDefaultButton2, "UltiCharge")
+
+If answer = vbYes Then
+
+Range("J5").Value = Range("J5").Value + 0.05
+
+End If
+End Sub
+Sub UltimateCharge2()
+answer = MsgBox("Ultimate Charge?", vbQuestion + vbYesNo + vbDefaultButton2, "UltiCharge")
+
+If answer = vbYes Then
+
+Range("J6").Value = Range("J6").Value + 0.05
+
+End If
+End Sub
+Sub UltimateCharge3()
+answer = MsgBox("Ultimate Charge?", vbQuestion + vbYesNo + vbDefaultButton2, "UltiCharge")
+
+If answer = vbYes Then
+
+Range("J7").Value = Range("J7").Value + 0.05
+
+End If
+End Sub
+Sub UltimateCharge4()
+answer = MsgBox("Ultimate Charge?", vbQuestion + vbYesNo + vbDefaultButton2, "UltiCharge")
+
+If answer = vbYes Then
+
+Range("J8").Value = Range("J8").Value + 0.05
+
+End If
+End Sub
+
+
+Sub ShortRest()
+answer = MsgBox("Start Short Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+'Player 1
+
+'HP Regen'
+    If Range("I5") = 1 Then
+        Range("E5").Value = Range("E5").Value * (1.25 + (0.07 * Range("C29").Value))
+            If Range("E5").Value >= Range("C5").Value * 2 Then
+                Range("E5").Value = Range("C5").Value * 2
+            End If
+    Else
+        Range("E5").Value = Range("E5").Value * (1.25 + (0.07 * Range("C29").Value))
+            If Range("E5").Value >= Range("C5").Value Then
+                Range("E5").Value = Range("C5").Value
+            End If
+    End If
+
+'Player 2
+
+'HP Regen'
+    If Range("I6") = 1 Then
+        Range("E6").Value = Range("E6").Value * (1.25 + (0.07 * Range("D29").Value))
+            If Range("E6").Value >= Range("C6").Value * 2 Then
+                Range("E6").Value = Range("C6").Value * 2
+            End If
+    Else
+        Range("E6").Value = Range("E6").Value * (1.25 + (0.07 * Range("D29").Value))
+            If Range("E6").Value >= Range("C6").Value Then
+                Range("E6").Value = Range("C6").Value
+            End If
+    End If
+'Player 3
+
+'HP Regen'
+    If Range("I7") = 1 Then
+        Range("E7").Value = Range("E7").Value * (1.25 + (0.07 * Range("E29").Value))
+            If Range("E7").Value >= Range("C7").Value * 2 Then
+                Range("E7").Value = Range("C7").Value * 2
+            End If
+    Else
+        Range("E7").Value = Range("E7").Value * (1.25 + (0.07 * Range("E29").Value))
+            If Range("E7").Value >= Range("C7").Value Then
+                Range("E7").Value = Range("C7").Value
+            End If
+    End If
+    
+'Player 4
+    
+   'HP Regen'
+    If Range("I8") = 1 Then
+        Range("E8").Value = Range("E8").Value * (1.25 + (0.07 * Range("F29").Value))
+            If Range("E8").Value >= Range("C8").Value * 2 Then
+                Range("E8").Value = Range("C8").Value * 2
+            End If
+    Else
+        Range("E8").Value = Range("E8").Value * (1.25 + (0.07 * Range("F29").Value))
+            If Range("E8").Value >= Range("C8").Value Then
+                Range("E8").Value = Range("C8").Value
+            End If
+    End If
+
+'Player 5
+    
+   'HP Regen'
+    If Range("I9") = 1 Then
+        Range("E9").Value = Range("E9").Value * (1.25 + (0.07 * Range("G29").Value))
+            If Range("E9").Value >= Range("C9").Value * 2 Then
+                Range("E9").Value = Range("C9").Value * 2
+            End If
+    Else
+        Range("E9").Value = Range("E9").Value * (1.25 + (0.07 * Range("G9").Value))
+            If Range("E9").Value >= Range("C9").Value Then
+                Range("E9").Value = Range("C9").Value
+            End If
+    End If
+    
+'Player 6
+    
+   'HP Regen'
+    If Range("I10") = 1 Then
+        Range("E10").Value = Range("E10").Value * (1.25 + (0.07 * Range("H29").Value))
+            If Range("E16").Value >= Range("C16").Value * 2 Then
+                Range("E16").Value = Range("C16").Value * 2
+            End If
+    Else
+        Range("E10").Value = Range("E10").Value * (1.25 + (0.07 * Range("H29").Value))
+            If Range("E10").Value >= Range("C10").Value Then
+                Range("E10").Value = Range("C10").Value
+            End If
+    End If
+
+End If
+End Sub
+
+Sub ShortRest1()
+
+answer = MsgBox("Start Short Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+'Player 1
+
+'HP Regen'
+    If Range("I5") = 1 Then
+        Range("E5").Value = Range("E5").Value * (1.25 + (0.07 * Range("C29").Value))
+            If Range("E5").Value >= Range("C5").Value * 2 Then
+                Range("E5").Value = Range("C5").Value * 2
+            End If
+    Else
+        Range("E5").Value = Range("E5").Value * (1.25 + (0.07 * Range("C29").Value))
+            If Range("E5").Value >= Range("C5").Value Then
+                Range("E5").Value = Range("C5").Value
+            End If
+    End If
+    
+End If
+    
+End Sub
+
+Sub ShortRest2()
+
+answer = MsgBox("Start Short Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+'HP Regen'
+    If Range("I6") = 1 Then
+        Range("E6").Value = Range("E6").Value * (1.25 + (0.07 * Range("D29").Value))
+            If Range("E6").Value >= Range("C6").Value * 2 Then
+                Range("E6").Value = Range("C6").Value * 2
+            End If
+    Else
+        Range("E6").Value = Range("E6").Value * (1.25 + (0.07 * Range("D29").Value))
+            If Range("E6").Value >= Range("C6").Value Then
+                Range("E6").Value = Range("C6").Value
+            End If
+    End If
+    
+End If
+
+End Sub
+
+Sub ShortRest3()
+
+answer = MsgBox("Start Short Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+'Player 3
+
+'HP Regen'
+    If Range("I7") = 1 Then
+        Range("E7").Value = Range("E7").Value * (1.25 + (0.07 * Range("E29").Value))
+            If Range("E7").Value >= Range("C7").Value * 2 Then
+                Range("E7").Value = Range("C7").Value * 2
+            End If
+    Else
+        Range("E7").Value = Range("E7").Value * (1.25 + (0.07 * Range("E29").Value))
+            If Range("E7").Value >= Range("C7").Value Then
+                Range("E7").Value = Range("C7").Value
+            End If
+    End If
+End If
+End Sub
+
+Sub ShortRest4()
+answer = MsgBox("Start Short Rest?", vbQuestion + vbYesNo + vbDefaultButton2, "Rest")
+
+If answer = vbYes Then
+
+   'HP Regen'
+    If Range("I8") = 1 Then
+        Range("E8").Value = Range("E8").Value * (1.25 + (0.07 * Range("F29").Value))
+            If Range("E8").Value >= Range("C8").Value * 2 Then
+                Range("E8").Value = Range("C8").Value * 2
+            End If
+    Else
+        Range("E8").Value = Range("E8").Value * (1.25 + (0.07 * Range("F29").Value))
+            If Range("E8").Value >= Range("C8").Value Then
+                Range("E8").Value = Range("C8").Value
+            End If
+    End If
+End If
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Sheet15
+VBA Filename: Sheet15.cls
+------------------------------------------
+Attribute VB_Name = "Sheet15"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean)
+    Dim FG As Range
+    Set FG = Range("E5:E8")
+    If Intersect(Target, FG) Is Nothing Then Exit Sub
+    Cancel = True
+    'declare variable to hold value returned by InputBox
+    Dim hp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    hp_var = InputBox(Prompt:="How much damage was dealt?", Title:="Hitbox", Default:="0")
+ Target.Value = Target.Value - hp_var
+ 
+    'Ultimate Charge
+    If Range("E5").Value <= Range("C5").Value Then
+    Range("J5").Value = Range("J5").Value + (hp_var / (Range("C5").Value) / 3)
+    End If
+    If Range("E6").Value <= Range("C6").Value Then
+    Range("J6").Value = Range("J6").Value + (hp_var / (Range("C6").Value) / 3)
+    End If
+    If Range("E7").Value <= Range("C7").Value Then
+    Range("J7").Value = Range("J7").Value + (hp_var / (Range("C7").Value) / 3)
+    End If
+    If Range("E8").Value <= Range("C8").Value Then
+    Range("J8").Value = Range("J8").Value + (hp_var / (Range("C8").Value) / 3)
+    End If
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Gold
+VBA Filename: Gold.bas
+------------------------------------------
+Attribute VB_Name = "Gold"
+Sub Gold1()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!D31").Value = Range("'Equipment'!D31").Value + gold_var
+End Sub
+
+Sub Gold2()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!G31").Value = Range("'Equipment'!G31").Value + gold_var
+End Sub
+
+Sub Gold3()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!J31").Value = Range("'Equipment'!J31").Value + gold_var
+End Sub
+
+Sub Gold4()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!M31").Value = Range("'Equipment'!M31").Value + gold_var
+End Sub
+Sub Gold5()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!P31").Value = Range("'Equipment'!P31").Value + gold_var
+End Sub
+Sub Gold6()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned?", Title:="Exchange", Default:="0")
+    Range("'Equipment'!S31").Value = Range("'Equipment'!S31").Value + gold_var
+End Sub
+
+Sub Gold_all()
+ Dim gold_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    gold_var = InputBox(Prompt:="How much gold spent / earned by all (total)?", Title:="Exchange All", Default:="0")
+    Range("'Equipment'!D31").Value = Range("'Equipment'!D31").Value + (gold_var / Range("Status!F1").Value)
+    Range("'Equipment'!G31").Value = Range("'Equipment'!G31").Value + (gold_var / Range("Status!F1").Value)
+    Range("'Equipment'!J31").Value = Range("'Equipment'!J31").Value + (gold_var / Range("Status!F1").Value)
+    Range("'Equipment'!M31").Value = Range("'Equipment'!M31").Value + (gold_var / Range("Status!F1").Value)
+    Range("'Equipment'!P31").Value = Range("'Equipment'!P31").Value + (gold_var / Range("Status!F1").Value)
+    Range("'Equipment'!S31").Value = Range("'Equipment'!S31").Value + (gold_var / Range("Status!F1").Value)
+End Sub
+
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate
+VBA Filename: UserForm_Ultimate.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate"
+Attribute VB_Base = "0{841FA47B-97F8-474C-8C46-D4F6B648D529}{73D11784-51FB-4B73-AD71-750D3A5C3357}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Private Sub CommandButton1_Click()
+Range("J5").Value = Range("J5").Value - 1
+
+
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J5").Value = Range("J5").Value - 0.5
+
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J5").Value = Range("J5").Value - 0.25
+
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J5").Value = Range("J5").Value - 0.1
+
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J5").Value = Range("J5").Value + 0.01
+
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J5").Value = Range("J5").Value + 0.05
+
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J5").Value = Range("J5").Value + 0.125
+
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J5").Value = Range("J5").Value + 0.255
+
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Module2
+VBA Filename: Module2.bas
+------------------------------------------
+Attribute VB_Name = "Module2"
+Sub CallUltimateBox()
+Range("J5").Value = Range("J5").Value + 0.2
+End Sub
+Sub CallUltimateBox2()
+Range("J6").Value = Range("J6").Value + 0.2
+End Sub
+Sub CallUltimateBox3()
+Range("J7").Value = Range("J7").Value + 0.2
+End Sub
+Sub CallUltimateBox4()
+Range("J8").Value = Range("J8").Value + 0.2
+End Sub
+Sub CallUltimateBox5()
+Range("J9").Value = Range("J9").Value + 0.2
+End Sub
+
+Sub CallUltimateBox6()
+Range("J10").Value = Range("J10").Value + 0.2
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Módulo7
+VBA Filename: Módulo7.bas
+------------------------------------------
+Attribute VB_Name = "Módulo7"
+Sub experience_gain_all()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned (total)?", Title:="XP", Default:="0")
+    
+    'Level Up Message
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!J16").Value Then
+    MsgBox ("" & Range("A5").Value & " has leveled up!")
+    End If
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!S16").Value Then
+    MsgBox ("" & Range("A6").Value & " has leveled up!")
+    End If
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!AB16").Value Then
+    MsgBox ("" & Range("A7").Value & " has leveled up!")
+    End If
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!AK16").Value Then
+    MsgBox ("" & Range("A8").Value & " has leveled up!")
+    End If
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!AT16").Value Then
+    MsgBox ("" & Range("A9").Value & " has leveled up!")
+    End If
+    If (xp_var / Range("Status!F1")) >= Range("'Player Manager'!BC16").Value Then
+    MsgBox ("" & Range("A10").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    
+    Range("='Player Manager'!J17").Value = Range("='Player Manager'!J17").Value + (xp_var / Range("Status!F1"))
+    
+
+    Range("='Player Manager'!S17").Value = Range("='Player Manager'!S17").Value + (xp_var / Range("Status!F1"))
+    
+
+    Range("='Player Manager'!AB17").Value = Range("='Player Manager'!AB17").Value + (xp_var / Range("Status!F1"))
+     
+
+    Range("='Player Manager'!AK17").Value = Range("='Player Manager'!AK17").Value + (xp_var / Range("Status!F1"))
+    
+
+    Range("='Player Manager'!AT17").Value = Range("='Player Manager'!AT17").Value + (xp_var / Range("Status!F1"))
+    
+
+    Range("='Player Manager'!BC17").Value = Range("='Player Manager'!BC17").Value + (xp_var / Range("Status!F1"))
+    
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Plan2
+VBA Filename: Plan2.cls
+------------------------------------------
+Attribute VB_Name = "Plan2"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Plan3
+VBA Filename: Plan3.cls
+------------------------------------------
+Attribute VB_Name = "Plan3"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP5
+VBA Filename: XP5.bas
+------------------------------------------
+Attribute VB_Name = "XP5"
+Sub experience_gain_5()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+    
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!CV16").Value Then
+    MsgBox ("" & Range("A9").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    If (Range("Status!L9")) >= Range("'Player Manager'!CV17") Then
+    Range("='Player Manager'!CV17").Value = Range("='Player Manager'!CV17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!CV17").Value = Range("='Player Manager'!CV17").Value + xp_var
+    End If
+    
+    
+    
+End Sub
+
+
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP2
+VBA Filename: XP2.bas
+------------------------------------------
+Attribute VB_Name = "XP2"
+Sub experience_gain_2()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+    
+    
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!S16").Value Then
+    MsgBox ("" & Range("A6").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    If (Range("Status!L6")) >= Range("'Player Manager'!S17") Then
+    Range("='Player Manager'!S17").Value = Range("='Player Manager'!S17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!S17").Value = Range("='Player Manager'!S17").Value + xp_var
+    End If
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP3
+VBA Filename: XP3.bas
+------------------------------------------
+Attribute VB_Name = "XP3"
+Sub experience_gain_3()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+    
+    
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!AB16").Value Then
+    MsgBox ("" & Range("A7").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    If (Range("Status!L7")) >= Range("'Player Manager'!AB17") Then
+    Range("='Player Manager'!AB17").Value = Range("='Player Manager'!AB17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!AB17").Value = Range("='Player Manager'!AB17").Value + xp_var
+    End If
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP4
+VBA Filename: XP4.bas
+------------------------------------------
+Attribute VB_Name = "XP4"
+Sub experience_gain_4()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+   
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!AK16").Value Then
+    MsgBox ("" & Range("A8").Value & " has leveled up!")
+    End If
+    
+    If (Range("Status!L8")) >= Range("'Player Manager'!AK17") Then
+    Range("='Player Manager'!AK17").Value = Range("='Player Manager'!AK17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!AK17").Value = Range("='Player Manager'!AK17").Value + xp_var
+    End If
+    
+End Sub
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Plan4
+VBA Filename: Plan4.cls
+------------------------------------------
+Attribute VB_Name = "Plan4"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/Plan1
+VBA Filename: Plan1.cls
+------------------------------------------
+Attribute VB_Name = "Plan1"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate2
+VBA Filename: UserForm_Ultimate2.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate2"
+Attribute VB_Base = "0{129DF45B-628C-4F79-AA6F-699C0754E35D}{36C685F0-EF59-486E-A1B0-E3130B3D196A}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+Private Sub CommandButton1_Click()
+Range("J6").Value = Range("J6").Value - 1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J6").Value = Range("J6").Value - 0.5
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J6").Value = Range("J6").Value - 0.25
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J6").Value = Range("J6").Value - 0.1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J6").Value = Range("J6").Value + 0.01
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J6").Value = Range("J6").Value + 0.05
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J6").Value = Range("J6").Value + 0.125
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J6").Value = Range("J6").Value + 0.255
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate3
+VBA Filename: UserForm_Ultimate3.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate3"
+Attribute VB_Base = "0{DCF4E397-28BB-41B0-AFC8-788476DE011A}{971CE28B-ADC0-4C77-A291-DEBA79E2DEE9}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+Private Sub CommandButton1_Click()
+Range("J7").Value = Range("J7").Value - 1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J7").Value = Range("J7").Value - 0.5
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J7").Value = Range("J7").Value - 0.25
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J7").Value = Range("J7").Value - 0.1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J7").Value = Range("J7").Value + 0.01
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J7").Value = Range("J7").Value + 0.05
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J7").Value = Range("J7").Value + 0.125
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J7").Value = Range("J7").Value + 0.255
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate4
+VBA Filename: UserForm_Ultimate4.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate4"
+Attribute VB_Base = "0{957ADF01-A75C-4016-BED4-003200DF09C3}{18DBE960-7E32-43DF-A82D-92EC17A8F351}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+Private Sub CommandButton1_Click()
+Range("J8").Value = Range("J8").Value - 1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J8").Value = Range("J8").Value - 0.5
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J8").Value = Range("J8").Value - 0.25
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J8").Value = Range("J8").Value - 0.1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J8").Value = Range("J8").Value + 0.01
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J8").Value = Range("J8").Value + 0.05
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J8").Value = Range("J8").Value + 0.125
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J8").Value = Range("J8").Value + 0.255
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate5
+VBA Filename: UserForm_Ultimate5.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate5"
+Attribute VB_Base = "0{BB3C2B43-B922-4847-8302-C7732A51580E}{C810CD44-9B4D-4763-92F6-F16778F11205}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+Private Sub CommandButton1_Click()
+Range("J15").Value = Range("J15").Value - 1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J15").Value = Range("J15").Value - 0.5
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J15").Value = Range("J15").Value - 0.25
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J15").Value = Range("J15").Value - 0.1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J15").Value = Range("J15").Value + 0.01
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J15").Value = Range("J15").Value + 0.05
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J15").Value = Range("J15").Value + 0.125
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J15").Value = Range("J15").Value + 0.255
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/UserForm_Ultimate6
+VBA Filename: UserForm_Ultimate6.frm
+------------------------------------------
+Attribute VB_Name = "UserForm_Ultimate6"
+Attribute VB_Base = "0{C87F5397-89F3-4728-ABDB-04665B251B53}{BEBFBCCE-B182-4E01-8546-0EE523EF7B82}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+Private Sub CommandButton1_Click()
+Range("J16").Value = Range("J16").Value - 1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton2_Click()
+Range("J16").Value = Range("J16").Value - 0.5
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton3_Click()
+Range("J16").Value = Range("J16").Value - 0.25
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton4_Click()
+Range("J16").Value = Range("J16").Value - 0.1
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton5_Click()
+Range("J16").Value = Range("J16").Value + 0.01
+
+    Unload UserForm_Ultimate
+End Sub
+
+Private Sub CommandButton6_Click()
+Range("J16").Value = Range("J16").Value + 0.05
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton7_Click()
+Range("J16").Value = Range("J16").Value + 0.125
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+Private Sub CommandButton8_Click()
+Range("J16").Value = Range("J16").Value + 0.255
+
+    Unload UserForm_Ultimate
+End Sub
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP1
+VBA Filename: XP1.bas
+------------------------------------------
+Attribute VB_Name = "XP1"
+Sub experience_gain_1()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+    
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!J16").Value Then
+    MsgBox ("" & Range("A5").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    If (Range("Status!L5")) >= Range("'Player Manager'!J17") Then
+    Range("='Player Manager'!J17").Value = Range("='Player Manager'!J17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!J17").Value = Range("='Player Manager'!J17").Value + xp_var
+    End If
+    
+    
+    
+End Sub
+
+
+
+
+
+==========================================
+File: xl/vbaProject.bin
+Stream: VBA/XP6
+VBA Filename: XP6.bas
+------------------------------------------
+Attribute VB_Name = "XP6"
+Sub experience_gain_6()
+
+ Dim xp_var As String
+ 
+    '(1) create InputBox, and (2) assign value returned by InputBox function to variable
+    xp_var = InputBox(Prompt:="How much XP earned?", Title:="XP", Default:="0")
+    
+    'Level Up Message
+    If xp_var >= Range("'Player Manager'!DN16").Value Then
+    MsgBox ("" & Range("A10").Value & " has leveled up!")
+    End If
+    
+    'Give XP
+    If (Range("Status!L10")) >= Range("'Player Manager'!J17") Then
+    Range("='Player Manager'!DN17").Value = Range("='Player Manager'!DN17").Value + 2.5 * xp_var
+    Else
+    Range("='Player Manager'!DN17").Value = Range("='Player Manager'!DN17").Value + xp_var
+    End If
+    
+    
+    
+End Sub
+
+
+
+
+
