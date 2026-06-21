@@ -1,0 +1,128 @@
+.enemy-library-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.library-search-bar .search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.library-search-bar .search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.library-table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: var(--glass-border);
+}
+
+.library-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+.library-table th {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.library-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+}
+
+.monster-row {
+    transition: var(--transition);
+}
+
+.monster-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.monster-row.expanded-row {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.monster-name-cell {
+    font-size: 0.95rem;
+}
+
+.monster-name-avatar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.monster-mini-sprite {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.class-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.class-badge.enemy {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.class-badge.boss {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.detail-expanded-row {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.monster-detailed-editor {
+    padding: 1.5rem;
+    margin: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editor-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}

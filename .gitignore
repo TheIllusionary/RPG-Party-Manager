@@ -1,0 +1,22 @@
+# Node / Build artifacts
+node_modules/
+webapp/node_modules/
+webapp/dist/
+webapp/dist-electron/
+dist/
+dist-electron/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS / IDE
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
