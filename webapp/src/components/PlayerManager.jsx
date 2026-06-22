@@ -96,7 +96,9 @@ export default function PlayerManager({
         
         const results = [];
         let updatedPlayers = [...data];
-        const extraEffect = extractExtraEffects(attack.description);
+        const extraEffect = attack.cc === 'custom'
+            ? attack.ccCustom
+            : (attack.cc || extractExtraEffects(attack.description));
         
         targetIds.forEach(targetId => {
             const playerIndex = updatedPlayers.findIndex(p => p.id === targetId);
@@ -223,14 +225,21 @@ export default function PlayerManager({
             
             let newCc = [...(player.cc || [])];
             if (resolvedEffect) {
+                let matched = false;
                 ALL_CC_EFFECTS.forEach(eff => {
-                    const baseWord = eff.split(' ')[0];
-                    if (resolvedEffect.includes(baseWord)) {
+                    const baseWord = eff.split(' ')[0].toLowerCase();
+                    if (resolvedEffect.toLowerCase().includes(baseWord)) {
                         if (!newCc.includes(eff)) {
                             newCc.push(eff);
                         }
+                        matched = true;
                     }
                 });
+                if (!matched && resolvedEffect.trim() !== '') {
+                    if (!newCc.includes(resolvedEffect)) {
+                        newCc.push(resolvedEffect);
+                    }
+                }
             }
 
             updatedPlayers[playerIndex] = {
