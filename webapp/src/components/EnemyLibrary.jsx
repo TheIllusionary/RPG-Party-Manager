@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './EnemyLibrary.css';
 import defaultMonsters from './default_monsters.json';
+import { parseAbilities, rollFormula } from '../utils/combatUtils';
 
 const generateUniqueId = () => Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
 
@@ -9,10 +10,52 @@ const DAMAGE_TYPES = [
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
 ];
 
-export default function EnemyLibrary({ data, updateData }) {
+export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, updateBestiaryReview = () => {} }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedEnemyId, setExpandedEnemyId] = useState(null);
     const [expandedOriginalName, setExpandedOriginalName] = useState('');
+    const [detailsMonsterId, setDetailsMonsterId] = useState(null);
+    const [previewRolls, setPreviewRolls] = useState({}); // { [monsterId]: rollResult }
+
+    const toggleDetails = (id) => {
+        if (detailsMonsterId === id) {
+            setDetailsMonsterId(null);
+        } else {
+            setDetailsMonsterId(id);
+            setExpandedEnemyId(null); // Close editor if open
+        }
+    };
+
+    const rollPreviewAttack = (monsterId, attack) => {
+        const d20 = Math.floor(Math.random() * 20) + 1;
+        const toHitBonus = (attack.toHit !== undefined && attack.toHit !== null) ? parseInt(attack.toHit) : 0;
+        const totalHit = d20 + toHitBonus;
+        const isCrit = d20 === 20;
+
+        const damageRolls = (attack.damage || []).map(dmg => {
+            const result = rollFormula(dmg.formula, isCrit);
+            return {
+                formula: dmg.formula,
+                type: dmg.type,
+                total: result.total,
+                rolls: result.rolls,
+                modifier: result.modifier,
+                critBonus: result.critBonus
+            };
+        });
+
+        setPreviewRolls(prev => ({
+            ...prev,
+            [monsterId]: {
+                name: attack.name,
+                d20,
+                toHitBonus,
+                totalHit,
+                isCrit,
+                damageRolls
+            }
+        }));
+    };
 
     const addEnemy = () => {
         const newId = Date.now().toString();
@@ -125,6 +168,7 @@ export default function EnemyLibrary({ data, updateData }) {
                             <th>Class</th>
                             <th>AC</th>
                             <th>Max HP</th>
+                            <th>Review Status</th>
                             <th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Actions</th>
                         </tr>
                     </thead>
@@ -149,6 +193,17 @@ export default function EnemyLibrary({ data, updateData }) {
                                         </td>
                                         <td>🛡️ {enemy.ac}</td>
                                         <td>❤️ {enemy.hpMax || 20}</td>
+                                        <td>
+                                            <select
+                                                value={bestiaryReview[enemy.id] || ''}
+                                                onChange={e => updateBestiaryReview({ ...bestiaryReview, [enemy.id]: e.target.value })}
+                                                className={`review-status-select ${bestiaryReview[enemy.id] || 'blank'}`}
+                                            >
+                                                <option value="">(Blank)</option>
+                                                <option value="in-progress">In Progress</option>
+                                                <option value="reviewed">Reviewed</option>
+                                            </select>
+                                        </td>
                                         <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
                                             <button 
                                                 className="btn btn-secondary small-btn" 
@@ -156,6 +211,13 @@ export default function EnemyLibrary({ data, updateData }) {
                                                 style={{ marginRight: '0.5rem' }}
                                             >
                                                 📋 Copy
+                                            </button>
+                                            <button 
+                                                className="btn btn-secondary small-btn" 
+                                                onClick={() => toggleDetails(enemy.id)}
+                                                style={{ marginRight: '0.5rem' }}
+                                            >
+                                                {detailsMonsterId === enemy.id ? '▲ Collapse' : '👁️ Details'}
                                             </button>
                                             {!enemy.isDefault ? (
                                                 <>
@@ -168,11 +230,12 @@ export default function EnemyLibrary({ data, updateData }) {
                                                             } else {
                                                                 setExpandedEnemyId(enemy.id);
                                                                 setExpandedOriginalName(enemy.name);
+                                                                setDetailsMonsterId(null); // Close details drawer
                                                             }
                                                         }}
                                                         style={{ marginRight: '0.5rem' }}
                                                     >
-                                                        {isExpanded ? '▲ Collapse' : '✏️ Edit'}
+                                                        {isExpanded ? '▲ Collapse Edit' : '✏️ Edit'}
                                                     </button>
                                                     <button className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
                                                 </>
@@ -185,7 +248,7 @@ export default function EnemyLibrary({ data, updateData }) {
                                     </tr>
                                     {isExpanded && (
                                         <tr className="detail-expanded-row">
-                                            <td colSpan={6}>
+                                            <td colSpan={7}>
                                                 <div className="monster-detailed-editor glass-panel">
                                                     <div className="editor-section-title" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                                                         <div style={{ flex: 1, minWidth: '200px' }}>
@@ -647,6 +710,172 @@ export default function EnemyLibrary({ data, updateData }) {
                                                             setExpandedOriginalName('');
                                                         }}>💾 Save & Close</button>
                                                     </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {detailsMonsterId === enemy.id && (
+                                        <tr className="monster-details-preview-row">
+                                            <td colSpan={7}>
+                                                <div className="monster-battle-preview glass-panel">
+                                                    <div className="preview-card-header">
+                                                        <div>
+                                                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{enemy.name}</h3>
+                                                            <span className="details-subtitle" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{enemy.background || 'Monster'}</span>
+                                                        </div>
+                                                        <span className={`class-badge ${(enemy.classType || 'Enemy').toLowerCase()}`}>
+                                                            {enemy.classType || 'Enemy'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="details-divider"></div>
+
+                                                    {/* Attributes Grid */}
+                                                    <div className="details-stats-grid">
+                                                        {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => {
+                                                            const score = enemy[stat] || 10;
+                                                            const mod = calculateModifier(score);
+                                                            return (
+                                                                <div key={stat} className="details-stat-box">
+                                                                    <span className="stat-label">{stat.toUpperCase()}</span>
+                                                                    <span className="stat-score">{score}</span>
+                                                                    <span className="stat-modifier">({formatModifier(mod)})</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <div className="details-divider"></div>
+
+                                                    {/* Combat Info (AC, HP) */}
+                                                    <div className="details-combat-info">
+                                                        <div><strong>Armor Class:</strong> 🛡️ {enemy.ac}</div>
+                                                        <div><strong>Hit Points:</strong> ❤️ {enemy.hpMax || 20}</div>
+                                                        {enemy.cr && <div><strong>Challenge Rating:</strong> CR {enemy.cr}</div>}
+                                                    </div>
+
+                                                    {/* Saves & Skills & Resists */}
+                                                    <div className="details-extra-combat-info">
+                                                        {Object.keys(enemy.saves || {}).some(k => enemy.saves[k]) && (
+                                                            <div>
+                                                                <strong>Saving Throws: </strong>
+                                                                {Object.keys(enemy.saves)
+                                                                    .filter(k => enemy.saves[k])
+                                                                    .map(k => `${k.toUpperCase()} ${formatModifier(calculateModifier(enemy[k]) + (enemy.proficiency !== undefined ? enemy.proficiency : 2))}`)
+                                                                    .join(', ')
+                                                                }
+                                                            </div>
+                                                        )}
+                                                        {Object.keys(enemy.skills || {}).some(k => enemy.skills[k]) && (
+                                                            <div>
+                                                                <strong>Skills: </strong>
+                                                                {Object.keys(enemy.skills)
+                                                                    .filter(k => enemy.skills[k])
+                                                                    .map(k => `${k} ${formatModifier(calculateModifier(enemy[dndSkills.find(s => s.name === k)?.stat || 'str']) + (enemy.proficiency !== undefined ? enemy.proficiency : 2))}`)
+                                                                    .join(', ')
+                                                                }
+                                                            </div>
+                                                        )}
+                                                        {Array.isArray(enemy.resistances) && enemy.resistances.length > 0 && (
+                                                            <div><strong>Resistances:</strong> {enemy.resistances.join(', ')}</div>
+                                                        )}
+                                                        {Array.isArray(enemy.immunities) && enemy.immunities.length > 0 && (
+                                                            <div><strong>Immunities:</strong> {enemy.immunities.join(', ')}</div>
+                                                        )}
+                                                        {Array.isArray(enemy.vulnerabilities) && enemy.vulnerabilities.length > 0 && (
+                                                            <div><strong>Vulnerabilities:</strong> {enemy.vulnerabilities.join(', ')}</div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="details-divider"></div>
+
+                                                    {/* Abilities Description */}
+                                                    {enemy.abilities && (
+                                                        <div className="details-abilities-section">
+                                                            <h4>Traits & Abilities</h4>
+                                                            <div className="details-abilities-text">{enemy.abilities}</div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Interactive Attacks Section */}
+                                                    <div className="details-attacks-section">
+                                                        <h4>⚔️ Attacks & Actions</h4>
+                                                        <div className="details-attacks-grid">
+                                                            {(() => {
+                                                                const attacks = Array.isArray(enemy.attacks) && enemy.attacks.length > 0
+                                                                    ? enemy.attacks
+                                                                    : parseAbilities(enemy.abilities);
+
+                                                                return (
+                                                                    <>
+                                                                        {attacks.map((atk, idx) => (
+                                                                            <div key={idx} className="details-attack-row">
+                                                                                <div className="details-attack-meta">
+                                                                                    <strong>{atk.name}</strong>
+                                                                                    {atk.toHit !== undefined && atk.toHit !== null && (
+                                                                                        <span className="to-hit-tag">+{atk.toHit} to hit</span>
+                                                                                    )}
+                                                                                    {(atk.damage || []).map((d, di) => (
+                                                                                        <span key={di} className="dmg-tag">{d.formula} {d.type}</span>
+                                                                                    ))}
+                                                                                </div>
+                                                                                <button
+                                                                                    className="btn btn-primary roll-btn"
+                                                                                    onClick={() => rollPreviewAttack(enemy.id, atk)}
+                                                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                                                >
+                                                                                    🎲 Roll
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                        {attacks.length === 0 && (
+                                                                            <span className="no-attacks-msg">No attacks parsed or defined.</span>
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Roll Results Overlay/Panel */}
+                                                    {previewRolls[enemy.id] && (() => {
+                                                        const roll = previewRolls[enemy.id];
+                                                        return (
+                                                            <div className="details-roll-result-panel glass-panel">
+                                                                <div className="roll-result-header">
+                                                                    <h5>Roll Result: {roll.name}</h5>
+                                                                    <button className="close-roll-btn" onClick={() => setPreviewRolls(prev => ({ ...prev, [enemy.id]: null }))}>×</button>
+                                                                </div>
+                                                                <div className="roll-result-body">
+                                                                    <div className="to-hit-result">
+                                                                        <span className="result-label">To Hit:</span>
+                                                                        <span className={`result-value ${roll.isCrit ? 'crit-success' : ''}`}>
+                                                                            🎯 {roll.totalHit}
+                                                                        </span>
+                                                                        <span className="result-breakdown">
+                                                                            (d20: {roll.d20} + bonus: {roll.toHitBonus}) {roll.isCrit ? 'CRITICAL!' : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                    {roll.damageRolls.length > 0 && (
+                                                                        <div className="damage-results">
+                                                                            <span className="result-label">Damage:</span>
+                                                                            <div className="damage-breakdown-list">
+                                                                                {roll.damageRolls.map((dmg, di) => (
+                                                                                    <div key={di} className="damage-result-item">
+                                                                                        <span className="damage-total">💥 {dmg.total}</span>
+                                                                                        <span className="damage-type">{dmg.type}</span>
+                                                                                        <span className="damage-formula-breakdown">
+                                                                                            ({dmg.formula}) [rolls: {dmg.rolls.join(',')}] {dmg.critBonus > 0 ? `+ crit bonus: ${dmg.critBonus}` : ''}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </td>
                                         </tr>

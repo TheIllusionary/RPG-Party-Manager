@@ -126,3 +126,289 @@
     padding-bottom: 0.5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+/* Review Status Dropdown styles */
+.review-status-select {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    outline: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-secondary);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.review-status-select.blank {
+    color: var(--text-muted);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.review-status-select.in-progress {
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.review-status-select.reviewed {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+/* Monster Battle Preview Drawer styling */
+.monster-details-preview-row {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.monster-battle-preview {
+    margin: 0.5rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    background: rgba(15, 17, 21, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.preview-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.details-divider {
+    height: 1px;
+    background: linear-gradient(to right, rgba(99, 102, 241, 0.25), transparent);
+}
+
+/* Attributes Grid */
+.details-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.details-stat-box {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 0.4rem;
+}
+
+.details-stat-box .stat-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.details-stat-box .stat-score {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.details-stat-box .stat-modifier {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Combat Info & Saves */
+.details-combat-info {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.details-extra-combat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Abilities Text Area */
+.details-abilities-section h4,
+.details-attacks-section h4 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.25rem;
+}
+
+.details-abilities-text {
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Attacks Section */
+.details-attacks-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.details-attack-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    gap: 1rem;
+}
+
+.details-attack-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.details-attack-meta strong {
+    color: var(--text-primary);
+}
+
+.to-hit-tag {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.dmg-tag {
+    background: rgba(236, 72, 153, 0.1);
+    color: #f472b6;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.roll-btn {
+    box-shadow: 0 2px 8px var(--primary-glow);
+    min-width: 60px;
+}
+
+/* Roll Results Box */
+.details-roll-result-panel {
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    box-shadow: 0 4px 16px var(--primary-glow);
+    position: relative;
+}
+
+.roll-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px dashed rgba(99, 102, 241, 0.3);
+    padding-bottom: 0.35rem;
+}
+
+.roll-result-header h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.close-roll-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-roll-btn:hover {
+    color: var(--danger);
+}
+
+.roll-result-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.to-hit-result, .damage-results {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.result-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    min-width: 70px;
+}
+
+.result-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #a5b4fc;
+}
+
+.result-value.crit-success {
+    color: var(--success);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.result-breakdown {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.damage-breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.damage-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.damage-total {
+    font-weight: bold;
+    color: #f472b6;
+}
+
+.damage-type {
+    text-transform: capitalize;
+    color: var(--text-secondary);
+}
+
+.damage-formula-breakdown {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
