@@ -337,14 +337,53 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                             <input
                                                                                 type="number"
                                                                                 className="input"
-                                                                                value={atk.toHit || 0}
+                                                                                value={atk.toHit !== undefined && atk.toHit !== null ? atk.toHit : ''}
                                                                                 onChange={(e) => {
                                                                                     const updated = [...(enemy.attacks || [])];
-                                                                                    updated[idx] = { ...atk, toHit: parseInt(e.target.value) || 0 };
+                                                                                    const val = e.target.value === '' ? null : parseInt(e.target.value);
+                                                                                    updated[idx] = { ...atk, toHit: val };
                                                                                     updateEnemy(enemy.id, 'attacks', updated);
                                                                                 }}
                                                                                 style={{ margin: 0 }}
+                                                                                placeholder="e.g. 5"
                                                                             />
+                                                                        </div>
+                                                                        <div style={{ flex: 1, minWidth: '80px' }}>
+                                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.1rem' }}>DC</label>
+                                                                            <input
+                                                                                type="number"
+                                                                                className="input"
+                                                                                value={atk.dc !== undefined && atk.dc !== null ? atk.dc : ''}
+                                                                                onChange={(e) => {
+                                                                                    const updated = [...(enemy.attacks || [])];
+                                                                                    const val = e.target.value === '' ? null : parseInt(e.target.value);
+                                                                                    updated[idx] = { ...atk, dc: val };
+                                                                                    updateEnemy(enemy.id, 'attacks', updated);
+                                                                                }}
+                                                                                style={{ margin: 0 }}
+                                                                                placeholder="e.g. 15"
+                                                                            />
+                                                                        </div>
+                                                                        <div style={{ flex: 1, minWidth: '100px' }}>
+                                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.1rem' }}>Save Type</label>
+                                                                            <select
+                                                                                className="input"
+                                                                                value={atk.save || ''}
+                                                                                onChange={(e) => {
+                                                                                    const updated = [...(enemy.attacks || [])];
+                                                                                    updated[idx] = { ...atk, save: e.target.value || null };
+                                                                                    updateEnemy(enemy.id, 'attacks', updated);
+                                                                                }}
+                                                                                style={{ margin: 0 }}
+                                                                            >
+                                                                                <option value="">None</option>
+                                                                                <option value="Strength">Strength</option>
+                                                                                <option value="Dexterity">Dexterity</option>
+                                                                                <option value="Constitution">Constitution</option>
+                                                                                <option value="Intelligence">Intelligence</option>
+                                                                                <option value="Wisdom">Wisdom</option>
+                                                                                <option value="Charisma">Charisma</option>
+                                                                            </select>
                                                                         </div>
                                                                         <div style={{ flex: 1, minWidth: '80px' }}>
                                                                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.1rem' }}>Reach</label>
@@ -376,6 +415,36 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                                 style={{ margin: 0 }}
                                                                             />
                                                                         </div>
+                                                                    </div>
+
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem' }}>
+                                                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Description / Effect (e.g. for automatic CC/conditions)</label>
+                                                                        <textarea
+                                                                            className="input"
+                                                                            placeholder="e.g. The targeted creature must succeed on a DC 16 Wisdom saving throw or be charmed..."
+                                                                            value={atk.description || ''}
+                                                                            onChange={(e) => {
+                                                                                const updated = [...(enemy.attacks || [])];
+                                                                                updated[idx] = { ...atk, description: e.target.value };
+                                                                                updateEnemy(enemy.id, 'attacks', updated);
+                                                                            }}
+                                                                            style={{ margin: 0, minHeight: '60px', width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.6rem', borderRadius: '6px' }}
+                                                                        />
+                                                                    </div>
+
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            id={`half-on-save-${idx}`}
+                                                                            checked={!!atk.halfOnSuccess}
+                                                                            onChange={(e) => {
+                                                                                const updated = [...(enemy.attacks || [])];
+                                                                                updated[idx] = { ...atk, halfOnSuccess: e.target.checked };
+                                                                                updateEnemy(enemy.id, 'attacks', updated);
+                                                                            }}
+                                                                            style={{ cursor: 'pointer' }}
+                                                                        />
+                                                                        <label htmlFor={`half-on-save-${idx}`} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>Half damage on successful save</label>
                                                                     </div>
 
                                                                     <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.05)', paddingTop: '0.5rem' }}>
@@ -451,9 +520,13 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                     name: 'New Attack',
                                                                     type: 'melee',
                                                                     toHit: 0,
+                                                                    dc: null,
+                                                                    save: '',
                                                                     reach: '5 ft.',
                                                                     range: '',
-                                                                    damage: [{ formula: '1d6', type: 'slashing' }]
+                                                                    description: '',
+                                                                    damage: [{ formula: '1d6', type: 'slashing' }],
+                                                                    halfOnSuccess: false
                                                                 };
                                                                 const updated = [...(enemy.attacks || []), newAtk];
                                                                 updateEnemy(enemy.id, 'attacks', updated);
@@ -809,23 +882,33 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                 return (
                                                                     <>
                                                                         {attacks.map((atk, idx) => (
-                                                                            <div key={idx} className="details-attack-row">
-                                                                                <div className="details-attack-meta">
-                                                                                    <strong>{atk.name}</strong>
-                                                                                    {atk.toHit !== undefined && atk.toHit !== null && (
-                                                                                        <span className="to-hit-tag">+{atk.toHit} to hit</span>
-                                                                                    )}
-                                                                                    {(atk.damage || []).map((d, di) => (
-                                                                                        <span key={di} className="dmg-tag">{d.formula} {d.type}</span>
-                                                                                    ))}
+                                                                            <div key={idx} className="details-attack-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.25rem', padding: '0.5rem 0.75rem' }}>
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                                                    <div className="details-attack-meta">
+                                                                                        <strong>{atk.name}</strong>
+                                                                                        {atk.toHit !== undefined && atk.toHit !== null && (
+                                                                                            <span className="to-hit-tag">+{atk.toHit} to hit</span>
+                                                                                        )}
+                                                                                        {atk.dc !== undefined && atk.dc !== null && (
+                                                                                            <span className="to-hit-tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>DC {atk.dc} {atk.save || 'Save'}</span>
+                                                                                        )}
+                                                                                        {(atk.damage || []).map((d, di) => (
+                                                                                            <span key={di} className="dmg-tag">{d.formula} {d.type}</span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    <button
+                                                                                        className="btn btn-primary roll-btn"
+                                                                                        onClick={() => rollPreviewAttack(enemy.id, atk)}
+                                                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                                                    >
+                                                                                        🎲 Roll
+                                                                                    </button>
                                                                                 </div>
-                                                                                <button
-                                                                                    className="btn btn-primary roll-btn"
-                                                                                    onClick={() => rollPreviewAttack(enemy.id, atk)}
-                                                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                                                                                >
-                                                                                    🎲 Roll
-                                                                                </button>
+                                                                                {atk.description && (
+                                                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '0.25rem', fontStyle: 'italic', wordBreak: 'break-word' }}>
+                                                                                        {atk.description}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         ))}
                                                                         {attacks.length === 0 && (
