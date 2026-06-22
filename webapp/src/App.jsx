@@ -7,6 +7,7 @@ import CharacterEquipment from './components/CharacterEquipment';
 import Training from './components/Training';
 import Chaos from './components/Chaos';
 import EnemyLibrary from './components/EnemyLibrary';
+import Notebook from './components/Notebook';
 
 const DEFAULT_DATA = {
   players: [
@@ -25,6 +26,8 @@ const DEFAULT_DATA = {
   encounters: [],
   training: {},
   chaos: { customTables: [] },
+  notebook: { pages: [] },
+  bestiaryReview: {},
 };
 
 function App() {
@@ -58,6 +61,8 @@ function App() {
           library: (parsed.library && parsed.library.length > 0) ? parsed.library : DEFAULT_DATA.library,
           training: parsed.training || {},
           chaos: parsed.chaos || { customTables: [] },
+          notebook: parsed.notebook || { pages: [] },
+          bestiaryReview: parsed.bestiaryReview || {},
         };
       }
       catch (e) {
@@ -143,11 +148,24 @@ function App() {
               updateLibrary={(l) => updateData('library', l)}
             />
           )}
+          {activeTab === 'notebook' && (
+            <Notebook
+              notebookData={data.notebook || { pages: [] }}
+              updateNotebookData={(d) => updateData('notebook', d)}
+            />
+          )}
           {activeTab === 'inventory' && <Equipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} />}
           {activeTab === 'charequip' && <CharacterEquipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} />}
           {activeTab === 'training' && <Training players={data.players} trainingData={data.training} updateTrainingData={(d) => updateData('training', d)} />}
           {activeTab === 'chaos' && <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />}
-          {activeTab === 'bestiary' && <EnemyLibrary data={data.library || []} updateData={(d) => updateData('library', d)} />}
+          {activeTab === 'bestiary' && (
+            <EnemyLibrary
+              data={data.library || []}
+              updateData={(d) => updateData('library', d)}
+              bestiaryReview={data.bestiaryReview || {}}
+              updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
+            />
+          )}
         </main>
       </div>
 
@@ -156,6 +174,14 @@ function App() {
         <button className={`nav-item ${activeTab === 'players' ? 'active' : ''}`} onClick={() => switchTab('players')} title="Party Roster">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </button>
+
+        {/* Notebook */}
+        <button className={`nav-item ${activeTab === 'notebook' ? 'active' : ''}`} onClick={() => switchTab('notebook')} title="Quest Log / Notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
         </button>
 

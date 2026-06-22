@@ -11,6 +11,23 @@ const DAMAGE_TYPES = [
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
 ];
 
+const ALL_CC_EFFECTS = [
+    'Blind 🕶️',
+    'Charmed ✨',
+    'Deafened 🔇',
+    'Frightened 😨',
+    'Grappled ✊',
+    'Incapacitated 😵',
+    'Paralyzed ⏳',
+    'Petrified 🗿',
+    'Poisoned 🤢',
+    'Prone 🛏️',
+    'Restrained 🕸️',
+    'Stunned 🌀',
+    'Asleep 💤',
+    'Slowed 🐢'
+];
+
 export default function PlayerManager({
     data,
     updateData,
@@ -36,6 +53,11 @@ export default function PlayerManager({
     const [editingId, setEditingId] = useState(null);
     const [damageModalId, setDamageModalId] = useState(null);
     const [damageAmount, setDamageAmount] = useState('');
+    const [isTempHpCheckboxChecked, setIsTempHpCheckboxChecked] = useState(false);
+
+    const [playerEditField, setPlayerEditField] = useState(null); // { id, field }
+    const [playerEditValue, setPlayerEditValue] = useState('');
+    const [ccDropdownPlayerId, setCcDropdownPlayerId] = useState(null);
 
     const [activeAttackState, setActiveAttackState] = useState(null);
     const [autoRollEnabled, setAutoRollEnabled] = useState(false);
@@ -296,6 +318,14 @@ export default function PlayerManager({
 
     const vttPlaceholderRef = useRef(null);
     const hasLoadedVttUrlRef = useRef(false);
+
+    useEffect(() => {
+        const handleOutsideClick = () => {
+            setCcDropdownPlayerId(null);
+        };
+        window.addEventListener('click', handleOutsideClick);
+        return () => window.removeEventListener('click', handleOutsideClick);
+    }, []);
 
     // Save persistent VTT and notes state to localStorage
     useEffect(() => {
@@ -771,6 +801,48 @@ export default function PlayerManager({
         updateData(updated);
     };
 
+    const startPlayerEdit = (player, field) => {
+        setPlayerEditField({ id: player.id, field });
+        setPlayerEditValue(String(player[field]));
+    };
+
+    const commitPlayerEdit = (player) => {
+        if (!playerEditField) return;
+        let val = parseInt(playerEditValue) || 0;
+        const field = playerEditField.field;
+        if (field === 'hpCurrent') {
+            val = Math.max(0, Math.min(val, calculateMaxHP(player)));
+        } else if (field === 'manaCurrent') {
+            val = Math.max(0, Math.min(val, calculateMaxMana(player)));
+        } else if (field === 'ultCurrent') {
+            val = Math.max(0, Math.min(val, player.ultMax || 100));
+        }
+        updatePlayer(player.id, field, val);
+        setPlayerEditField(null);
+        setPlayerEditValue('');
+    };
+
+    const cancelPlayerEdit = () => {
+        setPlayerEditField(null);
+        setPlayerEditValue('');
+    };
+
+    const addCc = (playerId, effect) => {
+        const player = data.find(p => p.id === playerId);
+        if (!player) return;
+        const currentCc = player.cc || [];
+        if (!currentCc.includes(effect)) {
+            updatePlayer(playerId, 'cc', [...currentCc, effect]);
+        }
+    };
+
+    const removeCc = (playerId, effect) => {
+        const player = data.find(p => p.id === playerId);
+        if (!player) return;
+        const currentCc = player.cc || [];
+        updatePlayer(playerId, 'cc', currentCc.filter(x => x !== effect));
+    };
+
     const calculateModifier = (score) => {
         return Math.floor(((score || 10) - 10) / 2);
     };
@@ -841,7 +913,12 @@ export default function PlayerManager({
 
     const applyDamageOrHeal = (id, isEnemy = false) => {
         const amount = parseInt(damageAmount);
-        if (isNaN(amount) || amount === 0) { setDamageModalId(null); setDamageAmount(''); return; }
+        if (isNaN(amount) || amount === 0) { 
+            setDamageModalId(null); 
+            setDamageAmount(''); 
+            setIsTempHpCheckboxChecked(false);
+            return; 
+        }
 
         if (isEnemy) {
             setEnemies(prev => prev.map(e => {
@@ -858,29 +935,41 @@ export default function PlayerManager({
         if (!player) return;
 
         let newHP = player.hpCurrent;
+        let newHpTemp = player.hpTemp || 0;
         let newUlt = player.ultCurrent;
 
-        if (amount > 0) {
-            newHP = player.hpCurrent - amount;
-            const actualDamageTaken = player.hpCurrent - newHP;
-            if (actualDamageTaken > 0) {
-                const conMod = calculateModifier(player.con);
-                const damageMultiplier = Math.max(0.6, Math.min(1.5, 1.35 - 0.15 * conMod));
-                const limitBreakMaxDamage = calculateMaxHP(player) * damageMultiplier;
-                const points = (actualDamageTaken / limitBreakMaxDamage) * player.ultMax;
-                newUlt = Math.min(player.ultMax, player.ultCurrent + points);
-            }
+        if (isTempHpCheckboxChecked) {
+            newHpTemp = Math.max(newHpTemp, Math.abs(amount));
         } else {
-            newHP = Math.min(calculateMaxHP(player), player.hpCurrent + Math.abs(amount));
+            if (amount > 0) {
+                let remainingDamage = amount;
+                if (newHpTemp > 0) {
+                    const absorbed = Math.min(newHpTemp, remainingDamage);
+                    newHpTemp -= absorbed;
+                    remainingDamage -= absorbed;
+                }
+                newHP = Math.max(0, player.hpCurrent - remainingDamage);
+                const actualDamageTaken = player.hpCurrent - newHP;
+                if (actualDamageTaken > 0) {
+                    const conMod = calculateModifier(player.con);
+                    const damageMultiplier = Math.max(0.6, Math.min(1.5, 1.35 - 0.15 * conMod));
+                    const limitBreakMaxDamage = calculateMaxHP(player) * damageMultiplier;
+                    const points = (actualDamageTaken / limitBreakMaxDamage) * player.ultMax;
+                    newUlt = Math.min(player.ultMax, player.ultCurrent + points);
+                }
+            } else {
+                newHP = Math.min(calculateMaxHP(player), player.hpCurrent + Math.abs(amount));
+            }
         }
 
         const updated = data.map(p => {
-            if (p.id === id) return { ...p, hpCurrent: newHP, ultCurrent: newUlt };
+            if (p.id === id) return { ...p, hpCurrent: newHP, hpTemp: newHpTemp, ultCurrent: newUlt };
             return p;
         });
         updateData(updated);
         setDamageModalId(null);
         setDamageAmount('');
+        setIsTempHpCheckboxChecked(false);
     };
 
     const toggleParty = (id) => {
@@ -1181,6 +1270,56 @@ export default function PlayerManager({
                                         </div>
                                     </div>
 
+                                    {/* Crowd Control Badges & Add Button */}
+                                    <div className="player-cc-container" onClick={e => e.stopPropagation()}>
+                                        {(player.cc || []).map(cc => (
+                                            <button
+                                                key={cc}
+                                                className="player-cc-badge"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeCc(player.id, cc);
+                                                }}
+                                                title={`Click to cleanse ${cc}`}
+                                            >
+                                                {cc} <span className="cleanse-x">×</span>
+                                            </button>
+                                        ))}
+                                        <div className="player-cc-add-dropdown">
+                                            <button
+                                                className="player-cc-add-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCcDropdownPlayerId(ccDropdownPlayerId === player.id ? null : player.id);
+                                                }}
+                                                title="Add Crowd Control effect"
+                                            >
+                                                +
+                                            </button>
+                                            {ccDropdownPlayerId === player.id && (
+                                                <div className="cc-dropdown-menu">
+                                                    {ALL_CC_EFFECTS.map(effect => {
+                                                        const hasCc = (player.cc || []).includes(effect);
+                                                        return (
+                                                            <button
+                                                                key={effect}
+                                                                disabled={hasCc}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    addCc(player.id, effect);
+                                                                    setCcDropdownPlayerId(null);
+                                                                }}
+                                                                className="cc-dropdown-item"
+                                                            >
+                                                                {effect}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="card-top-right">
                                         <div className="armor-class-badge" title="Armor Class (AC)">
                                             🛡️ {player.ac}
@@ -1204,7 +1343,32 @@ export default function PlayerManager({
                                     <div className={`stat-block ${player.hpCurrent <= 0 ? 'ko-state' : ''}`}>
                                         <div className="stat-label">
                                             <span>{player.hpCurrent <= 0 ? 'STATUS: K.O.' : 'HP'}</span>
-                                            <span>{player.hpCurrent} / {calculateMaxHP(player)}</span>
+                                            <span>
+                                                {playerEditField?.id === player.id && playerEditField?.field === 'hpCurrent' ? (
+                                                    <input
+                                                        type="number"
+                                                        className="player-inline-edit-input"
+                                                        value={playerEditValue}
+                                                        ref={focusAndSelectRef}
+                                                        onChange={e => setPlayerEditValue(e.target.value)}
+                                                        onBlur={() => commitPlayerEdit(player)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') commitPlayerEdit(player); if (e.key === 'Escape') cancelPlayerEdit(); }}
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        className="player-stat-clickable"
+                                                        title="Double-click to edit HP"
+                                                        onDoubleClick={() => startPlayerEdit(player, 'hpCurrent')}
+                                                    >{player.hpCurrent}</span>
+                                                )}
+                                                {player.hpTemp > 0 && (
+                                                    <span className="temp-hp-label" style={{ color: '#60a5fa', marginLeft: '0.25rem', fontWeight: 'bold' }}>
+                                                        (+{player.hpTemp})
+                                                    </span>
+                                                )}
+                                                &nbsp;/ {calculateMaxHP(player)}
+                                            </span>
                                         </div>
                                         <div className="stat-bar-bg">
                                             <div
@@ -1214,13 +1378,41 @@ export default function PlayerManager({
                                                     background: player.hpCurrent <= 0 ? '#dc2626' : calculateColor(player.hpCurrent, calculateMaxHP(player))
                                                 }}
                                             />
+                                            {player.hpTemp > 0 && (
+                                                <div
+                                                    className="temp-hp-fill"
+                                                    style={{
+                                                        width: `${Math.min(100, (player.hpTemp / calculateMaxHP(player)) * 100)}%`
+                                                    }}
+                                                />
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className={`stat-block ${player.manaCurrent < 0 ? 'exhausted-state' : ''}`}>
                                         <div className="stat-label">
                                             <span>{player.manaCurrent < 0 ? 'EXHAUSTED' : 'Mana'}</span>
-                                            <span>{player.manaCurrent} / {calculateMaxMana(player)}</span>
+                                            <span>
+                                                {playerEditField?.id === player.id && playerEditField?.field === 'manaCurrent' ? (
+                                                    <input
+                                                        type="number"
+                                                        className="player-inline-edit-input"
+                                                        value={playerEditValue}
+                                                        ref={focusAndSelectRef}
+                                                        onChange={e => setPlayerEditValue(e.target.value)}
+                                                        onBlur={() => commitPlayerEdit(player)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') commitPlayerEdit(player); if (e.key === 'Escape') cancelPlayerEdit(); }}
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        className="player-stat-clickable"
+                                                        title="Double-click to edit Mana"
+                                                        onDoubleClick={() => startPlayerEdit(player, 'manaCurrent')}
+                                                    >{player.manaCurrent}</span>
+                                                )}
+                                                &nbsp;/ {calculateMaxMana(player)}
+                                            </span>
                                         </div>
                                         <div className="stat-bar-bg">
                                             <div
@@ -1233,7 +1425,28 @@ export default function PlayerManager({
                                     <div className={`stat-block ${player.ultCurrent >= player.ultMax ? 'limit-ready-state' : ''}`}>
                                         <div className="stat-label">
                                             <span>{player.ultCurrent >= player.ultMax ? 'LIMIT BREAK READY' : 'Ultimate'}</span>
-                                            <span>{Math.floor((player.ultCurrent / player.ultMax) * 100)}%</span>
+                                            <span>
+                                                {playerEditField?.id === player.id && playerEditField?.field === 'ultCurrent' ? (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                                        <input
+                                                            type="number"
+                                                            className="player-inline-edit-input"
+                                                            value={playerEditValue}
+                                                            ref={focusAndSelectRef}
+                                                            onChange={e => setPlayerEditValue(e.target.value)}
+                                                            onBlur={() => commitPlayerEdit(player)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') commitPlayerEdit(player); if (e.key === 'Escape') cancelPlayerEdit(); }}
+                                                            onClick={e => e.stopPropagation()}
+                                                        />%
+                                                    </span>
+                                                ) : (
+                                                    <span
+                                                        className="player-stat-clickable"
+                                                        title="Double-click to edit Ultimate"
+                                                        onDoubleClick={() => startPlayerEdit(player, 'ultCurrent')}
+                                                    >{Math.floor((player.ultCurrent / player.ultMax) * 100)}%</span>
+                                                )}
+                                            </span>
                                         </div>
                                         <div className="stat-bar-bg ult-bg">
                                             <div
@@ -2302,7 +2515,11 @@ export default function PlayerManager({
                                                              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
                                                                  <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {player.ac}</span>
                                                                  <span style={{ color: player.hpCurrent <= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
-                                                                     ❤️ {player.hpCurrent} / {calculateMaxHP(player)}
+                                                                     ❤️ {player.hpCurrent}{player.hpTemp > 0 && (
+                                                                          <span style={{ color: '#60a5fa', marginLeft: '0.25rem' }}>
+                                                                              (+{player.hpTemp})
+                                                                          </span>
+                                                                      )} / {calculateMaxHP(player)}
                                                                  </span>
                                                              </div>
                                                          </div>
@@ -2360,7 +2577,11 @@ export default function PlayerManager({
                                                              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', marginTop: '0.15rem' }}>
                                                                  <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {player.ac}</span>
                                                                  <span style={{ color: player.hpCurrent <= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
-                                                                     ❤️ {player.hpCurrent} / {calculateMaxHP(player)}
+                                                                     ❤️ {player.hpCurrent}{player.hpTemp > 0 && (
+                                                                          <span style={{ color: '#60a5fa', marginLeft: '0.25rem' }}>
+                                                                              (+{player.hpTemp})
+                                                                          </span>
+                                                                      )} / {calculateMaxHP(player)}
                                                                  </span>
                                                              </div>
                                                          </div>
@@ -2551,7 +2772,7 @@ export default function PlayerManager({
                 const isEnemy = !!enemy;
 
                 return (
-                    <div className="global-modal-overlay" onClick={() => { setDamageModalId(null); setDamageAmount(''); }}>
+                    <div className="global-modal-overlay" onClick={() => { setDamageModalId(null); setDamageAmount(''); setIsTempHpCheckboxChecked(false); }}>
                         <div className="damage-heal-popup glass-panel" onClick={e => e.stopPropagation()}>
                             <h3>HP Change: {target.name}</h3>
                             <p className="dh-hint">Positive = Damage &nbsp;·&nbsp; Negative = Heal</p>
@@ -2577,12 +2798,22 @@ export default function PlayerManager({
                                 }}
                                 placeholder="0"
                             />
+                            {!isEnemy && (
+                                <label className="temp-hp-checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={isTempHpCheckboxChecked}
+                                        onChange={(e) => setIsTempHpCheckboxChecked(e.target.checked)}
+                                    />
+                                    Apply as Temporary HP
+                                </label>
+                            )}
                             <div className="popup-actions">
                                 <button className="btn btn-primary" onClick={() => {
                                     if (isEnemy) applyEnemyHP(target.id);
                                     else applyDamageOrHeal(target.id);
                                 }}>Apply</button>
-                                <button className="btn" onClick={() => { setDamageModalId(null); setDamageAmount(''); }}>Cancel</button>
+                                <button className="btn" onClick={() => { setDamageModalId(null); setDamageAmount(''); setIsTempHpCheckboxChecked(false); }}>Cancel</button>
                             </div>
                         </div>
                     </div>

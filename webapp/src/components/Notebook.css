@@ -1,0 +1,286 @@
+.notebook-container {
+    display: flex;
+    height: calc(100vh - 160px);
+    min-height: 500px;
+    padding: 0 !important; /* Override glass-panel default padding */
+    overflow: hidden;
+}
+
+/* 1. Sidebar Column */
+.notebook-sidebar {
+    width: 68px;
+    background: rgba(0, 0, 0, 0.35);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 0.75rem;
+}
+
+.notebook-sidebar-btn {
+    background: transparent;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.notebook-sidebar-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.notebook-sidebar-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.notebook-sidebar-btn .icon {
+    font-size: 1.3rem;
+}
+
+.notebook-sidebar-btn .label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* 2. Collapsible List Panel */
+.notebook-list-panel {
+    background: rgba(0, 0, 0, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.notebook-list-panel.expanded {
+    width: 250px;
+    opacity: 1;
+}
+
+.notebook-list-panel.collapsed {
+    width: 0;
+    opacity: 0;
+    border-right-color: transparent;
+}
+
+.list-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 250px; /* Prevent shrinking during transition */
+}
+
+.list-panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.add-page-btn {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: var(--text-primary);
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.add-page-btn:hover {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.list-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    min-width: 250px; /* Prevent shrinking during transition */
+}
+
+.page-list-item {
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-bottom: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: var(--transition);
+}
+
+.page-list-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.page-list-item.active {
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 3px solid var(--primary);
+}
+
+.page-list-item .item-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.page-list-item .item-snippet {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.empty-list-msg {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem 1rem;
+    line-height: 1.4;
+}
+
+/* 3. Editor Panel */
+.notebook-editor-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.editor-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.editor-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.page-title-input {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid transparent !important;
+    border-radius: 0 !important;
+    padding: 0 0 0.25rem 0 !important;
+    box-shadow: none !important;
+    transition: var(--transition);
+}
+
+.page-title-input:focus {
+    border-bottom-color: var(--primary) !important;
+}
+
+.editor-meta-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.page-type-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.type-select {
+    padding: 0.25rem 0.5rem !important;
+    width: auto !important;
+    font-size: 0.85rem !important;
+}
+
+.delete-page-btn {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.8rem !important;
+}
+
+.editor-body {
+    flex: 1;
+    padding: 1.25rem;
+    overflow: hidden;
+}
+
+.page-textarea {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Placeholder State */
+.editor-placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.placeholder-content {
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    opacity: 0.2;
+    margin-bottom: 0.5rem;
+}
+
+.placeholder-content h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.placeholder-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+}
