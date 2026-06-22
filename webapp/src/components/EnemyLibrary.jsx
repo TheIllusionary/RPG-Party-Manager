@@ -1,7 +1,61 @@
 import React, { useState } from 'react';
 import './EnemyLibrary.css';
 import defaultMonsters from './default_monsters.json';
-import { parseAbilities, rollFormula } from '../utils/combatUtils';
+import { parseAbilities, rollFormula, extractExtraEffects } from '../utils/combatUtils';
+
+const CC_OPTIONS = [
+    'Blind 🕶️',
+    'Charmed ✨',
+    'Deafened 🔇',
+    'Frightened 😨',
+    'Grappled ✊',
+    'Incapacitated 😵',
+    'Paralyzed ⏳',
+    'Petrified 🗿',
+    'Poisoned 🤢',
+    'Prone 🛏️',
+    'Restrained 🕸️',
+    'Stunned 🌀',
+    'Asleep 💤',
+    'Slowed 🐢'
+];
+
+const mapToStandardCc = (effect) => {
+    if (!effect) return '';
+    const found = CC_OPTIONS.find(opt => {
+        const baseWord = opt.split(' ')[0].toLowerCase();
+        return effect.toLowerCase().includes(baseWord);
+    });
+    return found || 'custom';
+};
+
+const getCcDropdownState = (atk) => {
+    if (atk.cc === 'custom') {
+        return { dropdown: 'custom', customText: atk.ccCustom || '' };
+    }
+    if (atk.cc) {
+        if (CC_OPTIONS.includes(atk.cc)) {
+            return { dropdown: atk.cc, customText: '' };
+        } else {
+            const mapped = mapToStandardCc(atk.cc);
+            if (mapped && mapped !== 'custom') {
+                return { dropdown: mapped, customText: '' };
+            }
+            return { dropdown: 'custom', customText: atk.cc };
+        }
+    }
+    if (atk.description) {
+        const parsed = extractExtraEffects(atk.description);
+        if (parsed) {
+            const mapped = mapToStandardCc(parsed);
+            if (mapped && mapped !== 'custom') {
+                return { dropdown: mapped, customText: '' };
+            }
+            return { dropdown: 'custom', customText: parsed };
+        }
+    }
+    return { dropdown: '', customText: '' };
+};
 
 const generateUniqueId = () => Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
 
@@ -417,18 +471,65 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                         </div>
                                                                     </div>
 
+                                                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                                                        <div style={{ flex: 1, minWidth: '150px' }}>
+                                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.1rem' }}>Crowd Control (CC)</label>
+                                                                            <select
+                                                                                className="input"
+                                                                                value={getCcDropdownState(atk).dropdown}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    const updated = [...(enemy.attacks || [])];
+                                                                                    if (val === 'custom') {
+                                                                                        updated[idx] = { ...atk, cc: 'custom', ccCustom: atk.ccCustom || '' };
+                                                                                    } else if (val) {
+                                                                                        updated[idx] = { ...atk, cc: val, ccCustom: '' };
+                                                                                    } else {
+                                                                                        updated[idx] = { ...atk, cc: '', ccCustom: '' };
+                                                                                    }
+                                                                                    updateEnemy(enemy.id, 'attacks', updated);
+                                                                                }}
+                                                                                style={{ margin: 0 }}
+                                                                            >
+                                                                                <option value="">None</option>
+                                                                                {CC_OPTIONS.map(opt => (
+                                                                                    <option key={opt} value={opt}>{opt}</option>
+                                                                                ))}
+                                                                                <option value="custom">Custom...</option>
+                                                                            </select>
+                                                                        </div>
+
+                                                                        {getCcDropdownState(atk).dropdown === 'custom' && (
+                                                                            <div style={{ flex: 1, minWidth: '150px' }}>
+                                                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.1rem' }}>Custom Effect Name (e.g. Frozen ❄️)</label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    className="input"
+                                                                                    placeholder="Enter custom effect name"
+                                                                                    value={getCcDropdownState(atk).customText}
+                                                                                    onChange={(e) => {
+                                                                                        const updated = [...(enemy.attacks || [])];
+                                                                                        updated[idx] = { ...atk, cc: 'custom', ccCustom: e.target.value };
+                                                                                        updateEnemy(enemy.id, 'attacks', updated);
+                                                                                    }}
+                                                                                    style={{ margin: 0 }}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
                                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem' }}>
-                                                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Description / Effect (e.g. for automatic CC/conditions)</label>
+                                                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Description / Notes (Flavor text or details)</label>
                                                                         <textarea
                                                                             className="input"
-                                                                            placeholder="e.g. The targeted creature must succeed on a DC 16 Wisdom saving throw or be charmed..."
+                                                                            placeholder="e.g. The targeted creature must succeed on a DC 16 Wisdom saving throw..."
                                                                             value={atk.description || ''}
                                                                             onChange={(e) => {
                                                                                 const updated = [...(enemy.attacks || [])];
                                                                                 updated[idx] = { ...atk, description: e.target.value };
                                                                                 updateEnemy(enemy.id, 'attacks', updated);
                                                                             }}
-                                                                            style={{ margin: 0, minHeight: '60px', width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.6rem', borderRadius: '6px' }}
+                                                                            style={{ margin: 0, minHeight: '50px', width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.6rem', borderRadius: '6px' }}
                                                                         />
                                                                     </div>
 
@@ -525,6 +626,8 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                     reach: '5 ft.',
                                                                     range: '',
                                                                     description: '',
+                                                                    cc: '',
+                                                                    ccCustom: '',
                                                                     damage: [{ formula: '1d6', type: 'slashing' }],
                                                                     halfOnSuccess: false
                                                                 };
@@ -892,6 +995,15 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                                         {atk.dc !== undefined && atk.dc !== null && (
                                                                                             <span className="to-hit-tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>DC {atk.dc} {atk.save || 'Save'}</span>
                                                                                         )}
+                                                                                        {(() => {
+                                                                                            const ccVal = atk.cc === 'custom' ? atk.ccCustom : (atk.cc || (atk.description ? extractExtraEffects(atk.description) : ''));
+                                                                                            if (ccVal) {
+                                                                                                return (
+                                                                                                    <span className="to-hit-tag" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>✨ CC: {ccVal}</span>
+                                                                                                );
+                                                                                            }
+                                                                                            return null;
+                                                                                        })()}
                                                                                         {(atk.damage || []).map((d, di) => (
                                                                                             <span key={di} className="dmg-tag">{d.formula} {d.type}</span>
                                                                                         ))}
