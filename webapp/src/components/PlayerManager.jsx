@@ -197,8 +197,17 @@ export default function PlayerManager({
             }
             
             const originalHp = player.hpCurrent;
+            const originalHpTemp = player.hpTemp || 0;
             const maxHp = calculateMaxHP(player);
-            const newHp = Math.max(0, originalHp - totalDamageApplied);
+            
+            let remainingDamage = totalDamageApplied;
+            let newHpTemp = originalHpTemp;
+            if (remainingDamage > 0 && newHpTemp > 0) {
+                const absorbed = Math.min(newHpTemp, remainingDamage);
+                newHpTemp -= absorbed;
+                remainingDamage -= absorbed;
+            }
+            const newHp = Math.max(0, originalHp - remainingDamage);
             
             let newUlt = player.ultCurrent;
             if (totalDamageApplied > 0 && originalHp > 0) {
@@ -210,13 +219,27 @@ export default function PlayerManager({
                 newUlt = Math.min(player.ultMax, player.ultCurrent + points);
             }
             
+            const resolvedEffect = (resultType === 'save_failed' || resultType === 'hit' || resultType === 'crit') ? extraEffect : null;
+            
+            let newCc = [...(player.cc || [])];
+            if (resolvedEffect) {
+                ALL_CC_EFFECTS.forEach(eff => {
+                    const baseWord = eff.split(' ')[0];
+                    if (resolvedEffect.includes(baseWord)) {
+                        if (!newCc.includes(eff)) {
+                            newCc.push(eff);
+                        }
+                    }
+                });
+            }
+
             updatedPlayers[playerIndex] = {
                 ...player,
                 hpCurrent: newHp,
-                ultCurrent: newUlt
+                hpTemp: newHpTemp,
+                ultCurrent: newUlt,
+                cc: newCc
             };
-            
-            const resolvedEffect = (resultType === 'save_failed' || resultType === 'hit' || resultType === 'crit') ? extraEffect : null;
             
             results.push({
                 playerId: player.id,
@@ -789,12 +812,21 @@ export default function PlayerManager({
         return { spriteName, spriteState };
     };
 
-    const updatePlayer = (id, field, value) => {
+    const updatePlayer = (id, fieldOrFields, value) => {
         const updated = data.map(p => {
             if (p.id === id) {
-                if (field === 'hpCurrent') value = Math.min(value, calculateMaxHP(p));
-                if (field === 'ultCurrent') value = Math.max(0, Math.min(value, p.ultMax));
-                return { ...p, [field]: value };
+                if (typeof fieldOrFields === 'object') {
+                    let nextP = { ...p, ...fieldOrFields };
+                    if (nextP.hpCurrent !== undefined) {
+                        nextP.hpCurrent = Math.min(nextP.hpCurrent, calculateMaxHP(nextP));
+                    }
+                    return nextP;
+                } else {
+                    let val = value;
+                    if (fieldOrFields === 'hpCurrent') val = Math.min(val, calculateMaxHP(p));
+                    if (fieldOrFields === 'ultCurrent') val = Math.max(0, Math.min(val, p.ultMax));
+                    return { ...p, [fieldOrFields]: val };
+                }
             }
             return p;
         });
@@ -811,7 +843,16 @@ export default function PlayerManager({
         let val = parseInt(playerEditValue) || 0;
         const field = playerEditField.field;
         if (field === 'hpCurrent') {
-            val = Math.max(0, Math.min(val, calculateMaxHP(player)));
+            const maxHp = calculateMaxHP(player);
+            if (val > maxHp) {
+                const excess = val - maxHp;
+                updatePlayer(player.id, { hpCurrent: maxHp, hpTemp: excess });
+                setPlayerEditField(null);
+                setPlayerEditValue('');
+                return;
+            } else {
+                val = Math.max(0, val);
+            }
         } else if (field === 'manaCurrent') {
             val = Math.max(0, Math.min(val, calculateMaxMana(player)));
         } else if (field === 'ultCurrent') {

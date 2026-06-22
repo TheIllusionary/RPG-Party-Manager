@@ -356,7 +356,9 @@
     top: 0;
     left: 0;
     bottom: 0;
-    background-color: #1d4ed8;
+    background: linear-gradient(90deg, #1d4ed8, #4f46e5);
+    box-shadow: 0 0 8px rgba(79, 70, 229, 0.4);
+    border-radius: var(--radius-full);
     z-index: 2;
     transition: width 0.3s ease;
 }
@@ -1774,4 +1776,4 @@
     cursor: not-allowed;
 }
 
-
+
