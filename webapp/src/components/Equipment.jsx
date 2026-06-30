@@ -1,7 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import './Equipment.css';
 
-export default function Equipment({ data, updateData, players }) {
+const DAMAGE_TYPES = [
+    'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
+    'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
+];
+
+const ALL_CC_EFFECTS = [
+    'Blind 🕶️', 'Charmed ✨', 'Deafened 🔇', 'Frightened 😨', 'Grappled ✊',
+    'Incapacitated 😵', 'Paralyzed ⏳', 'Petrified 🗿', 'Poisoned 🤢',
+    'Prone 🛏️', 'Restrained 🕸️', 'Stunned 🌀', 'Asleep 💤', 'Slowed 🐢'
+];
+
+const EQUIPPABLE_TYPES = ['head', 'neck', 'armor', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'];
+
+const rarityBadgeStyles = {
+    'Common': {
+        background: 'rgba(255, 255, 255, 0.15)',
+        color: '#ffffff',
+        border: '1px solid rgba(255, 255, 255, 0.3)'
+    },
+    'Uncommon': {
+        background: 'rgba(34, 197, 94, 0.15)',
+        color: '#22c55e',
+        border: '1px solid rgba(34, 197, 94, 0.3)'
+    },
+    'Rare': {
+        background: 'rgba(96, 165, 250, 0.15)',
+        color: '#60a5fa',
+        border: '1px solid rgba(96, 165, 250, 0.3)'
+    },
+    'Very Rare': {
+        background: 'rgba(168, 85, 247, 0.15)',
+        color: '#a855f7',
+        border: '1px solid rgba(168, 85, 247, 0.3)'
+    },
+    'Legendary': {
+        background: 'rgba(251, 191, 36, 0.15)',
+        color: '#fbbf24',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+    },
+    'Mythic/Artifact': {
+        background: 'rgba(249, 115, 22, 0.15)',
+        color: '#f97316',
+        border: '1px solid rgba(249, 115, 22, 0.3)'
+    }
+};
+
+const getRarityBadgeStyle = (rarity) => {
+    return rarityBadgeStyles[rarity] || rarityBadgeStyles['Common'];
+};
+
+const emptyItemExtras = () => ({
+    acBonus: 0,
+    baseAC: 10,
+    acModifierStat: 'dex',
+    acModifierCap: null,
+    resistances: [],
+    immunities: [],
+    vulnerabilities: [],
+    ccResistances: [],
+    ccImmunities: [],
+    ccVulnerabilities: [],
+    rarity: 'Common',
+    setAttributes: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+});
+
+export default function Equipment({ data, updateData, players, buffsDatabase = [], updateBuffsDatabase = () => {} }) {
     const isArray = Array.isArray(data);
     const inventories = isArray ? {} : data.inventories || {};
     const playerGold = isArray ? {} : data.playerGold || {};
@@ -10,6 +75,12 @@ export default function Equipment({ data, updateData, players }) {
     // Gold modal: { playerId, amount }
     const [goldModal, setGoldModal] = useState(null); // { id: playerId }
     const [goldDelta, setGoldDelta] = useState('');
+
+    // Searchable/quick-create buffs local states
+    const [buffSearchQuery, setBuffSearchQuery] = useState('');
+    const [isBuffDropdownOpen, setIsBuffDropdownOpen] = useState(null); // stores itemId
+    const [quickBuffName, setQuickBuffName] = useState('');
+    const [quickBuffDesc, setQuickBuffDesc] = useState('');
 
     useEffect(() => {
         const container = document.querySelector('.container');
@@ -61,7 +132,20 @@ export default function Equipment({ data, updateData, players }) {
                     quantity: 1,
                     weight: '',
                     type: 'wondrous',
+                    rarity: wItem.rarity || 'Common',
                     modifiers: wItem.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                    setAttributes: wItem.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                    acBonus: wItem.acBonus || 0,
+                    baseAC: wItem.baseAC !== undefined ? wItem.baseAC : 10,
+                    acModifierStat: wItem.acModifierStat !== undefined ? wItem.acModifierStat : 'dex',
+                    acModifierCap: wItem.acModifierCap !== undefined ? wItem.acModifierCap : null,
+                    resistances: wItem.resistances || [],
+                    immunities: wItem.immunities || [],
+                    vulnerabilities: wItem.vulnerabilities || [],
+                    ccResistances: wItem.ccResistances || [],
+                    ccImmunities: wItem.ccImmunities || [],
+                    ccVulnerabilities: wItem.ccVulnerabilities || [],
+                    buffs: wItem.buffs || [],
                     isWondrousOnly: true
                 });
             }
@@ -90,7 +174,8 @@ export default function Equipment({ data, updateData, players }) {
             quantity: 1, 
             weight: '',
             type: 'other',
-            modifiers: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+            modifiers: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+            ...emptyItemExtras()
         };
         const sectionItems = [newItem, ...(inventories[sectionId] || [])];
         updateData({
@@ -163,7 +248,9 @@ export default function Equipment({ data, updateData, players }) {
                     quantity: 1,
                     weight: '',
                     type: draft.type,
-                    modifiers: draft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+                    rarity: draft.rarity || 'Common',
+                    modifiers: draft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                    setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
                 };
                 finalInvItems = [...finalInvItems, newInvItem];
                 
@@ -172,7 +259,9 @@ export default function Equipment({ data, updateData, players }) {
                     updatedEquipped[slotId] = {
                         name: draft.name,
                         description: draft.description,
-                        modifiers: draft.modifiers
+                        rarity: draft.rarity || 'Common',
+                        modifiers: draft.modifiers,
+                        setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
                     };
                 }
                 
@@ -190,7 +279,20 @@ export default function Equipment({ data, updateData, players }) {
                     name: draft.name,
                     category: draft.category || w.category || 'Inventory Wondrous',
                     description: draft.description,
-                    modifiers: draft.modifiers
+                    rarity: draft.rarity || w.rarity || 'Common',
+                    modifiers: draft.modifiers,
+                    setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                    acBonus: draft.acBonus || 0,
+                    baseAC: draft.baseAC !== undefined ? draft.baseAC : 10,
+                    acModifierStat: draft.acModifierStat !== undefined ? draft.acModifierStat : 'dex',
+                    acModifierCap: draft.acModifierCap !== undefined ? draft.acModifierCap : null,
+                    resistances: draft.resistances || [],
+                    immunities: draft.immunities || [],
+                    vulnerabilities: draft.vulnerabilities || [],
+                    ccResistances: draft.ccResistances || [],
+                    ccImmunities: draft.ccImmunities || [],
+                    ccVulnerabilities: draft.ccVulnerabilities || [],
+                    buffs: draft.buffs || []
                 } : w);
                 updateData({
                     ...data,
@@ -237,7 +339,20 @@ export default function Equipment({ data, updateData, players }) {
                                 name: draft.name,
                                 category: draft.category || 'Inventory Wondrous',
                                 description: draft.description,
-                                modifiers: draft.modifiers
+                                rarity: draft.rarity || 'Common',
+                                modifiers: draft.modifiers,
+                                setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                                acBonus: draft.acBonus || 0,
+                                baseAC: draft.baseAC !== undefined ? draft.baseAC : 10,
+                                acModifierStat: draft.acModifierStat !== undefined ? draft.acModifierStat : 'dex',
+                                acModifierCap: draft.acModifierCap !== undefined ? draft.acModifierCap : null,
+                                resistances: draft.resistances || [],
+                                immunities: draft.immunities || [],
+                                vulnerabilities: draft.vulnerabilities || [],
+                                ccResistances: draft.ccResistances || [],
+                                ccImmunities: draft.ccImmunities || [],
+                                ccVulnerabilities: draft.ccVulnerabilities || [],
+                                buffs: draft.buffs || []
                             }];
                         } else {
                             playerEquipped.__wondrous__ = wondrous.map(w => (w.id === itemId || w.name === oldItem.name) ? {
@@ -245,7 +360,20 @@ export default function Equipment({ data, updateData, players }) {
                                 name: draft.name,
                                 category: draft.category || w.category || 'Inventory Wondrous',
                                 description: draft.description,
-                                modifiers: draft.modifiers
+                                rarity: draft.rarity || w.rarity || 'Common',
+                                modifiers: draft.modifiers,
+                                setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                                acBonus: draft.acBonus || 0,
+                                baseAC: draft.baseAC !== undefined ? draft.baseAC : 10,
+                                acModifierStat: draft.acModifierStat !== undefined ? draft.acModifierStat : 'dex',
+                                acModifierCap: draft.acModifierCap !== undefined ? draft.acModifierCap : null,
+                                resistances: draft.resistances || [],
+                                immunities: draft.immunities || [],
+                                vulnerabilities: draft.vulnerabilities || [],
+                                ccResistances: draft.ccResistances || [],
+                                ccImmunities: draft.ccImmunities || [],
+                                ccVulnerabilities: draft.ccVulnerabilities || [],
+                                buffs: draft.buffs || []
                             } : w);
                         }
                     } else if (draft.type && draft.type !== 'other' && draft.type !== 'Consumables' && draft.type !== 'Key Item' && draft.type !== 'Loot') {
@@ -253,7 +381,20 @@ export default function Equipment({ data, updateData, players }) {
                         playerEquipped[slotId] = {
                             name: draft.name,
                             description: draft.description,
-                            modifiers: draft.modifiers
+                            rarity: draft.rarity || 'Common',
+                            modifiers: draft.modifiers,
+                            setAttributes: draft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                            acBonus: draft.acBonus || 0,
+                            baseAC: draft.baseAC !== undefined ? draft.baseAC : 10,
+                            acModifierStat: draft.acModifierStat !== undefined ? draft.acModifierStat : 'dex',
+                            acModifierCap: draft.acModifierCap !== undefined ? draft.acModifierCap : null,
+                            resistances: draft.resistances || [],
+                            immunities: draft.immunities || [],
+                            vulnerabilities: draft.vulnerabilities || [],
+                            ccResistances: draft.ccResistances || [],
+                            ccImmunities: draft.ccImmunities || [],
+                            ccVulnerabilities: draft.ccVulnerabilities || [],
+                            buffs: draft.buffs || []
                         };
                     }
                 }
@@ -337,14 +478,9 @@ export default function Equipment({ data, updateData, players }) {
                 
                 if (item.isWondrousOnly) {
                     const newInvItem = {
-                        id: item.id,
-                        name: item.name,
-                        category: item.category || '',
-                        description: item.description,
+                        ...item,
                         quantity: 1,
-                        weight: '',
-                        type: 'wondrous',
-                        modifiers: item.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+                        weight: ''
                     };
                     const sectionItems = [...(inventories[playerId] || []), newInvItem];
                     updateData({
@@ -370,11 +506,8 @@ export default function Equipment({ data, updateData, players }) {
             if (item.type === 'wondrous') {
                 const wondrous = playerEquipped.__wondrous__ || [];
                 const newItem = {
-                    id: item.id,
-                    name: item.name,
-                    category: item.category || 'Inventory Wondrous',
-                    description: item.description,
-                    modifiers: item.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+                    ...item,
+                    category: item.category || 'Inventory Wondrous'
                 };
                 const newEquipped = {
                     ...equipped,
@@ -387,9 +520,7 @@ export default function Equipment({ data, updateData, players }) {
             } else {
                 const slotId = item.type;
                 const newItem = {
-                    name: item.name,
-                    description: item.description,
-                    modifiers: item.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
+                    ...item
                 };
                 const newEquipped = {
                     ...equipped,
@@ -504,41 +635,94 @@ export default function Equipment({ data, updateData, players }) {
                                         return (
                                             <div key={item.id} className={`item-row ${isEditing ? 'item-row-editing' : ''} ${item.isWondrousOnly ? 'wondrous-only-row' : ''}`}>
                                                 <div className="item-row-main" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem', flexWrap: 'wrap' }}>
-                                                        {isEditing ? (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: '150px' }}>
+                                                    {isEditing ? (
+                                                        <>
+                                                            {/* Row 1: Manual ordering arrows, Item Name (input) */}
+                                                            <div className="item-row-line1" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+                                                                {invIndex !== -1 && (
+                                                                    <div className="item-reorder-controls" style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                                                                        <button className="reorder-arrow-btn" disabled={true}>▲</button>
+                                                                        <button className="reorder-arrow-btn" disabled={true}>▼</button>
+                                                                    </div>
+                                                                )}
                                                                 <input className="input item-name-input" value={display.name}
                                                                     onChange={e => updateDraft(item.id, 'name', e.target.value)}
-                                                                    placeholder="Item Name" />
-                                                                <select
-                                                                    className="input item-type-select"
-                                                                    style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
-                                                                    value={display.type || 'other'}
-                                                                    onChange={e => updateDraft(item.id, 'type', e.target.value)}
-                                                                >
-                                                                    <option value="other">Other / General</option>
-                                                                    <option value="Consumables">Consumables</option>
-                                                                    <option value="Key Item">Key Item</option>
-                                                                    <option value="Loot">Loot / Valuables</option>
-                                                                    <optgroup label="Equipable Slots">
-                                                                        <option value="head">🎩 Head</option>
-                                                                        <option value="neck">📿 Neck</option>
-                                                                        <option value="torso">🥋 Torso</option>
-                                                                        <option value="mainHand">⚔️ Main Hand</option>
-                                                                        <option value="mainHand2">💍 Ring 1 (Main Hand 2)</option>
-                                                                        <option value="offhand">🛡️ Offhand</option>
-                                                                        <option value="offhand2">💍 Ring 2 (Offhand 2)</option>
-                                                                        <option value="waist">🎗️ Waist</option>
-                                                                        <option value="feet">👢 Feet</option>
-                                                                        <option value="gloves">🧤 Gloves</option>
-                                                                        <option value="wondrous">✨ Wondrous Item</option>
-                                                                    </optgroup>
-                                                                </select>
+                                                                    placeholder="Item Name"
+                                                                    style={{ fontWeight: 600, fontSize: '0.95rem', flex: 1 }} />
                                                             </div>
-                                                        ) : (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
+
+                                                            {/* Row 2: Item Type dropdown, Rarity selector, Quantity, Weight, Save/Cancel, Remove */}
+                                                            <div className="item-row-line2" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '150px', flexShrink: 0 }}>
+                                                                    <select
+                                                                        className="input item-type-select"
+                                                                        style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', width: '100%' }}
+                                                                        value={display.type || 'other'}
+                                                                        onChange={e => updateDraft(item.id, 'type', e.target.value)}
+                                                                    >
+                                                                        <option value="other">Other / General</option>
+                                                                        <option value="Consumables">Consumables</option>
+                                                                        <option value="Key Item">Key Item</option>
+                                                                        <option value="Loot">Loot / Valuables</option>
+                                                                        <optgroup label="Equipable Slots">
+                                                                            <option value="head">🎩 Head</option>
+                                                                            <option value="neck">📿 Neck</option>
+                                                                            <option value="armor">🥋 Armor</option>
+                                                                            <option value="mainHand">⚔️ Main Hand</option>
+                                                                            <option value="mainHand2">💍 Ring 1 (Main Hand 2)</option>
+                                                                            <option value="offhand">🛡️ Offhand</option>
+                                                                            <option value="offhand2">💍 Ring 2 (Offhand 2)</option>
+                                                                            <option value="waist">🎗️ Waist</option>
+                                                                            <option value="feet">👢 Feet</option>
+                                                                            <option value="gloves">🧤 Gloves</option>
+                                                                            <option value="wondrous">✨ Wondrous Item</option>
+                                                                        </optgroup>
+                                                                    </select>
+                                                                    <select
+                                                                        className="input item-rarity-select"
+                                                                        style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', width: '100%' }}
+                                                                        value={display.rarity || 'Common'}
+                                                                        onChange={e => updateDraft(item.id, 'rarity', e.target.value)}
+                                                                    >
+                                                                        <option value="Common">Common</option>
+                                                                        <option value="Uncommon">Uncommon</option>
+                                                                        <option value="Rare">Rare</option>
+                                                                        <option value="Very Rare">Very Rare</option>
+                                                                        <option value="Legendary">Legendary</option>
+                                                                        <option value="Mythic/Artifact">Mythic/Artifact</option>
+                                                                    </select>
+                                                                </div>
+
+                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                                    <div className="item-qty-weight" style={{ flexShrink: 0 }}>
+                                                                        <label>Qty</label>
+                                                                        <input type="number" min="0" className="input item-qty-input"
+                                                                            value={display.quantity} disabled={display.isWondrousOnly}
+                                                                            onChange={e => updateDraft(item.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
+                                                                            onWheel={!display.isWondrousOnly ? e => {
+                                                                                e.preventDefault();
+                                                                                updateDraft(item.id, 'quantity', Math.max(0, (display.quantity || 0) + Math.sign(e.deltaY) * -1));
+                                                                            } : undefined} />
+                                                                        <label>Wt</label>
+                                                                        <input type="number" min="0" step="0.1" className="input item-weight-input"
+                                                                            value={display.weight} disabled={display.isWondrousOnly} placeholder="—"
+                                                                            onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
+                                                                    </div>
+
+                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+                                                                        <button className="btn btn-success small-btn" onClick={() => saveItem(section.id, item.id)}>Save</button>
+                                                                        <button className="btn small-btn" onClick={() => cancelEdit(item.id)}>Cancel</button>
+                                                                        <button className="delete-btn" onClick={() => removeItem(section.id, item.id)}>×</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {/* Row 1: Manual ordering arrows, Item Name (display) */}
+                                                            <div className="item-row-line1" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
                                                                 {invIndex !== -1 && (
-                                                                    <div className="item-reorder-controls">
+                                                                    <div className="item-reorder-controls" style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                                                                         <button 
                                                                             className="reorder-arrow-btn" 
                                                                             onClick={() => moveItem(section.id, invIndex, 'up')}
@@ -553,71 +737,72 @@ export default function Equipment({ data, updateData, players }) {
                                                                         >▼</button>
                                                                     </div>
                                                                 )}
-                                                                <span className="item-name-label" style={{ fontWeight: 600 }}>{item.name}</span>
-                                                                {item.type && item.type !== 'other' && (
-                                                                    <span style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '4px', textTransform: 'capitalize' }}>
-                                                                        {item.type === 'mainHand' ? 'Main Hand' : item.type === 'mainHand2' ? 'Ring 1' : item.type === 'offhand' ? 'Offhand' : item.type === 'offhand2' ? 'Ring 2' : item.type}
-                                                                    </span>
-                                                                )}
+                                                                <span className="item-name-label" style={{ fontWeight: 600 }}>
+                                                                    {item.name}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* Row 2: Item Type tag, Modifiers tag, Quantity, Weight, Equip button, Edit button, Delete button */}
+                                                            <div className="item-row-line2" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                                <span className="item-type-badge" style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'capitalize', flexShrink: 0, ...getRarityBadgeStyle(item.rarity || 'Common') }}>
+                                                                    {item.type === 'other' ? 'Other' : item.type === 'mainHand' ? 'Main Hand' : item.type === 'mainHand2' ? 'Ring 1' : item.type === 'offhand' ? 'Offhand' : item.type === 'offhand2' ? 'Ring 2' : item.type}
+                                                                </span>
+
                                                                 {item.modifiers && Object.values(item.modifiers).some(v => v !== 0) && (
-                                                                    <span style={{ fontSize: '0.62rem', padding: '0.05rem 0.35rem', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '4px' }}>
+                                                                    <span style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '4px', flexShrink: 0 }}>
                                                                         {['str', 'dex', 'con', 'int', 'wis', 'cha'].filter(s => item.modifiers[s] !== 0).map(s => `${s.toUpperCase()} ${item.modifiers[s] > 0 ? '+' : ''}${item.modifiers[s]}`).join(', ')}
                                                                     </span>
                                                                 )}
+
+                                                                {item.setAttributes && Object.values(item.setAttributes).some(v => v !== 0) && (
+                                                                    <span style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem', background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '4px', flexShrink: 0 }}>
+                                                                        {['str', 'dex', 'con', 'int', 'wis', 'cha'].filter(s => item.setAttributes[s] !== 0).map(s => `SET ${s.toUpperCase()} = ${item.setAttributes[s]}`).join(', ')}
+                                                                    </span>
+                                                                )}
+
+                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                                    <div className="item-qty-weight" style={{ flexShrink: 0 }}>
+                                                                        <label>Qty</label>
+                                                                        <input type="number" min="0" className="input item-qty-input"
+                                                                            value={display.quantity} disabled={true} />
+                                                                        <label>Wt</label>
+                                                                        <input type="number" min="0" step="0.1" className="input item-weight-input"
+                                                                            value={display.weight} disabled={true} placeholder="—" />
+                                                                    </div>
+
+                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+                                                                        {['head', 'neck', 'armor', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'].includes(item.type) && (
+                                                                            (() => {
+                                                                                const isEquipped = isItemEquipped(section.id, item);
+                                                                                return (
+                                                                                    <button 
+                                                                                        className={`btn small-btn ${isEquipped ? 'btn-success' : 'btn-primary'}`} 
+                                                                                        onClick={() => equipItem(section.id, item)}
+                                                                                        style={{ 
+                                                                                            padding: '0.3rem 0.65rem', 
+                                                                                            fontSize: '0.78rem', 
+                                                                                            background: isEquipped ? '#10b981' : 'var(--primary)', 
+                                                                                            borderColor: isEquipped ? '#10b981' : 'var(--primary)',
+                                                                                            color: '#fff'
+                                                                                        }}
+                                                                                    >
+                                                                                        {isEquipped ? '🛡️ Equipped' : '🛡️ Equip'}
+                                                                                    </button>
+                                                                                );
+                                                                            })()
+                                                                        )}
+                                                                        <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
+                                                                        <button className="delete-btn" onClick={() => removeItem(section.id, item.id)}>×</button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        )}
+                                                        </>
+                                                    )}
 
-                                                        <div className="item-qty-weight" style={{ flexShrink: 0 }}>
-                                                            <label>Qty</label>
-                                                            <input type="number" min="0" className="input item-qty-input"
-                                                                value={display.quantity} disabled={!isEditing || display.isWondrousOnly}
-                                                                onChange={e => updateDraft(item.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
-                                                                onWheel={isEditing && !display.isWondrousOnly ? e => {
-                                                                    e.preventDefault();
-                                                                    updateDraft(item.id, 'quantity', Math.max(0, (display.quantity || 0) + Math.sign(e.deltaY) * -1));
-                                                                } : undefined} />
-                                                            <label>Wt</label>
-                                                            <input type="number" min="0" step="0.1" className="input item-weight-input"
-                                                                value={display.weight} disabled={!isEditing || display.isWondrousOnly} placeholder="—"
-                                                                onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
-                                                        </div>
-
-                                                        <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                                            {!isEditing && ['head', 'neck', 'torso', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'].includes(item.type) && (
-                                                                (() => {
-                                                                    const isEquipped = isItemEquipped(section.id, item);
-                                                                    return (
-                                                                        <button 
-                                                                            className={`btn small-btn ${isEquipped ? 'btn-success' : 'btn-primary'}`} 
-                                                                            onClick={() => equipItem(section.id, item)}
-                                                                            style={{ 
-                                                                                padding: '0.3rem 0.65rem', 
-                                                                                fontSize: '0.78rem', 
-                                                                                background: isEquipped ? '#10b981' : 'var(--primary)', 
-                                                                                borderColor: isEquipped ? '#10b981' : 'var(--primary)',
-                                                                                color: '#fff'
-                                                                            }}
-                                                                        >
-                                                                            {isEquipped ? '🛡️ Equipped' : '🛡️ Equip'}
-                                                                        </button>
-                                                                    );
-                                                                })()
-                                                            )}
-                                                            {isEditing ? (
-                                                                <>
-                                                                    <button className="btn btn-success small-btn" onClick={() => saveItem(section.id, item.id)}>Save</button>
-                                                                    <button className="btn small-btn" onClick={() => cancelEdit(item.id)}>Cancel</button>
-                                                                </>
-                                                            ) : (
-                                                                <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
-                                                            )}
-                                                            <button className="delete-btn" onClick={() => removeItem(section.id, item.id)}>×</button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Stat Modifiers Editor */}
-                                                    {isEditing && ['head', 'neck', 'torso', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'].includes(display.type) && (
+                                                    {/* Stat Modifiers & Item Properties Editor */}
+                                                    {isEditing && EQUIPPABLE_TYPES.includes(display.type) && (
                                                         <div style={{ marginTop: '0.25rem', width: '100%' }}>
+                                                            {/* Stat modifiers row */}
                                                             <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Item Stat Modifiers</span>
                                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.25rem', marginTop: '0.25rem' }}>
                                                                 {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => {
@@ -643,6 +828,336 @@ export default function Equipment({ data, updateData, players }) {
                                                                         </div>
                                                                     );
                                                                 })}
+                                                            </div>
+
+                                                            <div style={{ marginTop: '0.4rem' }}>
+                                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Set Attributes</span>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.25rem', marginTop: '0.25rem' }}>
+                                                                    {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => {
+                                                                        const currentSet = display.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                                                                        return (
+                                                                            <div key={stat} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: '4px', padding: '0.15rem' }}>
+                                                                                <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{stat}</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    className="input"
+                                                                                    placeholder="-"
+                                                                                    style={{ padding: '0.05rem', textAlign: 'center', fontSize: '0.75rem', height: '22px', border: 'none', background: 'transparent' }}
+                                                                                    value={currentSet[stat] || ''}
+                                                                                    onChange={e => {
+                                                                                        const val = e.target.value === '' ? 0 : (parseInt(e.target.value) || 0);
+                                                                                        updateDraft(item.id, 'setAttributes', { ...currentSet, [stat]: val });
+                                                                                    }}
+                                                                                    onWheel={e => {
+                                                                                        e.preventDefault();
+                                                                                        const dir = Math.sign(e.deltaY) * -1;
+                                                                                        const currentVal = currentSet[stat] || 0;
+                                                                                        const nextVal = Math.max(0, currentVal + dir);
+                                                                                        updateDraft(item.id, 'setAttributes', { ...currentSet, [stat]: nextVal });
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Armor-specific properties vs AC Bonus */}
+                                                            {display.type === 'armor' ? (
+                                                                <div style={{ marginTop: '0.4rem', display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: '0.4rem' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Base AC</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="input"
+                                                                            style={{ padding: '0.05rem', textAlign: 'center', fontSize: '0.75rem', height: '22px', width: '100%' }}
+                                                                            value={display.baseAC !== undefined ? display.baseAC : 10}
+                                                                            onChange={e => updateDraft(item.id, 'baseAC', parseInt(e.target.value) || 0)}
+                                                                        />
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Mod</span>
+                                                                        <select
+                                                                            className="input"
+                                                                            style={{ fontSize: '0.72rem', padding: '0.05rem 0.2rem', height: '22px', width: '100%' }}
+                                                                            value={display.acModifierStat !== undefined ? display.acModifierStat : 'dex'}
+                                                                            onChange={e => updateDraft(item.id, 'acModifierStat', e.target.value)}
+                                                                        >
+                                                                            <option value="">None</option>
+                                                                            <option value="str">STR</option>
+                                                                            <option value="dex">DEX</option>
+                                                                            <option value="con">CON</option>
+                                                                            <option value="int">INT</option>
+                                                                            <option value="wis">WIS</option>
+                                                                            <option value="cha">CHA</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cap</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="input"
+                                                                            placeholder="No Cap"
+                                                                            style={{ padding: '0.05rem', textAlign: 'center', fontSize: '0.75rem', height: '22px', width: '100%' }}
+                                                                            value={display.acModifierCap !== undefined && display.acModifierCap !== null ? display.acModifierCap : ''}
+                                                                            onChange={e => {
+                                                                                const val = e.target.value;
+                                                                                updateDraft(item.id, 'acModifierCap', val === '' ? null : parseInt(val));
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>AC Bonus</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="input"
+                                                                        style={{ padding: '0.05rem', textAlign: 'center', fontSize: '0.75rem', height: '22px', width: '56px' }}
+                                                                        value={display.acBonus || 0}
+                                                                        onChange={e => updateDraft(item.id, 'acBonus', parseInt(e.target.value) || 0)}
+                                                                        onWheel={e => {
+                                                                            e.preventDefault();
+                                                                            updateDraft(item.id, 'acBonus', (display.acBonus || 0) + Math.sign(e.deltaY) * -1);
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            {/* Damage Resistance/Immunity/Vulnerability */}
+                                                            {[{ key: 'resistances', label: 'Dmg Resistances', color: '#60a5fa' }, { key: 'immunities', label: 'Dmg Immunities', color: '#a78bfa' }, { key: 'vulnerabilities', label: 'Dmg Vulnerabilities', color: '#f87171' }].map(({ key, label, color }) => (
+                                                                <div key={key} style={{ marginTop: '0.35rem' }}>
+                                                                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', marginTop: '0.15rem', alignItems: 'center' }}>
+                                                                        {(display[key] || []).map(r => (
+                                                                            <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', background: `${color}22`, border: `1px solid ${color}55`, borderRadius: '12px', padding: '0 0.4rem', fontSize: '0.68rem', color }}>
+                                                                                {r}
+                                                                                <button type="button" onClick={() => updateDraft(item.id, key, (display[key] || []).filter(x => x !== r))} style={{ background: 'none', border: 'none', cursor: 'pointer', color, padding: 0, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input"
+                                                                            style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }}
+                                                                            value=""
+                                                                            onChange={e => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(display[key] || []).includes(val)) {
+                                                                                    updateDraft(item.id, key, [...(display[key] || []), val]);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {DAMAGE_TYPES.filter(t => !(display[key] || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+
+                                                            {/* CC Resistance/Immunity/Vulnerability */}
+                                                            {[{ key: 'ccResistances', label: 'CC Resistances', color: '#34d399' }, { key: 'ccImmunities', label: 'CC Immunities', color: '#a78bfa' }, { key: 'ccVulnerabilities', label: 'CC Vulnerabilities', color: '#fb923c' }].map(({ key, label, color }) => (
+                                                                <div key={key} style={{ marginTop: '0.35rem' }}>
+                                                                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', marginTop: '0.15rem', alignItems: 'center' }}>
+                                                                        {(display[key] || []).map(r => (
+                                                                            <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', background: `${color}22`, border: `1px solid ${color}55`, borderRadius: '12px', padding: '0 0.4rem', fontSize: '0.68rem', color }}>
+                                                                                {r}
+                                                                                <button type="button" onClick={() => updateDraft(item.id, key, (display[key] || []).filter(x => x !== r))} style={{ background: 'none', border: 'none', cursor: 'pointer', color, padding: 0, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input"
+                                                                            style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }}
+                                                                            value=""
+                                                                            onChange={e => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(display[key] || []).includes(val)) {
+                                                                                    updateDraft(item.id, key, [...(display[key] || []), val]);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {ALL_CC_EFFECTS.filter(t => !(display[key] || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {/* Buffs & Debuffs */}
+                                                            <div style={{ marginTop: '0.35rem' }}>
+                                                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Buffs &amp; Debuffs</span>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', marginTop: '0.15rem', alignItems: 'center' }}>
+                                                                    {(display.buffs || []).map(b => (
+                                                                        <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: '12px', padding: '0 0.4rem', fontSize: '0.68rem', color: '#34d399' }}>
+                                                                            {b}
+                                                                            <button type="button" onClick={() => updateDraft(item.id, 'buffs', (display.buffs || []).filter(x => x !== b))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#34d399', padding: 0, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
+                                                                        </span>
+                                                                    ))}
+                                                                    {(() => {
+                                                                        const filteredBuffs = buffsDatabase
+                                                                            .filter(b => !(display.buffs || []).includes(b.name))
+                                                                            .filter(b => b.name.toLowerCase().includes(buffSearchQuery.toLowerCase()));
+                                                                        return (
+                                                                            <div className="searchable-buff-selector" style={{ position: 'relative', display: 'inline-block' }}>
+                                                                                {isBuffDropdownOpen !== item.id ? (
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        className="input" 
+                                                                                        style={{ 
+                                                                                            fontSize: '0.68rem', 
+                                                                                            padding: '0.05rem 0.2rem', 
+                                                                                            height: '20px', 
+                                                                                            minWidth: '80px', 
+                                                                                            background: 'rgba(255,255,255,0.05)', 
+                                                                                            border: '1px solid rgba(255,255,255,0.15)',
+                                                                                            borderRadius: '4px',
+                                                                                            color: 'var(--text-primary)',
+                                                                                            cursor: 'pointer',
+                                                                                            textAlign: 'center'
+                                                                                        }}
+                                                                                        onClick={() => {
+                                                                                            setIsBuffDropdownOpen(item.id);
+                                                                                            setBuffSearchQuery('');
+                                                                                            setQuickBuffName('');
+                                                                                            setQuickBuffDesc('');
+                                                                                        }}
+                                                                                    >
+                                                                                        + Add Buff
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <div className="buff-dropdown-container glass-panel" style={{ 
+                                                                                        position: 'absolute', 
+                                                                                        top: '24px', 
+                                                                                        left: 0, 
+                                                                                        zIndex: 1000, 
+                                                                                        width: '210px', 
+                                                                                        background: 'rgba(30, 41, 59, 0.95)', 
+                                                                                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                                                                                        borderRadius: '8px', 
+                                                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)', 
+                                                                                        padding: '0.4rem',
+                                                                                        display: 'flex',
+                                                                                        flexDirection: 'column',
+                                                                                        gap: '0.3rem'
+                                                                                    }}>
+                                                                                        <div style={{ display: 'flex', gap: '0.2rem' }}>
+                                                                                            <input 
+                                                                                                type="text" 
+                                                                                                placeholder="Search buffs..." 
+                                                                                                className="input" 
+                                                                                                value={buffSearchQuery} 
+                                                                                                onChange={(e) => {
+                                                                                                    setBuffSearchQuery(e.target.value);
+                                                                                                    setQuickBuffName(e.target.value);
+                                                                                                }} 
+                                                                                                style={{ fontSize: '0.68rem', padding: '0.2rem', height: '22px', flex: 1 }}
+                                                                                                autoFocus
+                                                                                            />
+                                                                                            <button 
+                                                                                                type="button" 
+                                                                                                className="btn" 
+                                                                                                onClick={() => setIsBuffDropdownOpen(null)}
+                                                                                                style={{ padding: '0 0.3rem', fontSize: '0.68rem', height: '22px' }}
+                                                                                            >
+                                                                                                ×
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        
+                                                                                        <div className="buff-options-list" style={{ 
+                                                                                            maxHeight: '120px', 
+                                                                                            overflowY: 'auto', 
+                                                                                            display: 'flex', 
+                                                                                            flexDirection: 'column', 
+                                                                                            gap: '0.1rem',
+                                                                                            borderBottom: filteredBuffs.length > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                                                                                            paddingBottom: '0.2rem'
+                                                                                        }}>
+                                                                                            {filteredBuffs.map(b => (
+                                                                                                <button 
+                                                                                                    key={b.id} 
+                                                                                                    type="button" 
+                                                                                                    className="buff-option-item"
+                                                                                                    style={{ 
+                                                                                                        background: 'none', 
+                                                                                                        border: 'none', 
+                                                                                                        textAlign: 'left', 
+                                                                                                        color: 'var(--text-primary)', 
+                                                                                                        fontSize: '0.68rem', 
+                                                                                                        padding: '0.2rem', 
+                                                                                                        cursor: 'pointer',
+                                                                                                        borderRadius: '4px',
+                                                                                                        width: '100%',
+                                                                                                        display: 'block'
+                                                                                                    }}
+                                                                                                    onClick={() => {
+                                                                                                        updateDraft(item.id, 'buffs', [...(display.buffs || []), b.name]);
+                                                                                                        setIsBuffDropdownOpen(null);
+                                                                                                    }}
+                                                                                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
+                                                                                                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                                                                                                >
+                                                                                                    {b.name}
+                                                                                                </button>
+                                                                                            ))}
+                                                                                            {filteredBuffs.length === 0 && (
+                                                                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '0.2rem' }}>No buffs found</span>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '0.4rem', marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                                                            <div style={{ fontSize: '0.68rem', fontWeight: 'bold', color: '#34d399' }}>Create Buff on the Fly:</div>
+                                                                                            <input 
+                                                                                                type="text" 
+                                                                                                placeholder="Buff Name" 
+                                                                                                className="input"
+                                                                                                value={quickBuffName}
+                                                                                                onChange={e => setQuickBuffName(e.target.value)}
+                                                                                                style={{ fontSize: '0.68rem', padding: '0.15rem', height: '20px' }}
+                                                                                            />
+                                                                                            <textarea 
+                                                                                                placeholder="Description..." 
+                                                                                                className="input"
+                                                                                                value={quickBuffDesc}
+                                                                                                onChange={e => setQuickBuffDesc(e.target.value)}
+                                                                                                style={{ fontSize: '0.68rem', padding: '0.15rem', height: '36px', resize: 'none' }}
+                                                                                            />
+                                                                                            <button 
+                                                                                                type="button" 
+                                                                                                className="btn btn-success" 
+                                                                                                style={{ fontSize: '0.65rem', padding: '0.1rem 0.2rem', height: '20px', background: '#10b981', borderColor: '#10b981', color: '#fff' }}
+                                                                                                onClick={() => {
+                                                                                                    if (!quickBuffName.trim()) {
+                                                                                                        alert("Please enter a buff name.");
+                                                                                                        return;
+                                                                                                    }
+                                                                                                    if (buffsDatabase.some(b => b.name.toLowerCase() === quickBuffName.trim().toLowerCase())) {
+                                                                                                        alert("A buff with this name already exists.");
+                                                                                                        return;
+                                                                                                    }
+                                                                                                    const newBuff = {
+                                                                                                        id: 'buff_' + Date.now(),
+                                                                                                        name: quickBuffName.trim(),
+                                                                                                        type: 'fixed',
+                                                                                                        description: quickBuffDesc.trim()
+                                                                                                    };
+                                                                                                    updateBuffsDatabase([...buffsDatabase, newBuff]);
+                                                                                                    updateDraft(item.id, 'buffs', [...(display.buffs || []), newBuff.name]);
+                                                                                                    setIsBuffDropdownOpen(null);
+                                                                                                    setQuickBuffName('');
+                                                                                                    setQuickBuffDesc('');
+                                                                                                }}
+                                                                                            >
+                                                                                                Create &amp; Add
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}

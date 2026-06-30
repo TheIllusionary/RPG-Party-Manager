@@ -1740,7 +1740,8 @@
 .cc-dropdown-menu {
     position: absolute;
     top: 100%;
-    right: 0;
+    left: 0;
+    right: auto;
     z-index: 1000;
     margin-top: 0.25rem;
     background: #111317;
@@ -1776,4 +1777,361 @@
     cursor: not-allowed;
 }
 
+/* CC and Buffs/Debuffs Header Layout & Styling */
+.player-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex: 1;
+    min-width: 0;
+}
 
+.player-header-left-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.player-cc-container {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin: 0 !important; /* Override old margin */
+}
+
+/* Header CC tag */
+.cc-header-tag {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 0.15rem 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    user-select: none;
+    line-height: 1.2;
+}
+
+/* Buffs / Debuffs row on card header */
+.player-buff-container {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.buff-header-tag {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 0.15rem 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    user-select: none;
+    line-height: 1.2;
+}
+
+.player-buff-badge {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--text-primary);
+    padding: 0.2rem 0.5rem;
+    height: 32px;
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: var(--transition);
+}
+
+.player-buff-badge:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.buff-remove-x {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.buff-remove-x:hover {
+    color: var(--danger);
+}
+
+.player-buff-add-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.player-buff-add-btn,
+.player-buff-collapse-btn {
+    background: rgba(0, 0, 0, 0.25);
+    border: var(--glass-border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: var(--transition);
+}
+
+.player-buff-add-btn:hover,
+.player-buff-collapse-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+/* Inline form for adding buff */
+.buff-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #111317;
+    border: var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+}
+
+.buff-inline-input {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-primary) !important;
+    font-size: 0.8rem !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: var(--radius-sm) !important;
+    width: 140px;
+    height: 26px !important;
+}
+
+.buff-inline-input:focus {
+    border-color: var(--primary) !important;
+}
+
+.buff-inline-add-btn {
+    background: var(--success);
+    color: white;
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0 0.6rem;
+    border-radius: var(--radius-sm);
+    height: 26px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.buff-inline-add-btn:hover {
+    background: #059669;
+}
+
+.buff-inline-cancel-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+}
+
+.buff-inline-cancel-btn:hover {
+    color: var(--danger);
+}
+
+/* Expanded Card Buff Editor styling */
+.player-buffs-section {
+    margin-top: 1rem;
+}
+
+.buffs-editor-container {
+    background: rgba(0, 0, 0, 0.2);
+    border: var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.buffs-editor-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.buff-pill {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: var(--text-primary);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.buff-add-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.buff-add-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: var(--glass-border) !important;
+    color: var(--text-primary) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.9rem !important;
+}
+
+.buff-add-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.buff-add-btn:hover {
+    background: var(--primary-hover);
+}
+
+.player-buff-badge.buff-inactive {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    opacity: 0.65;
+}
+
+.player-buff-badge.buff-spent {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    color: var(--text-muted);
+    text-decoration: line-through;
+    opacity: 0.55;
+}
+
+/* Specific layout when VTT is open and side columns are narrow */
+.vtt-open .player-card-header {
+    display: grid;
+    grid-template-areas:
+        "info controls"
+        "rows rows";
+    grid-template-columns: 1fr auto;
+    gap: 0.65rem 0.25rem;
+    align-items: center;
+}
+
+.vtt-open .player-header-left {
+    display: contents; /* Promotes children to be direct grid items of player-card-header */
+}
+
+.vtt-open .player-info-container {
+    grid-area: info;
+    min-width: 0;
+}
+
+.vtt-open .card-top-right {
+    grid-area: controls;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vtt-open .player-header-left-rows {
+    grid-area: rows;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* Ensure margins are clean and items wrap correctly */
+.vtt-open .player-cc-container,
+.vtt-open .player-buff-container {
+    margin: 0 !important;
+    gap: 0.25rem;
+}
+
+/* Compact CC/Buff elements for narrower spaces */
+.vtt-open .cc-header-tag,
+.vtt-open .buff-header-tag {
+    padding: 0.12rem 0.35rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+}
+
+.vtt-open .player-cc-badge,
+.vtt-open .player-buff-badge {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
+    height: 28px;
+}
+
+.vtt-open .player-buff-add-btn,
+.vtt-open .player-cc-add-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+}
+
+/* Ensure inline form elements don't stretch or break layout */
+.vtt-open .buff-inline-input {
+    width: 110px !important;
+    height: 24px !important;
+    font-size: 0.75rem !important;
+}
+
+.vtt-open .buff-inline-cancel-btn {
+    height: 24px !important;
+}
+
+/* Hide Class, Level, Active Party, and Delete Player buttons in Battle mode */
+.battle-mode-roster .player-subtitle {
+    display: none !important;
+}
+
+.battle-mode-roster .integrated-player-card:not(.enemy-card) .player-controls {
+    display: none !important;
+}
+
+/* Hide CC and Buffs/Debuffs rows on the top cards when out of battle mode */
+.roster-grid:not(.battle-mode-roster) .player-cc-container,
+.roster-grid:not(.battle-mode-roster) .player-buff-container {
+    display: none !important;
+}

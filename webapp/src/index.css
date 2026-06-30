@@ -31,6 +31,93 @@
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.theme-bio {
+  --bg-base: #0e1712; /* Deep forest/sage green base */
+  --bg-surface: rgba(74, 222, 128, 0.03); /* Soft green glass */
+  --bg-surface-hover: rgba(74, 222, 128, 0.08);
+  
+  --primary: #4ade80; /* Cute Mint Leaf Green */
+  --primary-hover: #22c55e;
+  --primary-glow: rgba(74, 222, 128, 0.25);
+  
+  --secondary: #34d399; /* Emerald Greenery */
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #a3b8aa; /* soft sage tinted text */
+  --text-muted: #53755f; /* Mossy text */
+  
+  --danger: #f43f5e; /* Rose-red danger */
+  --success: #34d399;
+  --warning: #f59e0b;
+  
+  --glass-border: 1px solid rgba(74, 222, 128, 0.15);
+  --glass-shadow: 0 8px 32px 0 rgba(11, 29, 17, 0.65);
+  
+  background-color: #0e1712;
+  background-image: url('/bio_background.png'),
+                    radial-gradient(circle at 50% 0%, rgba(74, 222, 128, 0.12), transparent 50%),
+                    radial-gradient(circle at 100% 100%, rgba(52, 211, 153, 0.12), transparent 50%),
+                    radial-gradient(circle at 0% 100%, rgba(167, 243, 208, 0.08), transparent 45%);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* --- Bio Theme Specific Decorative Adjustments --- */
+
+body.theme-bio h2::before {
+  content: '🌿 ';
+  font-size: 1.1em;
+}
+
+body.theme-bio h2::after {
+  content: ' 🍃';
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+body.theme-bio h3::before {
+  content: '🌸 ';
+}
+
+body.theme-bio ::-webkit-scrollbar-thumb {
+  background: rgba(74, 222, 128, 0.25) !important;
+  border: 2px solid #0e1712 !important;
+  border-radius: var(--radius-full);
+}
+
+body.theme-bio ::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 222, 128, 0.45) !important;
+}
+
+body.theme-bio .nav-item.active {
+  color: var(--primary) !important;
+  background: rgba(74, 222, 128, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.25) !important;
+}
+
+body.theme-bio .nav-item:hover:not(.active) {
+  color: var(--primary) !important;
+  background: rgba(74, 222, 128, 0.05) !important;
+}
+
+body.theme-bio .save-load-btn:hover {
+  background: rgba(52, 211, 153, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+  color: var(--secondary) !important;
+}
+
+body.theme-bio .input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary-glow) !important;
+}
+
+body.theme-bio .integrated-player-card:hover {
+  border-color: rgba(74, 222, 128, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(11, 29, 17, 0.7), 0 0 15px rgba(74, 222, 128, 0.1) !important;
+}
+
 * {
   margin: 0;
   padding: 0;
