@@ -25,3 +25,4 @@ npm-debug.log*
 *.rar
 *save*.json
 *.BACKUP.json
+# SSH check-in test
