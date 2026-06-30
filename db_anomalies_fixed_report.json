@@ -1,0 +1,320 @@
+[
+  {
+    "name": "Behir",
+    "garbage_attacks": [
+      "Lightning Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Chimera",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Demon, Nalfeshnee",
+    "garbage_attacks": [
+      "Horror Nimbus (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Black Dragon",
+    "garbage_attacks": [
+      "Acid Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Black Dragon",
+    "garbage_attacks": [
+      "Acid Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Black Dragon Wyrmling",
+    "garbage_attacks": [
+      "Acid Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Black Dragon",
+    "garbage_attacks": [
+      "Acid Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Blue Dragon",
+    "garbage_attacks": [
+      "Lightning Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Blue Dragon",
+    "garbage_attacks": [
+      "Lightning Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Blue Dragon Wyrmling",
+    "garbage_attacks": [
+      "Lightning Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Blue Dragon",
+    "garbage_attacks": [
+      "Lightning Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Green Dragon",
+    "garbage_attacks": [
+      "Poison Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Green Dragon",
+    "garbage_attacks": [
+      "Poison Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Green Dragon Wyrmling",
+    "garbage_attacks": [
+      "Poison Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Green Dragon",
+    "garbage_attacks": [
+      "Poison Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Red Dragon",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Red Dragon",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Red Dragon Wyrmling",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Red Dragon",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult White Dragon",
+    "garbage_attacks": [
+      "Cold Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient White Dragon",
+    "garbage_attacks": [
+      "Cold Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "White Dragon Wyrmling",
+    "garbage_attacks": [
+      "Cold Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young White Dragon",
+    "garbage_attacks": [
+      "Cold Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Brass Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Brass Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Brass Dragon Wyrmling",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Brass Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Bronze Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Bronze Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Bronze Dragon Wyrmling",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Bronze Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Copper Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Copper Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Copper Dragon Wyrmling",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Copper Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Gold Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Gold Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Gold Dragon Wyrmling",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Gold Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Adult Silver Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Ancient Silver Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Silver Dragon Wyrmling",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Young Silver Dragon",
+    "garbage_attacks": [
+      "Breath Weapons (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Dragon Turtle",
+    "garbage_attacks": [
+      "Steam Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Elemental, Air",
+    "garbage_attacks": [
+      "Whirlwind (Recharge 4\u20136)"
+    ]
+  },
+  {
+    "name": "Elemental, Water",
+    "garbage_attacks": [
+      "Whelm (Recharge 4\u20136)"
+    ]
+  },
+  {
+    "name": "Ettercap",
+    "garbage_attacks": [
+      "Web (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Giant, Storm",
+    "garbage_attacks": [
+      "Lightning Strike (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Gibbering Mouther",
+    "garbage_attacks": [
+      "Blinding Spittle (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Golem, Clay",
+    "garbage_attacks": [
+      "Haste (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Golem, Stone",
+    "garbage_attacks": [
+      "Slow (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Gorgon",
+    "garbage_attacks": [
+      "Petrifying Breath (Recharge 5\u20136)"
+    ]
+  },
+  {
+    "name": "Hell Hound",
+    "garbage_attacks": [
+      "Fire Breath (Recharge 5\u20136)"
+    ]
+  }
+]

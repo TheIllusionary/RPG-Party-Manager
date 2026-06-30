@@ -499,3 +499,41 @@
     border-color: rgba(239, 68, 68, 0.3);
     color: #f87171;
 }
+
+.item-buff-pill {
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: var(--transition);
+}
+
+.item-buff-pill:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.ac-bonus-strip .ac-item-chip {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.ac-bonus-strip .total-ac-chip {
+    margin-right: 0.5rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    padding-right: 0.75rem;
+}

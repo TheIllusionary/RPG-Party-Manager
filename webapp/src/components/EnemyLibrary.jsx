@@ -64,7 +64,328 @@ const DAMAGE_TYPES = [
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
 ];
 
-export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, updateBestiaryReview = () => {} }) {
+export default function EnemyLibrary({ 
+    library = [], 
+    updateLibrary = () => {}, 
+    buffsDatabase = [], 
+    updateBuffsDatabase = () => {}, 
+    bestiaryReview = {}, 
+    updateBestiaryReview = () => {} 
+}) {
+    const data = library;
+    const updateData = updateLibrary;
+
+    const [activeSubTab, setActiveSubTab] = useState('bestiary'); // 'bestiary' | 'buffs' | 'items'
+    const [buffSearchTerm, setBuffSearchTerm] = useState('');
+    const [editingBuffId, setEditingBuffId] = useState(null);
+    const [buffDraft, setBuffDraft] = useState(null);
+
+    const startCreateBuff = () => {
+        setBuffDraft({
+            id: Date.now().toString(),
+            name: 'New Buff/Debuff',
+            description: '',
+            type: 'fixed',
+            oncePerRest: 'none',
+            additionalDamage: '',
+            additionalAC: 0,
+            dodge: false,
+            extraMovement: 0,
+            extraAction: false,
+            advantageAttack: false,
+            disadvantageAttack: false,
+            advantageSave: false,
+            advantageSaveStats: {},
+            disadvantageSave: false,
+            disadvantageSaveStats: {},
+            savingThrowBonus: 0,
+            turnType: 'healHP',
+            turnFormula: '1d6'
+        });
+        setEditingBuffId('new');
+    };
+
+    const startEditBuff = (buff) => {
+        setBuffDraft({
+            id: buff.id,
+            name: buff.name || '',
+            description: buff.description || '',
+            type: buff.type || 'toggle',
+            oncePerRest: buff.oncePerRest || 'none',
+            additionalDamage: buff.additionalDamage || '',
+            additionalAC: buff.additionalAC || 0,
+            dodge: buff.dodge || false,
+            extraMovement: buff.extraMovement || 0,
+            extraAction: buff.extraAction || false,
+            advantageAttack: buff.advantageAttack || false,
+            disadvantageAttack: buff.disadvantageAttack || false,
+            advantageSave: buff.advantageSave || false,
+            advantageSaveStats: buff.advantageSaveStats || {},
+            disadvantageSave: buff.disadvantageSave || false,
+            disadvantageSaveStats: buff.disadvantageSaveStats || {},
+            savingThrowBonus: buff.savingThrowBonus || 0,
+            turnType: buff.turnType || 'healHP',
+            turnFormula: buff.turnFormula || '1d6'
+        });
+        setEditingBuffId(buff.id);
+    };
+
+    const saveBuff = () => {
+        if (!buffDraft.name.trim()) {
+            alert("Buff name is required!");
+            return;
+        }
+        if (editingBuffId === 'new') {
+            updateBuffsDatabase([...buffsDatabase, buffDraft]);
+        } else {
+            updateBuffsDatabase(buffsDatabase.map(b => b.id === editingBuffId ? buffDraft : b));
+        }
+        setEditingBuffId(null);
+        setBuffDraft(null);
+    };
+
+    const cancelBuffEdit = () => {
+        setEditingBuffId(null);
+        setBuffDraft(null);
+    };
+
+    const deleteBuff = (id) => {
+        if (window.confirm("Delete this Buff/Debuff from the database?")) {
+            updateBuffsDatabase(buffsDatabase.filter(b => b.id !== id));
+            if (editingBuffId === id) {
+                setEditingBuffId(null);
+                setBuffDraft(null);
+            }
+        }
+    };
+
+    const renderBuffEditor = () => {
+        if (!editingBuffId || !buffDraft) return null;
+        return (
+            <div className="buff-editor-panel glass-panel" style={{ padding: '1rem', border: '1px solid var(--primary)', background: 'rgba(255, 255, 255, 0.02)', margin: '0.5rem 0', textAlign: 'left' }}>
+                <h3>{editingBuffId === 'new' ? 'Create Buff/Debuff' : 'Edit Buff/Debuff'}</h3>
+                <div className="detail-mods-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                    <div className="combat-stat-box">
+                        <label>Name</label>
+                        <input 
+                            type="text" 
+                            className="input" 
+                            value={buffDraft.name} 
+                            onChange={e => setBuffDraft({ ...buffDraft, name: e.target.value })} 
+                        />
+                    </div>
+                    <div className="combat-stat-box">
+                        <label>Type</label>
+                        <select 
+                            className="input" 
+                            value={buffDraft.type} 
+                            onChange={e => setBuffDraft({ ...buffDraft, type: e.target.value })}
+                        >
+                            <option value="toggle">Toggle (Active/Inactive toggle)</option>
+                            <option value="turn">Turn (Triggers once per turn)</option>
+                            <option value="fixed">Fixed (Passive / Constant effect)</option>
+                        </select>
+                    </div>
+                    <div className="combat-stat-box">
+                        <label>Rest Limitation</label>
+                        <select 
+                            className="input" 
+                            value={buffDraft.oncePerRest || 'none'} 
+                            onChange={e => setBuffDraft({ ...buffDraft, oncePerRest: e.target.value })}
+                        >
+                            <option value="none">No Limit (Can toggle/use freely)</option>
+                            <option value="short">Once per Short Rest</option>
+                            <option value="long">Once per Long Rest</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="combat-stat-box" style={{ marginTop: '1rem' }}>
+                    <label>Description</label>
+                    <textarea 
+                        className="input rp-textarea" 
+                        style={{ width: '100%', minHeight: '60px' }}
+                        value={buffDraft.description} 
+                        onChange={e => setBuffDraft({ ...buffDraft, description: e.target.value })} 
+                    />
+                </div>
+
+                {/* Conditional Editor Fields based on Type */}
+                {(buffDraft.type === 'toggle' || buffDraft.type === 'fixed') && (
+                    <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                        <h4>Toggle/Fixed Properties</h4>
+                        <div className="detail-mods-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.5rem' }}>
+                            <div className="combat-stat-box">
+                                <label>AC Modifier</label>
+                                <input 
+                                    type="number" 
+                                    className="input" 
+                                    value={buffDraft.additionalAC || 0} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, additionalAC: parseInt(e.target.value) || 0 })} 
+                                />
+                            </div>
+                            <div className="combat-stat-box">
+                                <label>Extra Damage Formula (e.g. 1d4)</label>
+                                <input 
+                                    type="text" 
+                                    className="input" 
+                                    value={buffDraft.additionalDamage || ''} 
+                                    placeholder="e.g. 1d4 or 2"
+                                    onChange={e => setBuffDraft({ ...buffDraft, additionalDamage: e.target.value })} 
+                                />
+                            </div>
+                            <div className="combat-stat-box">
+                                <label>Extra Movement speed</label>
+                                <input 
+                                    type="number" 
+                                    className="input" 
+                                    value={buffDraft.extraMovement || 0} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, extraMovement: parseInt(e.target.value) || 0 })} 
+                                />
+                            </div>
+                            <div className="combat-stat-box">
+                                <label>Saving Throw Bonus</label>
+                                <input 
+                                    type="number" 
+                                    className="input" 
+                                    value={buffDraft.savingThrowBonus || 0} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, savingThrowBonus: parseInt(e.target.value) || 0 })} 
+                                />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.dodge || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, dodge: e.target.checked })} 
+                                />
+                                Dodge (gives disadvantage on attacks against target)
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.extraAction || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, extraAction: e.target.checked })} 
+                                />
+                                Extra Action
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.advantageAttack || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, advantageAttack: e.target.checked })} 
+                                />
+                                Advantage on Attack rolls
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.disadvantageAttack || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, disadvantageAttack: e.target.checked })} 
+                                />
+                                Disadvantage on Attack rolls
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.advantageSave || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, advantageSave: e.target.checked })} 
+                                />
+                                Advantage on Saving Throws
+                            </label>
+                            {buffDraft.advantageSave && (
+                                <div style={{ marginLeft: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                                    {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => (
+                                        <label key={stat} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={buffDraft.advantageSaveStats?.[stat] ?? false}
+                                                onChange={e => {
+                                                    const current = buffDraft.advantageSaveStats || {};
+                                                    setBuffDraft({
+                                                        ...buffDraft,
+                                                        advantageSaveStats: { ...current, [stat]: e.target.checked }
+                                                    });
+                                                }}
+                                            />
+                                            {stat.toUpperCase()}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={buffDraft.disadvantageSave || false} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, disadvantageSave: e.target.checked })} 
+                                />
+                                Disadvantage on Saving Throws
+                            </label>
+                            {buffDraft.disadvantageSave && (
+                                <div style={{ marginLeft: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                                    {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => (
+                                        <label key={stat} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={buffDraft.disadvantageSaveStats?.[stat] ?? false}
+                                                onChange={e => {
+                                                    const current = buffDraft.disadvantageSaveStats || {};
+                                                    setBuffDraft({
+                                                        ...buffDraft,
+                                                        disadvantageSaveStats: { ...current, [stat]: e.target.checked }
+                                                    });
+                                                }}
+                                            />
+                                            {stat.toUpperCase()}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {buffDraft.type === 'turn' && (
+                    <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                        <h4>Turn Property</h4>
+                        <div className="detail-mods-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                            <div className="combat-stat-box">
+                                <label>Turn Effect Type</label>
+                                <select 
+                                    className="input" 
+                                    value={buffDraft.turnType} 
+                                    onChange={e => setBuffDraft({ ...buffDraft, turnType: e.target.value })}
+                                >
+                                    <option value="healHP">Heal HP</option>
+                                    <option value="damageHP">Damage HP (e.g. poison/burn)</option>
+                                    <option value="healTempHP">Gain Temp HP</option>
+                                    <option value="healMana">Heal Mana</option>
+                                    <option value="damageMana">Damage/Drain Mana</option>
+                                </select>
+                            </div>
+                            <div className="combat-stat-box">
+                                <label>Dice Formula / Value (e.g. 1d6 or 5)</label>
+                                <input 
+                                    type="text" 
+                                    className="input" 
+                                    value={buffDraft.turnFormula} 
+                                    placeholder="e.g. 1d6 or 5"
+                                    onChange={e => setBuffDraft({ ...buffDraft, turnFormula: e.target.value })} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-success" onClick={saveBuff}>Save</button>
+                    <button className="btn btn-secondary" onClick={cancelBuffEdit}>Cancel</button>
+                </div>
+            </div>
+        );
+    };
+
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedEnemyId, setExpandedEnemyId] = useState(null);
     const [expandedOriginalName, setExpandedOriginalName] = useState('');
@@ -198,12 +519,126 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
 
     return (
         <div className="enemy-library-tab">
-            <div className="library-header">
-                <h2>Bestiary Database</h2>
-                <button className="btn btn-primary" onClick={addEnemy}>+ Create Monster</button>
+            {/* Database Tab Bar */}
+            <div className="db-tabs-bar" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
+                <button 
+                    className={`btn ${activeSubTab === 'bestiary' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('bestiary')}
+                >
+                    💀 Bestiary
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'buffs' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('buffs')}
+                >
+                    ⚡ Buffs &amp; Debuffs
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'items' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('items')}
+                >
+                    🛡️ Items
+                </button>
             </div>
 
-            <div className="library-search-bar">
+            {activeSubTab === 'items' && (
+                <div className="db-subtab-container glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <h3>🛡️ Items Database</h3>
+                    <p style={{ marginTop: '1rem', fontStyle: 'italic' }}>Work in progress — coming soon!</p>
+                </div>
+            )}
+
+            {activeSubTab === 'buffs' && (
+                <div className="db-subtab-container">
+                    <div className="library-header">
+                        <h2>Buffs &amp; Debuffs Database</h2>
+                        <button className="btn btn-primary" onClick={startCreateBuff}>+ Create Buff/Debuff</button>
+                    </div>
+
+                    <div className="library-search-bar" style={{ marginBottom: '1rem' }}>
+                        <input 
+                            type="text" 
+                            className="input search-input" 
+                            placeholder="🔍 Search buffs & debuffs by name or description..." 
+                            value={buffSearchTerm}
+                            onChange={e => setBuffSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+
+
+                    <div className="library-table-container glass-panel">
+                        <table className="library-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Rest Limit</th>
+                                    <th>Description</th>
+                                    <th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {editingBuffId === 'new' && buffDraft && (
+                                    <tr className="buff-editor-row">
+                                        <td colSpan="5" style={{ padding: '0.5rem 1rem' }}>
+                                            {renderBuffEditor()}
+                                        </td>
+                                    </tr>
+                                )}
+                                {buffsDatabase
+                                    .filter(b => b.name.toLowerCase().includes(buffSearchTerm.toLowerCase()) || (b.description || '').toLowerCase().includes(buffSearchTerm.toLowerCase()))
+                                    .map(b => (
+                                        <React.Fragment key={b.id}>
+                                            <tr className="monster-row">
+                                                <td><strong>{b.name}</strong></td>
+                                                <td>
+                                                    <span className={`class-badge ${b.type === 'turn' ? 'default' : (b.type === 'toggle' ? 'boss' : 'enemy')}`} style={{ textTransform: 'capitalize' }}>
+                                                        {b.type}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '0.8rem', color: b.oncePerRest === 'none' ? 'var(--text-muted)' : 'var(--warning)' }}>
+                                                        {b.oncePerRest === 'short' ? 'Once per Short Rest' : (b.oncePerRest === 'long' ? 'Once per Long Rest' : 'No Limit')}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{b.description}</td>
+                                                <td style={{ textAlign: 'right', paddingRight: '1.5rem', whiteSpace: 'nowrap' }}>
+                                                    <button className="btn small-btn" onClick={() => startEditBuff(b)} style={{ marginRight: '0.4rem' }}>Edit</button>
+                                                    <button className="delete-btn" onClick={() => deleteBuff(b.id)}>×</button>
+                                                </td>
+                                            </tr>
+                                            {editingBuffId === b.id && buffDraft && (
+                                                <tr className="buff-editor-row">
+                                                    <td colSpan="5" style={{ padding: '0.5rem 1rem' }}>
+                                                        {renderBuffEditor()}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))
+                                }
+                                {buffsDatabase.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                            No Buffs or Debuffs in the database. Click "+ Create Buff/Debuff" to add one!
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeSubTab === 'bestiary' && (
+                <>
+                    <div className="library-header">
+                        <h2>Bestiary Database</h2>
+                        <button className="btn btn-primary" onClick={addEnemy}>+ Create Monster</button>
+                    </div>
+
+                    <div className="library-search-bar">
                 <input 
                     type="text" 
                     className="input search-input" 
@@ -812,9 +1247,157 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.vulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
+                                                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* CC Resistances & Vulnerabilities Editor */}
+                                                        <div className="rp-field full-width player-resistances-section" style={{ marginTop: '1.25rem' }}>
+                                                            <label>CC Resistances &amp; Vulnerabilities</label>
+                                                            <div className="damage-mods-container">
+                                                                {/* CC Resistances */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccResistances || []).map(r => (
+                                                                            <span key={r} className="damage-pill pill-resistance">
+                                                                                {r}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccResistances || []).filter(x => x !== r);
+                                                                                    updateEnemy(enemy.id, 'ccResistances', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccResistances || []).includes(val)) {
+                                                                                    const updated = [...(enemy.ccResistances || []), val];
+                                                                                    updateEnemy(enemy.id, 'ccResistances', updated);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {CC_OPTIONS.filter(t => !(enemy.ccResistances || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
                                                                         </select>
                                                                     </div>
                                                                 </div>
+
+                                                                {/* CC Immunities */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccImmunities || []).map(i => (
+                                                                            <span key={i} className="damage-pill pill-immunity">
+                                                                                {i}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccImmunities || []).filter(x => x !== i);
+                                                                                    updateEnemy(enemy.id, 'ccImmunities', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccImmunities || []).includes(val)) {
+                                                                                    const updated = [...(enemy.ccImmunities || []), val];
+                                                                                    updateEnemy(enemy.id, 'ccImmunities', updated);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {CC_OPTIONS.filter(t => !(enemy.ccImmunities || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* CC Vulnerabilities */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccVulnerabilities || []).map(v => (
+                                                                            <span key={v} className="damage-pill pill-vulnerability">
+                                                                                {v}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccVulnerabilities || []).filter(x => x !== v);
+                                                                                    updateEnemy(enemy.id, 'ccVulnerabilities', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccVulnerabilities || []).includes(val)) {
+                                                                                    const updated = [...(enemy.ccVulnerabilities || []), val];
+                                                                                    updateEnemy(enemy.id, 'ccVulnerabilities', updated);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {CC_OPTIONS.filter(t => !(enemy.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Pre-configured Buffs Editor */}
+                                                        <div className="rp-field full-width player-buffs-section" style={{ marginTop: '1.25rem' }}>
+                                                            <label>Pre-configured Buffs &amp; Debuffs</label>
+                                                            <div className="buffs-editor-container">
+                                                                <div className="buffs-editor-pills">
+                                                                    {(enemy.buffs || []).map(b => (
+                                                                        <span key={b} className="buff-pill">
+                                                                            {b}
+                                                                            <button
+                                                                                type="button"
+                                                                                className="pill-remove-btn"
+                                                                                onClick={() => {
+                                                                                    const updated = (enemy.buffs || []).filter(x => x !== b);
+                                                                                    updateEnemy(enemy.id, 'buffs', updated);
+                                                                                }}
+                                                                            >
+                                                                                ×
+                                                                            </button>
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                                <select
+                                                                    className="input buff-add-input"
+                                                                    value=""
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        if (val) {
+                                                                            const current = enemy.buffs || [];
+                                                                            if (!current.includes(val)) {
+                                                                                updateEnemy(enemy.id, 'buffs', [...current, val]);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                                                >
+                                                                    <option value="">+ Add Buff/Debuff...</option>
+                                                                    {buffsDatabase
+                                                                        .filter(b => !(enemy.buffs || []).includes(b.name))
+                                                                        .map(b => (
+                                                                            <option key={b.id} value={b.name}>{b.name}</option>
+                                                                        ))
+                                                                    }
+                                                                </select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1086,6 +1669,8 @@ export default function EnemyLibrary({ data, updateData, bestiaryReview = {}, up
                     </div>
                 )}
             </div>
+            </>
+            )}
         </div>
     );
 }

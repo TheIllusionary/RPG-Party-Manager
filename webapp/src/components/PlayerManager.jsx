@@ -4,7 +4,7 @@ import defaultMonsters from './default_monsters.json';
 
 const generateUniqueId = () => Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
 
-import { parseAbilities, rollFormula, getDamageMultiplier, extractExtraEffects } from '../utils/combatUtils';
+import { parseAbilities, rollFormula, getDamageMultiplier, getDamageModifierBreakdown, getAttackAdvantageState, rollWithAdvantageState, extractExtraEffects, calculateEffectiveAC, getSaveModifiers, calculateEffectiveEnemyAC, getCCModifier } from '../utils/combatUtils';
 
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning', 
@@ -39,7 +39,11 @@ export default function PlayerManager({
     minimizedEnemies,
     setMinimizedEnemies,
     library,
-    updateLibrary
+    updateLibrary,
+    buffsDatabase = [],
+    updateBuffsDatabase = () => {},
+    config,
+    configModalOpen
 }) {
     const focusAndSelectRef = useCallback((el) => {
         if (el) {
@@ -58,9 +62,20 @@ export default function PlayerManager({
     const [playerEditField, setPlayerEditField] = useState(null); // { id, field }
     const [playerEditValue, setPlayerEditValue] = useState('');
     const [ccDropdownPlayerId, setCcDropdownPlayerId] = useState(null);
+    const [buffInputPlayerId, setBuffInputPlayerId] = useState(null);
+    const [buffSearchText, setBuffSearchText] = useState('');
+    const [expandedPlayers, setExpandedPlayers] = useState({});
+    const [buffInputEnemyId, setBuffInputEnemyId] = useState(null);
+    const [ccDropdownEnemyId, setCcDropdownEnemyId] = useState(null);
 
     const [activeAttackState, setActiveAttackState] = useState(null);
-    const [autoRollEnabled, setAutoRollEnabled] = useState(false);
+    const [autoRollEnabled, setAutoRollEnabled] = useState(() => {
+        return config?.defaultRollMode === 'auto';
+    });
+
+    useEffect(() => {
+        setAutoRollEnabled(config?.defaultRollMode === 'auto');
+    }, [config?.defaultRollMode]);
 
     const getEnemyAttacks = (enemy) => {
         if (Array.isArray(enemy.attacks) && enemy.attacks.length > 0) {
@@ -70,6 +85,8 @@ export default function PlayerManager({
     };
 
     const startAttackTargeting = (enemy, attack) => {
+        const isSave = typeof attack.dc === 'number' || (attack.dc && !isNaN(parseInt(attack.dc)));
+        setAutoRollEnabled(!isSave);
         setActiveAttackState({
             enemy,
             attack,
@@ -107,6 +124,8 @@ export default function PlayerManager({
             
             const isSave = typeof attack.dc === 'number' || (attack.dc && !isNaN(parseInt(attack.dc)));
             let d20 = null;
+            let d20Rolls = null; // array of raw dice (for adv/disadv display)
+            let advantageState = 'normal';
             let resultType = 'miss';
             let totalRoll = 0;
             let saveBonus = 0;
@@ -115,16 +134,22 @@ export default function PlayerManager({
             const toHit = attack.toHit || 0;
             
             if (autoRollEnabled) {
-                d20 = Math.floor(Math.random() * 20) + 1;
+                const extraEffect = attack.cc === 'custom' ? attack.ccCustom : (attack.cc || extractExtraEffects(attack.description));
                 if (isSave) {
-                    dcVal = parseInt(attack.dc);
                     saveStat = (attack.save || 'Dexterity').toLowerCase();
                     const statKey = saveStat.substring(0, 3); // 'str', 'dex', 'con', 'int', 'wis', 'cha'
+                    const saveMods = getSaveModifiers(player, extraEffect, equipment, buffsDatabase, statKey);
+                    advantageState = saveMods.advantageState;
+                    const d20Result = rollWithAdvantageState(advantageState);
+                    d20 = d20Result.roll;
+                    d20Rolls = d20Result.rolls;
+
+                    dcVal = parseInt(attack.dc);
                     const statVal = player[statKey] !== undefined ? player[statKey] : 10;
                     const statMod = Math.floor((statVal - 10) / 2);
                     const isProf = player.saves && player.saves[statKey];
                     const profBonus = getLevelInfo(player.xp).level >= 17 ? 6 : Math.ceil(getLevelInfo(player.xp).level / 4) + 1;
-                    saveBonus = statMod + (isProf ? profBonus : 0);
+                    saveBonus = statMod + (isProf ? profBonus : 0) + saveMods.saveBonus;
                     totalRoll = d20 + saveBonus;
                     
                     if (totalRoll >= dcVal) {
@@ -133,10 +158,14 @@ export default function PlayerManager({
                         resultType = 'save_failed';
                     }
                 } else {
+                    advantageState = getAttackAdvantageState(attack, player, equipment, buffsDatabase);
+                    const d20Result = rollWithAdvantageState(advantageState);
+                    d20 = d20Result.roll;
+                    d20Rolls = d20Result.rolls;
                     totalRoll = d20 + toHit;
                     if (d20 === 20) resultType = 'crit';
                     else if (d20 === 1) resultType = 'crit_miss';
-                    else if (totalRoll >= player.ac) resultType = 'hit';
+                    else if (totalRoll >= calculateEffectiveAC(player, equipment, buffsDatabase)) resultType = 'hit';
                 }
             } else {
                 // Manual resolution based on selected status
@@ -170,7 +199,7 @@ export default function PlayerManager({
                 
                 damageComponents.forEach(comp => {
                     const rolled = rollFormula(comp.formula, isCrit);
-                    const mult = getDamageMultiplier(comp.type, player);
+                    const mult = getDamageMultiplier(comp.type, player, equipment);
                     
                     let finalDmg = Math.floor(rolled.total * mult);
                     if (isSave && resultType === 'save_success' && attack.halfOnSuccess) {
@@ -229,15 +258,19 @@ export default function PlayerManager({
                 ALL_CC_EFFECTS.forEach(eff => {
                     const baseWord = eff.split(' ')[0].toLowerCase();
                     if (resolvedEffect.toLowerCase().includes(baseWord)) {
-                        if (!newCc.includes(eff)) {
-                            newCc.push(eff);
+                        if (getCCModifier(eff, player, equipment) !== 'immune') {
+                            if (!newCc.includes(eff)) {
+                                newCc.push(eff);
+                            }
                         }
                         matched = true;
                     }
                 });
                 if (!matched && resolvedEffect.trim() !== '') {
-                    if (!newCc.includes(resolvedEffect)) {
-                        newCc.push(resolvedEffect);
+                    if (getCCModifier(resolvedEffect, player, equipment) !== 'immune') {
+                        if (!newCc.includes(resolvedEffect)) {
+                            newCc.push(resolvedEffect);
+                        }
                     }
                 }
             }
@@ -253,8 +286,10 @@ export default function PlayerManager({
             results.push({
                 playerId: player.id,
                 playerName: player.name,
-                ac: player.ac,
+                ac: calculateEffectiveAC(player, equipment),
                 d20,
+                d20Rolls,
+                advantageState,
                 toHit,
                 totalRoll,
                 resultType,
@@ -267,7 +302,14 @@ export default function PlayerManager({
                 saveStat,
                 saveBonus,
                 dc: dcVal,
-                resolvedEffect
+                resolvedEffect,
+                // Per-damage-type source breakdown for modal display
+                damageTypeBreakdowns: (attack.damage || []).map(comp => ({
+                    type: comp.type,
+                    ...getDamageModifierBreakdown(comp.type, player, equipment)
+                })),
+                // Active CC on this player at time of attack
+                activeCc: [...(player.cc || [])]
             });
         });
         
@@ -319,9 +361,10 @@ export default function PlayerManager({
     // Missing state hooks for player card minimization
     const [minimizedPlayers, setMinimizedPlayers] = useState(() => {
         const initial = {};
+        const isStartupMinimized = config?.startupView === 'party-minimized';
         if (Array.isArray(data)) {
             data.forEach(p => {
-                initial[p.id] = false;
+                initial[p.id] = isStartupMinimized;
             });
         }
         return initial;
@@ -476,6 +519,13 @@ export default function PlayerManager({
             resistances: [],
             immunities: [],
             vulnerabilities: [],
+            ccResistances: [],
+            ccImmunities: [],
+            ccVulnerabilities: [],
+            cc: [],
+            buffs: [],
+            buffStates: {},
+            spentBuffs: {},
             attacks: []
         };
         setEnemies(prev => [...prev, e]);
@@ -542,6 +592,13 @@ export default function PlayerManager({
                     resistances: monster.resistances || [],
                     immunities: monster.immunities || [],
                     vulnerabilities: monster.vulnerabilities || [],
+                    ccResistances: monster.ccResistances || [],
+                    ccImmunities: monster.ccImmunities || [],
+                    ccVulnerabilities: monster.ccVulnerabilities || [],
+                    cc: [],
+                    buffs: monster.buffs || [],
+                    buffStates: {},
+                    spentBuffs: {},
                     attacks: monster.attacks || [],
                     classType: monster.classType || 'Enemy',
                     editing: false,
@@ -563,7 +620,10 @@ export default function PlayerManager({
             proficiency: 2, background: 'CR 1',
             abilities: '',
             features: '', skills: {}, saves: {},
-            resistances: [], immunities: [], vulnerabilities: [], attacks: []
+            resistances: [], immunities: [], vulnerabilities: [],
+            ccResistances: [], ccImmunities: [], ccVulnerabilities: [],
+            buffs: [],
+            attacks: []
         };
         updateLibrary([...library, newMonster]);
         selectMonster(enemyId, newMonster);
@@ -571,39 +631,77 @@ export default function PlayerManager({
 
     const applyEnemyHP = (id) => {
         const amount = parseInt(damageAmount);
-        if (isNaN(amount) || amount === 0) { setDamageModalId(null); setDamageAmount(''); return; }
+        if (isNaN(amount) || amount === 0) { setDamageModalId(null); setDamageAmount(''); setIsTempHpCheckboxChecked(false); return; }
         setEnemies(prev => prev.map(e => {
             if (e.id !== id) return e;
-            const newHp = Math.min(e.hpMax, e.hp - amount);
+            let hp = e.hp;
+            let hpTemp = e.hpTemp || 0;
+            let limitBreakUsed = e.limitBreakUsed;
+
+            if (isTempHpCheckboxChecked) {
+                hpTemp = Math.max(hpTemp, Math.abs(amount));
+            } else {
+                if (amount > 0) {
+                    let remainingDamage = amount;
+                    if (hpTemp > 0) {
+                        const absorbed = Math.min(hpTemp, remainingDamage);
+                        hpTemp -= absorbed;
+                        remainingDamage -= absorbed;
+                    }
+                    hp = Math.max(0, hp - remainingDamage);
+                } else {
+                    hp = Math.min(e.hpMax, hp + Math.abs(amount));
+                }
+            }
+
             if (e.classType === 'Boss') {
                 const bossHpStart = e.bossHpStart || e.hpMax;
-                const damageTaken = Math.max(0, bossHpStart - newHp);
-                const rawUltPercent = Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
-                const limitBreakUsed = rawUltPercent < 100 ? false : e.limitBreakUsed;
-                return { ...e, hp: newHp, limitBreakUsed };
+                const damageTaken = Math.max(0, bossHpStart - hp);
+                const rawUltPercent = hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
+                limitBreakUsed = rawUltPercent < 100 ? false : limitBreakUsed;
             }
-            return { ...e, hp: newHp };
+
+            return { ...e, hp, hpTemp, limitBreakUsed };
         }));
         setDamageModalId(null);
         setDamageAmount('');
+        setIsTempHpCheckboxChecked(false);
     };
 
     const getEquipmentBonus = (playerId, stat) => {
+        const player = data.find(p => p.id === playerId);
+        const baseStat = player ? (player[stat] || 10) : 10;
         const equipped = equipment?.equipped?.[playerId];
         if (!equipped) return 0;
-        let total = 0;
+
+        let setVal = 0;
+        let modifierSum = 0;
+
         Object.entries(equipped).forEach(([slotId, slot]) => {
             if (slotId === '__wondrous__') {
                 if (Array.isArray(slot)) {
                     slot.forEach(wItem => {
-                        total += wItem?.modifiers?.[stat] || 0;
+                        modifierSum += wItem?.modifiers?.[stat] || 0;
+                        const sVal = wItem?.setAttributes?.[stat] || 0;
+                        if (sVal > setVal) {
+                            setVal = sVal;
+                        }
                     });
                 }
             } else {
-                total += slot?.modifiers?.[stat] || 0;
+                modifierSum += slot?.modifiers?.[stat] || 0;
+                const sVal = slot?.setAttributes?.[stat] || 0;
+                if (sVal > setVal) {
+                    setVal = sVal;
+                }
             }
         });
-        return total;
+
+        if (setVal > baseStat) {
+            return setVal - baseStat;
+        } else {
+            return modifierSum;
+        }
     };
 
     const effectiveStat = (player, stat) => {
@@ -625,7 +723,7 @@ export default function PlayerManager({
     }, [damageModalId, partyXpModalOpen, isVttFullscreen]);
 
     // Track active/visible state of VTT view and sync bounds
-    const isVttActive = battleMode && isVttOpen && !damageModalId && !partyXpModalOpen && !activeAttackState;
+    const isVttActive = battleMode && isVttOpen && !damageModalId && !partyXpModalOpen && !activeAttackState && !configModalOpen;
 
     // Auto-exit VTT fullscreen if VTT becomes inactive
     useEffect(() => {
@@ -763,7 +861,9 @@ export default function PlayerManager({
             skills: {},
             manaExhaustion: 0,
             background: '', race: '', alignment: '', features: '',
-            resistances: [], immunities: [], vulnerabilities: []
+            resistances: [], immunities: [], vulnerabilities: [],
+            ccResistances: [], ccImmunities: [], ccVulnerabilities: [],
+            buffs: []
         };
         updateData([...data, newPlayer]);
     };
@@ -772,6 +872,210 @@ export default function PlayerManager({
         const level = getLevelInfo(player.xp).level;
         const conMod = calculateModifier(effectiveStat(player, 'con'));
         return Math.max(1, (player.hpBase || 10) + (conMod * level));
+    };
+
+    const getSlotLabel = (slotId) => {
+        const mapping = {
+            head: 'Head',
+            neck: 'Neck',
+            armor: 'Armor',
+            mainHand: 'Main Hand',
+            mainHand2: 'Main Hand 2',
+            offhand: 'Offhand',
+            offhand2: 'Offhand 2',
+            waist: 'Waist',
+            feet: 'Feet',
+            gloves: 'Gloves'
+        };
+        return mapping[slotId] || slotId;
+    };
+
+    const getPlayerBuffs = (player, equipment) => {
+        const list = [];
+        
+        // 1. Character level buffs
+        if (player.buffs) {
+            player.buffs.forEach(b => {
+                list.push({ text: b, source: 'character', sourceName: player.name });
+            });
+        }
+        
+        // 2. Equipped items level buffs
+        const equipped = equipment?.equipped?.[player.id];
+        if (equipped) {
+            Object.entries(equipped).forEach(([slotId, slot]) => {
+                if (slotId === '__wondrous__') {
+                    if (Array.isArray(slot)) {
+                        slot.forEach(w => {
+                            if (w && w.name && w.name.trim().length > 0 && w.buffs) {
+                                w.buffs.forEach(b => {
+                                    list.push({ text: b, source: 'wondrous', sourceName: w.name, slotLabel: 'Wondrous Item' });
+                                });
+                            }
+                        });
+                    }
+                } else {
+                    if (slot && slot.name && slot.name.trim().length > 0 && slot.buffs) {
+                        const slotLabel = getSlotLabel(slotId);
+                        slot.buffs.forEach(b => {
+                            list.push({ text: b, source: 'item', sourceName: slot.name, slotLabel });
+                        });
+                    }
+                }
+            });
+        }
+        
+        return list;
+    };
+
+    const handleRemoveBuffFromTop = (player, buff) => {
+        if (buff.source === 'character') {
+            const updated = (player.buffs || []).filter(x => x !== buff.name);
+            updatePlayer(player.id, 'buffs', updated);
+        } else if (buff.source === 'wondrous') {
+            alert(`This effect comes from the equipped item "${buff.sourceName}" (Wondrous Item). To remove it, please unequip the item or edit the item's properties.`);
+        } else {
+            alert(`This effect comes from the equipped item "${buff.sourceName}" (${buff.slotLabel}). To remove it, please unequip the item or edit the item's properties.`);
+        }
+    };
+
+    const getPlayerBuffsWithConfig = (player, equipment) => {
+        return getPlayerBuffs(player, equipment).map(buff => {
+            const config = buffsDatabase.find(x => x.name === buff.text);
+            return {
+                ...buff,
+                name: buff.text,
+                config
+            };
+        });
+    };
+
+    const getEnemyBuffsList = (enemy) => {
+        return (enemy.buffs || []).map(b => {
+            const config = buffsDatabase.find(x => x.name === b);
+            return { name: b, config };
+        });
+    };
+
+    const handleRemoveEnemyBuff = (enemyId, buffName) => {
+        const enemy = enemies.find(e => e.id === enemyId);
+        if (!enemy) return;
+        const updated = (enemy.buffs || []).filter(x => x !== buffName);
+        const nextStates = { ...(enemy.buffStates || {}) };
+        const nextSpent = { ...(enemy.spentBuffs || {}) };
+        delete nextStates[buffName];
+        delete nextSpent[buffName];
+        setEnemies(prev => prev.map(e => e.id === enemyId ? {
+            ...e,
+            buffs: updated,
+            buffStates: nextStates,
+            spentBuffs: nextSpent
+        } : e));
+    };
+
+    const handleToggleBuff = (entity, buff, isPlayer) => {
+        const config = buff.config;
+        if (!config) return;
+
+        const name = buff.name;
+        const isToggle = config.type === 'toggle';
+        const isFixed = config.type === 'fixed';
+        const isTurn = config.type === 'turn';
+        const isRestLimited = config.oncePerRest === 'short' || config.oncePerRest === 'long';
+
+        const spentBuffs = { ...(entity.spentBuffs || {}) };
+        const buffStates = { ...(entity.buffStates || {}) };
+
+        if (spentBuffs[name]) {
+            alert(`"${name}" has already been used and is spent. A rest is required.`);
+            return;
+        }
+
+        if (config.type === 'turn') {
+            const rolled = rollFormula(config.turnFormula || '0');
+            const amt = rolled.total;
+            
+            let msg = '';
+            let hpCurrent = entity.hpCurrent !== undefined ? entity.hpCurrent : entity.hp;
+            let hpMax = entity.hpCurrent !== undefined ? calculateMaxHP(entity) : entity.hpMax;
+            let manaCurrent = entity.manaCurrent !== undefined ? entity.manaCurrent : 0;
+            let manaMax = entity.hpCurrent !== undefined ? calculateMaxMana(entity) : 0;
+            let tempHp = entity.hpTemp || 0;
+
+            if (config.turnType === 'healHP') {
+                const nextHp = Math.min(hpMax, hpCurrent + amt);
+                msg = `Healed ${entity.name} for ${amt} HP (${hpCurrent} -> ${nextHp})`;
+                hpCurrent = nextHp;
+            } else if (config.turnType === 'damageHP') {
+                const nextHp = Math.max(0, hpCurrent - amt);
+                msg = `Dealt ${amt} damage to ${entity.name} (${hpCurrent} -> ${nextHp})`;
+                hpCurrent = nextHp;
+            } else if (config.turnType === 'healTempHP') {
+                const nextTemp = Math.max(tempHp, amt);
+                msg = `${entity.name} gained ${amt} Temp HP (current: ${tempHp} -> new: ${nextTemp})`;
+                tempHp = nextTemp;
+            } else if (config.turnType === 'healMana') {
+                const nextMana = Math.min(manaMax, manaCurrent + amt);
+                msg = `Restored ${amt} Mana to ${entity.name} (${manaCurrent} -> ${nextMana})`;
+                manaCurrent = nextMana;
+            } else if (config.turnType === 'damageMana') {
+                const nextMana = Math.max(0, manaCurrent - amt);
+                msg = `Drained ${amt} Mana from ${entity.name} (${manaCurrent} -> ${nextMana})`;
+                manaCurrent = nextMana;
+            }
+
+            let formulaLog = `rolled ${config.turnFormula} = ${rolled.total}`;
+            if (rolled.rolls.length > 0) {
+                formulaLog = `rolled [${rolled.rolls.join('+')}]${rolled.modifier !== 0 ? (rolled.modifier > 0 ? '+' + rolled.modifier : rolled.modifier) : ''} = ${rolled.total}`;
+            }
+            const logText = `\n[Turn Buff: ${name}] ${msg} (${formulaLog})`;
+            setBattleNotes(prev => (prev ? prev + logText : logText));
+
+            if (isRestLimited) {
+                spentBuffs[name] = true;
+            }
+
+            if (isPlayer) {
+                updatePlayer(entity.id, {
+                    hpCurrent,
+                    manaCurrent,
+                    hpTemp: tempHp,
+                    spentBuffs
+                });
+            } else {
+                setEnemies(prev => prev.map(e => e.id === entity.id ? {
+                    ...e,
+                    hp: hpCurrent,
+                    hpTemp: tempHp,
+                    spentBuffs
+                } : e));
+            }
+            return;
+        }
+
+        if (isToggle) {
+            const currentlyActive = buffStates[name] !== false;
+            if (currentlyActive) {
+                buffStates[name] = false;
+                if (isRestLimited) {
+                    spentBuffs[name] = true;
+                }
+            } else {
+                buffStates[name] = true;
+            }
+        } else if (isFixed) {
+            if (isRestLimited) {
+                if (window.confirm(`Use rest-limited buff "${name}"? This will consume its charge until the next rest.`)) {
+                    spentBuffs[name] = true;
+                }
+            }
+        }
+
+        if (isPlayer) {
+            updatePlayer(entity.id, { buffStates, spentBuffs });
+        } else {
+            setEnemies(prev => prev.map(e => e.id === entity.id ? { ...e, buffStates, spentBuffs } : e));
+        }
     };
 
     const getPlayerSpriteInfo = (player) => {
@@ -808,7 +1112,7 @@ export default function PlayerManager({
         if (cls === 'boss') {
             const bossHpStart = enemy.bossHpStart || enemy.hpMax;
             const damageTaken = Math.max(0, bossHpStart - enemy.hp);
-            const rawUltPercent = Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
+            const rawUltPercent = enemy.hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
             isPowered = rawUltPercent >= 100 && !enemy.limitBreakUsed;
         }
         const isHurt = enemy.hp < enemy.hpMax * 0.5;
@@ -828,13 +1132,22 @@ export default function PlayerManager({
                     let nextP = { ...p, ...fieldOrFields };
                     if (nextP.hpCurrent !== undefined) {
                         nextP.hpCurrent = Math.min(nextP.hpCurrent, calculateMaxHP(nextP));
+                        if (nextP.hpCurrent <= 0) {
+                            nextP.ultCurrent = 0;
+                        }
                     }
                     return nextP;
                 } else {
                     let val = value;
-                    if (fieldOrFields === 'hpCurrent') val = Math.min(val, calculateMaxHP(p));
+                    let extra = {};
+                    if (fieldOrFields === 'hpCurrent') {
+                        val = Math.min(val, calculateMaxHP(p));
+                        if (val <= 0) {
+                            extra.ultCurrent = 0;
+                        }
+                    }
                     if (fieldOrFields === 'ultCurrent') val = Math.max(0, Math.min(val, p.ultMax));
-                    return { ...p, [fieldOrFields]: val };
+                    return { ...p, [fieldOrFields]: val, ...extra };
                 }
             }
             return p;
@@ -880,6 +1193,10 @@ export default function PlayerManager({
     const addCc = (playerId, effect) => {
         const player = data.find(p => p.id === playerId);
         if (!player) return;
+        if (getCCModifier(effect, player, equipment) === 'immune') {
+            alert(`${player.name} is immune to ${effect}!`);
+            return;
+        }
         const currentCc = player.cc || [];
         if (!currentCc.includes(effect)) {
             updatePlayer(playerId, 'cc', [...currentCc, effect]);
@@ -891,6 +1208,26 @@ export default function PlayerManager({
         if (!player) return;
         const currentCc = player.cc || [];
         updatePlayer(playerId, 'cc', currentCc.filter(x => x !== effect));
+    };
+
+    const addEnemyCc = (enemyId, effect) => {
+        const enemy = enemies.find(e => e.id === enemyId);
+        if (!enemy) return;
+        if (getCCModifier(effect, enemy, null) === 'immune') {
+            alert(`${enemy.name} is immune to ${effect}!`);
+            return;
+        }
+        const currentCc = enemy.cc || [];
+        if (!currentCc.includes(effect)) {
+            updateEnemy(enemyId, 'cc', [...currentCc, effect]);
+        }
+    };
+
+    const removeEnemyCc = (enemyId, effect) => {
+        const enemy = enemies.find(e => e.id === enemyId);
+        if (!enemy) return;
+        const currentCc = enemy.cc || [];
+        updateEnemy(enemyId, 'cc', currentCc.filter(x => x !== effect));
     };
 
     const calculateModifier = (score) => {
@@ -1012,6 +1349,10 @@ export default function PlayerManager({
             }
         }
 
+        if (newHP <= 0) {
+            newUlt = 0;
+        }
+
         const updated = data.map(p => {
             if (p.id === id) return { ...p, hpCurrent: newHP, hpTemp: newHpTemp, ultCurrent: newUlt };
             return p;
@@ -1034,13 +1375,208 @@ export default function PlayerManager({
     };
 
     const shortRest = () => {
-        const updated = data.map(p => p.inParty ? { ...p, hpCurrent: Math.min(calculateMaxHP(p), p.hpCurrent + Math.floor(calculateMaxHP(p) * 0.5)) } : p);
+        const updated = data.map(p => {
+            if (!p.inParty) return p;
+            const nextSpent = { ...(p.spentBuffs || {}) };
+            Object.keys(nextSpent).forEach(buffName => {
+                const config = buffsDatabase.find(b => b.name === buffName);
+                if (config && config.oncePerRest === 'short') {
+                    delete nextSpent[buffName];
+                }
+            });
+            return {
+                ...p,
+                hpCurrent: Math.min(calculateMaxHP(p), p.hpCurrent + Math.floor(calculateMaxHP(p) * 0.5)),
+                ultCurrent: Math.max(0, Math.round((p.ultCurrent || 0) * 0.75)),
+                spentBuffs: nextSpent
+            };
+        });
         updateData(updated);
+
+        // Also update enemies
+        setEnemies(prev => prev.map(e => {
+            const nextSpent = { ...(e.spentBuffs || {}) };
+            Object.keys(nextSpent).forEach(buffName => {
+                const config = buffsDatabase.find(b => b.name === buffName);
+                if (config && config.oncePerRest === 'short') {
+                    delete nextSpent[buffName];
+                }
+            });
+            return { ...e, spentBuffs: nextSpent };
+        }));
     };
 
     const longRest = () => {
-        const updated = data.map(p => p.inParty ? { ...p, hpCurrent: calculateMaxHP(p), manaCurrent: calculateMaxMana(p) } : p);
+        const updated = data.map(p => {
+            if (!p.inParty) return p;
+            return {
+                ...p,
+                hpCurrent: calculateMaxHP(p),
+                manaCurrent: calculateMaxMana(p),
+                ultCurrent: Math.max(0, Math.round((p.ultCurrent || 0) * 0.5)),
+                spentBuffs: {} // Reset all spent buffs
+            };
+        });
         updateData(updated);
+
+        // Also update enemies
+        setEnemies(prev => prev.map(e => ({ ...e, spentBuffs: {} })));
+    };
+
+    const triggerTurnEffects = () => {
+        let logLines = [];
+        let changedPlayers = {}; // id -> fields
+        let changedEnemies = {}; // id -> fields
+
+        // 1. Process Players
+        data.forEach(player => {
+            if (!player.inParty) return;
+            const buffs = getPlayerBuffsWithConfig(player, equipment);
+            let hpCurrent = player.hpCurrent;
+            let hpMax = calculateMaxHP(player);
+            let manaCurrent = player.manaCurrent;
+            let manaMax = calculateMaxMana(player);
+            let tempHp = player.hpTemp || 0;
+            const spentBuffs = { ...(player.spentBuffs || {}) };
+            let hasChanges = false;
+
+            buffs.forEach(buff => {
+                const config = buff.config;
+                if (!config || config.type !== 'turn') return;
+                if (spentBuffs[buff.name]) return; // Skip if spent
+
+                const rolled = rollFormula(config.turnFormula || '0');
+                const amt = rolled.total;
+                let msg = '';
+
+                if (config.turnType === 'healHP') {
+                    const nextHp = Math.min(hpMax, hpCurrent + amt);
+                    msg = `Healed ${player.name} for ${amt} HP (${hpCurrent} -> ${nextHp})`;
+                    hpCurrent = nextHp;
+                    hasChanges = true;
+                } else if (config.turnType === 'damageHP') {
+                    const nextHp = Math.max(0, hpCurrent - amt);
+                    msg = `Dealt ${amt} damage to ${player.name} (${hpCurrent} -> ${nextHp})`;
+                    hpCurrent = nextHp;
+                    hasChanges = true;
+                } else if (config.turnType === 'healTempHP') {
+                    const nextTemp = Math.max(tempHp, amt);
+                    msg = `${player.name} gained ${amt} Temp HP (current: ${tempHp} -> new: ${nextTemp})`;
+                    tempHp = nextTemp;
+                    hasChanges = true;
+                } else if (config.turnType === 'healMana') {
+                    const nextMana = Math.min(manaMax, manaCurrent + amt);
+                    msg = `Restored ${amt} Mana to ${player.name} (${manaCurrent} -> ${nextMana})`;
+                    manaCurrent = nextMana;
+                    hasChanges = true;
+                } else if (config.turnType === 'damageMana') {
+                    const nextMana = Math.max(0, manaCurrent - amt);
+                    msg = `Drained ${amt} Mana from ${player.name} (${manaCurrent} -> ${nextMana})`;
+                    manaCurrent = nextMana;
+                    hasChanges = true;
+                }
+
+                if (msg) {
+                    let formulaLog = `rolled ${config.turnFormula} = ${rolled.total}`;
+                    if (rolled.rolls.length > 0) {
+                        formulaLog = `rolled [${rolled.rolls.join('+')}]${rolled.modifier !== 0 ? (rolled.modifier > 0 ? '+' + rolled.modifier : rolled.modifier) : ''} = ${rolled.total}`;
+                    }
+                    logLines.push(`[Turn Buff: ${buff.name}] ${msg} (${formulaLog})`);
+                }
+
+                if (config.oncePerRest === 'short' || config.oncePerRest === 'long') {
+                    spentBuffs[buff.name] = true;
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                changedPlayers[player.id] = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+            }
+        });
+
+        // 2. Process Enemies
+        enemies.forEach(enemy => {
+            const buffs = getEnemyBuffsList(enemy);
+            let hpCurrent = enemy.hp;
+            let hpMax = enemy.hpMax;
+            let tempHp = enemy.hpTemp || 0;
+            const spentBuffs = { ...(enemy.spentBuffs || {}) };
+            let hasChanges = false;
+
+            buffs.forEach(buff => {
+                const config = buff.config;
+                if (!config || config.type !== 'turn') return;
+                if (spentBuffs[buff.name]) return;
+
+                const rolled = rollFormula(config.turnFormula || '0');
+                const amt = rolled.total;
+                let msg = '';
+
+                if (config.turnType === 'healHP') {
+                    const nextHp = Math.min(hpMax, hpCurrent + amt);
+                    msg = `Healed ${enemy.name} for ${amt} HP (${hpCurrent} -> ${nextHp})`;
+                    hpCurrent = nextHp;
+                    hasChanges = true;
+                } else if (config.turnType === 'damageHP') {
+                    const nextHp = Math.max(0, hpCurrent - amt);
+                    msg = `Dealt ${amt} damage to ${enemy.name} (${hpCurrent} -> ${nextHp})`;
+                    hpCurrent = nextHp;
+                    hasChanges = true;
+                } else if (config.turnType === 'healTempHP') {
+                    const nextTemp = Math.max(tempHp, amt);
+                    msg = `${enemy.name} gained ${amt} Temp HP (current: ${tempHp} -> new: ${nextTemp})`;
+                    tempHp = nextTemp;
+                    hasChanges = true;
+                }
+
+                if (msg) {
+                    let formulaLog = `rolled ${config.turnFormula} = ${rolled.total}`;
+                    if (rolled.rolls.length > 0) {
+                        formulaLog = `rolled [${rolled.rolls.join('+')}]${rolled.modifier !== 0 ? (rolled.modifier > 0 ? '+' + rolled.modifier : rolled.modifier) : ''} = ${rolled.total}`;
+                    }
+                    logLines.push(`[Turn Buff: ${buff.name}] ${msg} (${formulaLog})`);
+                }
+
+                if (config.oncePerRest === 'short' || config.oncePerRest === 'long') {
+                    spentBuffs[buff.name] = true;
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                changedEnemies[enemy.id] = { hp: hpCurrent, hpTemp: tempHp, spentBuffs };
+            }
+        });
+
+        // 3. Commit state changes
+        if (Object.keys(changedPlayers).length > 0) {
+            updateData(data.map(p => {
+                if (changedPlayers[p.id]) {
+                    return { ...p, ...changedPlayers[p.id] };
+                }
+                return p;
+            }));
+        }
+
+        if (Object.keys(changedEnemies).length > 0) {
+            setEnemies(prev => prev.map(e => {
+                if (changedEnemies[e.id]) {
+                    return { ...e, ...changedEnemies[e.id] };
+                }
+                return e;
+            }));
+        }
+
+        // 4. Log to battle notes
+        if (logLines.length > 0) {
+            const separator = `\n--- Turn Resolved ---`;
+            const joinedLogs = `\n` + logLines.join(`\n`);
+            setBattleNotes(prev => (prev ? prev + separator + joinedLogs : separator + joinedLogs));
+        } else {
+            const separator = `\n--- Turn Resolved (No active effects) ---`;
+            setBattleNotes(prev => (prev ? prev + separator : separator));
+        }
     };
 
     const givePartyXP = (type) => {
@@ -1241,6 +1777,15 @@ export default function PlayerManager({
                             {isVttOpen ? '🗺️ Hide VTT' : '🗺️ Show VTT'}
                         </button>
                     )}
+                    {battleMode && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={triggerTurnEffects}
+                            style={{ marginRight: '0.25rem' }}
+                        >
+                            ⏳ Turn
+                        </button>
+                    )}
                     <button
                         className={`btn ${battleMode ? 'btn-secondary' : 'btn-fight'}`}
                         onClick={() => {
@@ -1287,92 +1832,268 @@ export default function PlayerManager({
                         return (
                             <div key={player.id} data-player-id={player.id} className={`glass-panel integrated-player-card ${!player.inParty ? 'inactive' : ''} ${isPlayerMinimized(player.id) ? 'minimized-card' : ''}`}>
                                 <div className="player-card-header">
-                                    <div className="player-info-container">
-                                        <div className={`player-sprite-container sprite-state-${spriteState}`} title={`State: ${spriteState.toUpperCase()}`}>
-                                            <img src={`./sprites/${spriteName}.png`} alt={player.classType} className="player-sprite-img" />
-                                            {spriteState === 'winded' && <span className="sweat-drop-overlay">💦</span>}
-                                        </div>
-                                        <div className="player-info">
-                                            {editingId === player.id ? (
-                                                <input
-                                                    className="input title-input"
-                                                    value={player.name}
-                                                    onChange={e => updatePlayer(player.id, 'name', e.target.value)}
-                                                    onBlur={() => setEditingId(null)}
-                                                    autoFocus
-                                                />
-                                            ) : (
-                                                <h3 onClick={() => setEditingId(player.id)}>{player.name}</h3>
-                                            )}
+                                    <div className="player-header-left">
+                                        <div className="player-info-container">
+                                            <div className={`player-sprite-container sprite-state-${spriteState}`} title={`State: ${spriteState.toUpperCase()}`}>
+                                                <img src={`./sprites/${spriteName}.png`} alt={player.classType} className="player-sprite-img" />
+                                                {spriteState === 'winded' && <span className="sweat-drop-overlay">💦</span>}
+                                            </div>
+                                            <div className="player-info">
+                                                {editingId === player.id ? (
+                                                    <input
+                                                        className="input title-input"
+                                                        value={player.name}
+                                                        onChange={e => updatePlayer(player.id, 'name', e.target.value)}
+                                                        onBlur={() => setEditingId(null)}
+                                                        autoFocus
+                                                    />
+                                                ) : (
+                                                    <h3 onClick={() => setEditingId(player.id)}>{player.name}</h3>
+                                                )}
 
-                                            <div className="player-subtitle">
-                                                <select
-                                                    className="input inline-input class-input class-dropdown"
-                                                    value={player.classType || 'Default'}
-                                                    onChange={e => updatePlayer(player.id, 'classType', e.target.value)}
-                                                >
-                                                    {['Artificer', 'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard', 'Default'].map(cls => (
-                                                        <option key={cls} value={cls}>{cls}</option>
-                                                    ))}
-                                                </select>
-                                                <span>Lv. {getLevelInfo(player.xp).level}</span>
+                                                <div className="player-subtitle">
+                                                    <select
+                                                        className="input inline-input class-input class-dropdown"
+                                                        value={player.classType || 'Default'}
+                                                        onChange={e => updatePlayer(player.id, 'classType', e.target.value)}
+                                                    >
+                                                        {['Artificer', 'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard', 'Default'].map(cls => (
+                                                            <option key={cls} value={cls}>{cls}</option>
+                                                        ))}
+                                                    </select>
+                                                    <span>Lv. {getLevelInfo(player.xp).level}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="player-header-left-rows">
+                                            {/* Crowd Control Badges & Add Button */}
+                                            <div className="player-cc-container" onClick={e => e.stopPropagation()}>
+                                                <span className="cc-header-tag">CC</span>
+                                                {(player.cc || []).map(cc => (
+                                                    <button
+                                                        key={cc}
+                                                        className="player-cc-badge"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeCc(player.id, cc);
+                                                        }}
+                                                        title={`Click to cleanse ${cc}`}
+                                                    >
+                                                        {cc} <span className="cleanse-x">×</span>
+                                                    </button>
+                                                ))}
+                                                <div className="player-cc-add-dropdown">
+                                                    <button
+                                                        className="player-cc-add-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setCcDropdownPlayerId(ccDropdownPlayerId === player.id ? null : player.id);
+                                                        }}
+                                                        title="Add Crowd Control effect"
+                                                    >
+                                                        +
+                                                    </button>
+                                                    {ccDropdownPlayerId === player.id && (
+                                                        <div className="cc-dropdown-menu">
+                                                            {ALL_CC_EFFECTS.map(effect => {
+                                                                const hasCc = (player.cc || []).includes(effect);
+                                                                return (
+                                                                    <button
+                                                                        key={effect}
+                                                                        disabled={hasCc}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            addCc(player.id, effect);
+                                                                            setCcDropdownPlayerId(null);
+                                                                        }}
+                                                                        className="cc-dropdown-item"
+                                                                    >
+                                                                        {effect}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Buffs & Debuffs Row */}
+                                            <div className="player-buff-container" onClick={e => e.stopPropagation()}>
+                                                <span className="buff-header-tag">Buff/Debuff</span>
+                                                {(() => {
+                                                    const allBuffs = getPlayerBuffsWithConfig(player, equipment);
+                                                    const hasManyBuffs = allBuffs.length >= 5;
+                                                    const isExpanded = !!expandedPlayers[player.id];
+                                                    const shouldCollapse = hasManyBuffs && !isExpanded;
+
+                                                    if (shouldCollapse) {
+                                                        return (
+                                                            <div 
+                                                                className="player-buff-badge buffs-expand-badge" 
+                                                                style={{ 
+                                                                    cursor: 'pointer',
+                                                                    background: 'rgba(59, 130, 246, 0.2)',
+                                                                    borderColor: 'rgba(59, 130, 246, 0.4)',
+                                                                    color: 'var(--text-primary)'
+                                                                }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setExpandedPlayers(prev => ({ ...prev, [player.id]: true }));
+                                                                }}
+                                                                title="Click to expand buffs"
+                                                            >
+                                                                (Buffs +)
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return allBuffs.map((buff, idx) => {
+                                                        const isToggle = buff.config?.type === 'toggle';
+                                                        const isFixed = buff.config?.type === 'fixed' || !buff.config;
+                                                        const isTurn = buff.config?.type === 'turn';
+                                                        const isSpent = (player.spentBuffs || {})[buff.name] === true;
+                                                        const isToggledActive = (player.buffStates || {})[buff.name] !== false;
+                                                        const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+
+                                                        let badgeClass = "player-buff-badge";
+                                                        if (isSpent) badgeClass += " buff-spent";
+                                                        else if (isToggle && !isActive) badgeClass += " buff-inactive";
+
+                                                        return (
+                                                            <div 
+                                                                key={idx} 
+                                                                className={badgeClass} 
+                                                                title={(() => {
+                                                                    const desc = buff.config?.description || '';
+                                                                    const mainText = isSpent ? `${buff.name} (Spent - Rest required)` : `Source: ${buff.sourceName} (${buff.slotLabel || 'Character'}). Click to toggle/use.`;
+                                                                    return desc ? `${desc}\n${mainText}` : mainText;
+                                                                })()}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleToggleBuff(player, buff, true);
+                                                                }}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                {buff.name} {isToggle && (isActive ? "🟢" : "🔴")} {isSpent && "💤"}
+                                                                <button
+                                                                    type="button"
+                                                                    className="buff-remove-x"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleRemoveBuffFromTop(player, buff);
+                                                                    }}
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    });
+                                                })()}
+                                                <div className="player-buff-add-container">
+                                                    {buffInputPlayerId === player.id ? (
+                                                        <div className="buff-inline-search-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search buff..."
+                                                                className="input buff-inline-input"
+                                                                value={buffSearchText}
+                                                                onChange={(e) => setBuffSearchText(e.target.value)}
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Escape') {
+                                                                        setBuffInputPlayerId(null);
+                                                                        setBuffSearchText('');
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button 
+                                                                type="button" 
+                                                                className="buff-inline-cancel-btn" 
+                                                                onClick={() => {
+                                                                    setBuffInputPlayerId(null);
+                                                                    setBuffSearchText('');
+                                                                }}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                            <div className="cc-dropdown-menu" style={{ left: 0, right: 'auto', width: '200px' }}>
+                                                                {buffsDatabase
+                                                                    .filter(b => {
+                                                                        const isAlreadyActive = (player.buffs || []).includes(b.name);
+                                                                        const matchesSearch = b.name.toLowerCase().includes(buffSearchText.toLowerCase());
+                                                                        return !isAlreadyActive && matchesSearch;
+                                                                    })
+                                                                    .map(b => (
+                                                                        <button
+                                                                            key={b.id}
+                                                                            type="button"
+                                                                            className="cc-dropdown-item"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                const currentBuffs = player.buffs || [];
+                                                                                if (!currentBuffs.includes(b.name)) {
+                                                                                    updatePlayer(player.id, 'buffs', [...currentBuffs, b.name]);
+                                                                                }
+                                                                                setBuffInputPlayerId(null);
+                                                                                setBuffSearchText('');
+                                                                            }}
+                                                                        >
+                                                                            {b.name}
+                                                                        </button>
+                                                                    ))}
+                                                                {buffsDatabase.filter(b => !(player.buffs || []).includes(b.name) && b.name.toLowerCase().includes(buffSearchText.toLowerCase())).length === 0 && (
+                                                                    <div style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                                        No matching buffs
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {(() => {
+                                                                const allBuffs = getPlayerBuffsWithConfig(player, equipment);
+                                                                const hasManyBuffs = allBuffs.length >= 5;
+                                                                const isExpanded = !!expandedPlayers[player.id];
+                                                                if (hasManyBuffs && isExpanded) {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="player-buff-collapse-btn"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setExpandedPlayers(prev => ({ ...prev, [player.id]: false }));
+                                                                            }}
+                                                                            title="Collapse Buffs"
+                                                                            style={{ marginRight: '0.25rem' }}
+                                                                        >
+                                                                            --
+                                                                        </button>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+                                                            <button
+                                                                className="player-buff-add-btn"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setBuffInputPlayerId(player.id);
+                                                                    setBuffSearchText('');
+                                                                }}
+                                                                title="Add Buff/Debuff"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Crowd Control Badges & Add Button */}
-                                    <div className="player-cc-container" onClick={e => e.stopPropagation()}>
-                                        {(player.cc || []).map(cc => (
-                                            <button
-                                                key={cc}
-                                                className="player-cc-badge"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeCc(player.id, cc);
-                                                }}
-                                                title={`Click to cleanse ${cc}`}
-                                            >
-                                                {cc} <span className="cleanse-x">×</span>
-                                            </button>
-                                        ))}
-                                        <div className="player-cc-add-dropdown">
-                                            <button
-                                                className="player-cc-add-btn"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setCcDropdownPlayerId(ccDropdownPlayerId === player.id ? null : player.id);
-                                                }}
-                                                title="Add Crowd Control effect"
-                                            >
-                                                +
-                                            </button>
-                                            {ccDropdownPlayerId === player.id && (
-                                                <div className="cc-dropdown-menu">
-                                                    {ALL_CC_EFFECTS.map(effect => {
-                                                        const hasCc = (player.cc || []).includes(effect);
-                                                        return (
-                                                            <button
-                                                                key={effect}
-                                                                disabled={hasCc}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    addCc(player.id, effect);
-                                                                    setCcDropdownPlayerId(null);
-                                                                }}
-                                                                className="cc-dropdown-item"
-                                                            >
-                                                                {effect}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
                                     <div className="card-top-right">
-                                        <div className="armor-class-badge" title="Armor Class (AC)">
-                                            🛡️ {player.ac}
+                                        <div className="armor-class-badge" title={`Armor Class (AC) [Base: ${player.ac || 10}]`}>
+                                            🛡️ {calculateEffectiveAC(player, equipment)}
                                         </div>
                                         <div className="player-controls">
                                             <button
@@ -1837,12 +2558,157 @@ export default function PlayerManager({
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* CC Resistances & Vulnerabilities Editor */}
+                                            <div className="rp-field full-width player-resistances-section">
+                                                <label>CC Resistances &amp; Vulnerabilities</label>
+                                                <div className="damage-mods-container">
+                                                    {/* CC Resistances */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccResistances || []).map(r => (
+                                                                <span key={r} className="damage-pill pill-resistance">
+                                                                    {r}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccResistances || []).filter(x => x !== r);
+                                                                        updatePlayer(player.id, 'ccResistances', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccResistances || []).includes(val)) {
+                                                                        updatePlayer(player.id, 'ccResistances', [...(player.ccResistances || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccResistances || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Immunities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccImmunities || []).map(i => (
+                                                                <span key={i} className="damage-pill pill-immunity">
+                                                                    {i}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccImmunities || []).filter(x => x !== i);
+                                                                        updatePlayer(player.id, 'ccImmunities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccImmunities || []).includes(val)) {
+                                                                        updatePlayer(player.id, 'ccImmunities', [...(player.ccImmunities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccImmunities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Vulnerabilities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccVulnerabilities || []).map(v => (
+                                                                <span key={v} className="damage-pill pill-vulnerability">
+                                                                    {v}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccVulnerabilities || []).filter(x => x !== v);
+                                                                        updatePlayer(player.id, 'ccVulnerabilities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccVulnerabilities || []).includes(val)) {
+                                                                        updatePlayer(player.id, 'ccVulnerabilities', [...(player.ccVulnerabilities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Buffs & Debuffs Section */}
+                                            <div className="rp-field full-width player-buffs-section">
+                                                <label>Buffs &amp; Debuffs (Character Level)</label>
+                                                <div className="buffs-editor-container">
+                                                    <div className="buffs-editor-pills">
+                                                        {(player.buffs || []).map(b => (
+                                                            <span key={b} className="buff-pill">
+                                                                {b}
+                                                                <button
+                                                                    type="button"
+                                                                    className="pill-remove-btn"
+                                                                    onClick={() => {
+                                                                        const updated = (player.buffs || []).filter(x => x !== b);
+                                                                        updatePlayer(player.id, 'buffs', updated);
+                                                                    }}
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <select
+                                                        className="input buff-add-input"
+                                                        value=""
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val) {
+                                                                const current = player.buffs || [];
+                                                                if (!current.includes(val)) {
+                                                                    updatePlayer(player.id, 'buffs', [...current, val]);
+                                                                }
+                                                            }
+                                                        }}
+                                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                                    >
+                                                        <option value="">+ Add Buff/Debuff...</option>
+                                                        {buffsDatabase
+                                                            .filter(b => !(player.buffs || []).includes(b.name))
+                                                            .map(b => (
+                                                                <option key={b.id} value={b.name}>{b.name}</option>
+                                                            ))
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="combat-tab-content integrated-combat">
                                             <div className="combat-stats-row mini-combat-row">
                                                 <div className="combat-stat-box">
-                                                    <label>AC</label>
+                                                    <label>Base AC</label>
                                                     <input
                                                         type="number"
                                                         className="input combat-input"
@@ -1887,6 +2753,105 @@ export default function PlayerManager({
                                                 </div>
                                             </div>
 
+                                            {/* CC Resistances & Vulnerabilities Editor */}
+                                            <div className="rp-field full-width player-resistances-section">
+                                                <label>CC Resistances &amp; Vulnerabilities</label>
+                                                <div className="damage-mods-container">
+                                                    {/* CC Resistances */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccResistances || []).map(r => (
+                                                                <span key={r} className="damage-pill pill-resistance">
+                                                                    {r}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccResistances || []).filter(x => x !== r);
+                                                                        updateEnemy(player.id, 'ccResistances', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccResistances || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccResistances', [...(player.ccResistances || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccResistances || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Immunities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccImmunities || []).map(i => (
+                                                                <span key={i} className="damage-pill pill-immunity">
+                                                                    {i}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccImmunities || []).filter(x => x !== i);
+                                                                        updateEnemy(player.id, 'ccImmunities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccImmunities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccImmunities', [...(player.ccImmunities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccImmunities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Vulnerabilities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccVulnerabilities || []).map(v => (
+                                                                <span key={v} className="damage-pill pill-vulnerability">
+                                                                    {v}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccVulnerabilities || []).filter(x => x !== v);
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccVulnerabilities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', [...(player.ccVulnerabilities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="starve-row" style={{ marginTop: '0.5rem' }}>
                                                 <div className="starve-control" title="MP Starve: Each stack increases spell costs by 100%. Adjust manually.">
                                                     <button
@@ -1903,11 +2868,209 @@ export default function PlayerManager({
                                                 </div>
                                             </div>
 
+                                            {/* CC Resistances & Vulnerabilities Editor */}
+                                            <div className="rp-field full-width player-resistances-section">
+                                                <label>CC Resistances &amp; Vulnerabilities</label>
+                                                <div className="damage-mods-container">
+                                                    {/* CC Resistances */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccResistances || []).map(r => (
+                                                                <span key={r} className="damage-pill pill-resistance">
+                                                                    {r}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccResistances || []).filter(x => x !== r);
+                                                                        updateEnemy(player.id, 'ccResistances', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccResistances || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccResistances', [...(player.ccResistances || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccResistances || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Immunities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccImmunities || []).map(i => (
+                                                                <span key={i} className="damage-pill pill-immunity">
+                                                                    {i}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccImmunities || []).filter(x => x !== i);
+                                                                        updateEnemy(player.id, 'ccImmunities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccImmunities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccImmunities', [...(player.ccImmunities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccImmunities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Vulnerabilities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccVulnerabilities || []).map(v => (
+                                                                <span key={v} className="damage-pill pill-vulnerability">
+                                                                    {v}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccVulnerabilities || []).filter(x => x !== v);
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccVulnerabilities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', [...(player.ccVulnerabilities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="carrying-capacity mini-capacity">
                                                 <h4>Capacity</h4>
                                                 <div className="capacity-bar">
                                                     Max Load: {(player.str || 10) * 15} lbs <br />
                                                     Push/Drag/Lift: {(player.str || 10) * 30} lbs
+                                                </div>
+                                            </div>
+
+                                            {/* CC Resistances & Vulnerabilities Editor */}
+                                            <div className="rp-field full-width player-resistances-section">
+                                                <label>CC Resistances &amp; Vulnerabilities</label>
+                                                <div className="damage-mods-container">
+                                                    {/* CC Resistances */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccResistances || []).map(r => (
+                                                                <span key={r} className="damage-pill pill-resistance">
+                                                                    {r}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccResistances || []).filter(x => x !== r);
+                                                                        updateEnemy(player.id, 'ccResistances', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccResistances || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccResistances', [...(player.ccResistances || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccResistances || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Immunities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccImmunities || []).map(i => (
+                                                                <span key={i} className="damage-pill pill-immunity">
+                                                                    {i}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccImmunities || []).filter(x => x !== i);
+                                                                        updateEnemy(player.id, 'ccImmunities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccImmunities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccImmunities', [...(player.ccImmunities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccImmunities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CC Vulnerabilities */}
+                                                    <div className="damage-mod-row">
+                                                        <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                        <div className="damage-mod-pills">
+                                                            {(player.ccVulnerabilities || []).map(v => (
+                                                                <span key={v} className="damage-pill pill-vulnerability">
+                                                                    {v}
+                                                                    <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                        const updated = (player.ccVulnerabilities || []).filter(x => x !== v);
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', updated);
+                                                                    }}>×</button>
+                                                                </span>
+                                                            ))}
+                                                            <select
+                                                                className="input pill-select-add"
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val && !(player.ccVulnerabilities || []).includes(val)) {
+                                                                        updateEnemy(player.id, 'ccVulnerabilities', [...(player.ccVulnerabilities || []), val]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">+ Add</option>
+                                                                {ALL_CC_EFFECTS.filter(t => !(player.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -2008,82 +3171,255 @@ export default function PlayerManager({
 
                                             {/* Header */}
                                             <div className="player-card-header">
-                                                <div className="player-info-container">
-                                                    <div className={`player-sprite-container sprite-state-${spriteState}`} title={`State: ${spriteState.toUpperCase()}`}>
-                                                        <img src={`./sprites/${spriteName}.png`} alt={enemy.classType} className="player-sprite-img" />
-                                                    </div>
-                                                    <div className="player-info">
-                                                        {enemy.editing ? (
-                                                            <div className="enemy-name-search-container">
-                                                                <input 
-                                                                    className="input title-input" 
-                                                                    value={enemySearchText}
-                                                                    onChange={e => setEnemySearchText(e.target.value)}
-                                                                    onBlur={() => {
-                                                                        setTimeout(() => {
-                                                                            updateEnemy(enemy.id, 'name', enemySearchText || enemy.name);
-                                                                            updateEnemy(enemy.id, 'editing', false);
-                                                                        }, 200);
-                                                                    }}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') {
-                                                                            updateEnemy(enemy.id, 'name', enemySearchText || enemy.name);
-                                                                            updateEnemy(enemy.id, 'editing', false);
-                                                                        }
-                                                                        if (e.key === 'Escape') {
-                                                                            updateEnemy(enemy.id, 'editing', false);
-                                                                        }
-                                                                    }}
-                                                                    autoFocus
-                                                                />
-                                                                <div className="enemy-search-dropdown">
-                                                                    {[...defaultMonsters, ...library]
-                                                                        .filter(m => m.name.toLowerCase().includes((enemySearchText || '').toLowerCase()))
-                                                                        .slice(0, 10)
-                                                                        .map(m => (
-                                                                            <div 
-                                                                                key={m.id} 
-                                                                                className="enemy-search-item"
-                                                                                onMouseDown={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    selectMonster(enemy.id, m);
-                                                                                }}
-                                                                            >
-                                                                                <span>{m.name}</span>
-                                                                                <span className="search-item-type">{m.background || 'Monster'}</span>
-                                                                            </div>
-                                                                        ))
-                                                                    }
-                                                                    <div 
-                                                                        className="enemy-search-item enemy-search-create-btn"
-                                                                        onMouseDown={(e) => {
-                                                                            e.preventDefault();
-                                                                            createAndSelectMonster(enemy.id, enemySearchText);
+                                                <div className="player-header-left">
+                                                    <div className="player-info-container">
+                                                        <div className={`player-sprite-container sprite-state-${spriteState}`} title={`State: ${spriteState.toUpperCase()}`}>
+                                                            <img src={`./sprites/${spriteName}.png`} alt={enemy.classType} className="player-sprite-img" />
+                                                        </div>
+                                                        <div className="player-info">
+                                                            {enemy.editing ? (
+                                                                <div className="enemy-name-search-container">
+                                                                    <input 
+                                                                        className="input title-input" 
+                                                                        value={enemySearchText}
+                                                                        onChange={e => setEnemySearchText(e.target.value)}
+                                                                        onBlur={() => {
+                                                                            setTimeout(() => {
+                                                                                updateEnemy(enemy.id, 'name', enemySearchText || enemy.name);
+                                                                                updateEnemy(enemy.id, 'editing', false);
+                                                                            }, 200);
                                                                         }}
-                                                                    >
-                                                                        + Create Bestiary Entry: "{enemySearchText || 'New Monster'}"
+                                                                        onKeyDown={e => {
+                                                                            if (e.key === 'Enter') {
+                                                                                updateEnemy(enemy.id, 'name', enemySearchText || enemy.name);
+                                                                                updateEnemy(enemy.id, 'editing', false);
+                                                                            }
+                                                                            if (e.key === 'Escape') {
+                                                                                updateEnemy(enemy.id, 'editing', false);
+                                                                            }
+                                                                        }}
+                                                                        autoFocus
+                                                                    />
+                                                                    <div className="enemy-search-dropdown">
+                                                                        {[...defaultMonsters, ...library]
+                                                                            .filter(m => m.name.toLowerCase().includes((enemySearchText || '').toLowerCase()))
+                                                                            .slice(0, 10)
+                                                                            .map(m => (
+                                                                                <div 
+                                                                                    key={m.id} 
+                                                                                    className="enemy-search-item"
+                                                                                    onMouseDown={(e) => {
+                                                                                        e.preventDefault();
+                                                                                        selectMonster(enemy.id, m);
+                                                                                    }}
+                                                                                >
+                                                                                    <span>{m.name}</span>
+                                                                                    <span className="search-item-type">{m.background || 'Monster'}</span>
+                                                                                </div>
+                                                                            ))
+                                                                        }
+                                                                        <div 
+                                                                            className="enemy-search-item enemy-search-create-btn"
+                                                                            onMouseDown={(e) => {
+                                                                                e.preventDefault();
+                                                                                createAndSelectMonster(enemy.id, enemySearchText);
+                                                                            }}
+                                                                        >
+                                                                            + Create Bestiary Entry: "{enemySearchText || 'New Monster'}"
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+                                                            ) : (
+                                                                <h3 onClick={() => {
+                                                                    setEnemySearchText(enemy.name);
+                                                                    updateEnemy(enemy.id, 'editing', true);
+                                                                }}>{enemy.name}</h3>
+                                                            )}
+                                                            <div className="player-subtitle">
+                                                                <select
+                                                                    className="input inline-input class-input class-dropdown"
+                                                                    value={enemy.classType || 'Enemy'}
+                                                                    onChange={e => updateEnemy(enemy.id, 'classType', e.target.value)}
+                                                                >
+                                                                    <option value="Enemy">Enemy</option>
+                                                                    <option value="Boss">Boss</option>
+                                                                </select>
+                                                                <span>AC {calculateEffectiveEnemyAC(enemy, buffsDatabase)}</span>
                                                             </div>
-                                                        ) : (
-                                                            <h3 onClick={() => {
-                                                                setEnemySearchText(enemy.name);
-                                                                updateEnemy(enemy.id, 'editing', true);
-                                                            }}>{enemy.name}</h3>
-                                                        )}
-                                                        <div className="player-subtitle">
-                                                            <select
-                                                                className="input inline-input class-input class-dropdown"
-                                                                value={enemy.classType || 'Enemy'}
-                                                                onChange={e => updateEnemy(enemy.id, 'classType', e.target.value)}
-                                                            >
-                                                                <option value="Enemy">Enemy</option>
-                                                                <option value="Boss">Boss</option>
-                                                            </select>
-                                                            <span>AC {enemy.ac}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="player-header-left-rows">
+                                                        {/* Crowd Control Badges & Add Button */}
+                                                        <div className="player-cc-container" onClick={e => e.stopPropagation()}>
+                                                            <span className="cc-header-tag">CC</span>
+                                                            {(enemy.cc || []).map(cc => (
+                                                                <button
+                                                                    key={cc}
+                                                                    className="player-cc-badge"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        removeEnemyCc(enemy.id, cc);
+                                                                    }}
+                                                                    title={`Click to cleanse ${cc}`}
+                                                                >
+                                                                    {cc} <span className="cleanse-x">×</span>
+                                                                </button>
+                                                            ))}
+                                                            <div className="player-cc-add-dropdown">
+                                                                <button
+                                                                    className="player-cc-add-btn"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setCcDropdownEnemyId(ccDropdownEnemyId === enemy.id ? null : enemy.id);
+                                                                    }}
+                                                                    title="Add Crowd Control effect"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                                {ccDropdownEnemyId === enemy.id && (
+                                                                    <div className="cc-dropdown-menu">
+                                                                        {ALL_CC_EFFECTS.map(effect => {
+                                                                            const hasCc = (enemy.cc || []).includes(effect);
+                                                                            return (
+                                                                                <button
+                                                                                    key={effect}
+                                                                                    disabled={hasCc}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        addEnemyCc(enemy.id, effect);
+                                                                                        setCcDropdownEnemyId(null);
+                                                                                    }}
+                                                                                    className="cc-dropdown-item"
+                                                                                >
+                                                                                    {effect}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Buffs & Debuffs Row */}
+                                                        <div className="player-buff-container" onClick={e => e.stopPropagation()}>
+                                                            <span className="buff-header-tag">Buff/Debuff</span>
+                                                            {getEnemyBuffsList(enemy).map((buff, idx) => {
+                                                                const isToggle = buff.config?.type === 'toggle';
+                                                                const isSpent = (enemy.spentBuffs || {})[buff.name] === true;
+                                                                const isToggledActive = (enemy.buffStates || {})[buff.name] !== false;
+                                                                const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+
+                                                                let badgeClass = "player-buff-badge";
+                                                                if (isSpent) badgeClass += " buff-spent";
+                                                                else if (isToggle && !isActive) badgeClass += " buff-inactive";
+
+                                                                return (
+                                                                    <div 
+                                                                        key={idx} 
+                                                                        className={badgeClass} 
+                                                                        title={(() => {
+                                                                            const desc = buff.config?.description || '';
+                                                                            const mainText = isSpent ? `${buff.name} (Spent - Rest required)` : `Click to toggle/use.`;
+                                                                            return desc ? `${desc}\n${mainText}` : mainText;
+                                                                        })()}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleToggleBuff(enemy, buff, false);
+                                                                        }}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    >
+                                                                        {buff.name} {isToggle && (isActive ? "🟢" : "🔴")} {isSpent && "💤"}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="buff-remove-x"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleRemoveEnemyBuff(enemy.id, buff.name);
+                                                                            }}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            <div className="player-buff-add-container">
+                                                                {buffInputEnemyId === enemy.id ? (
+                                                                    <div className="buff-inline-search-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                                        <input
+                                                                            type="text"
+                                                                            placeholder="Search buff..."
+                                                                            className="input buff-inline-input"
+                                                                            value={buffSearchText}
+                                                                            onChange={(e) => setBuffSearchText(e.target.value)}
+                                                                            autoFocus
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Escape') {
+                                                                                    setBuffInputEnemyId(null);
+                                                                                    setBuffSearchText('');
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <button 
+                                                                            type="button" 
+                                                                            className="buff-inline-cancel-btn" 
+                                                                            onClick={() => {
+                                                                                setBuffInputEnemyId(null);
+                                                                                setBuffSearchText('');
+                                                                            }}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                        <div className="cc-dropdown-menu" style={{ left: 0, right: 'auto', width: '200px' }}>
+                                                                            {buffsDatabase
+                                                                                .filter(b => {
+                                                                                    const isAlreadyActive = (enemy.buffs || []).includes(b.name);
+                                                                                    const matchesSearch = b.name.toLowerCase().includes(buffSearchText.toLowerCase());
+                                                                                    return !isAlreadyActive && matchesSearch;
+                                                                                })
+                                                                                .map(b => (
+                                                                                    <button
+                                                                                        key={b.id}
+                                                                                        type="button"
+                                                                                        className="cc-dropdown-item"
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            const currentBuffs = enemy.buffs || [];
+                                                                                            if (!currentBuffs.includes(b.name)) {
+                                                                                                updateEnemy(enemy.id, 'buffs', [...currentBuffs, b.name]);
+                                                                                            }
+                                                                                            setBuffInputEnemyId(null);
+                                                                                            setBuffSearchText('');
+                                                                                        }}
+                                                                                    >
+                                                                                        {b.name}
+                                                                                    </button>
+                                                                                ))}
+                                                                            {buffsDatabase.filter(b => !(enemy.buffs || []).includes(b.name) && b.name.toLowerCase().includes(buffSearchText.toLowerCase())).length === 0 && (
+                                                                                <div style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                                                    No matching buffs
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        className="player-buff-add-btn"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setBuffInputEnemyId(enemy.id);
+                                                                            setBuffSearchText('');
+                                                                        }}
+                                                                        title="Add Buff/Debuff"
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
+
                                                 <div className="card-top-right">
                                                     <div
                                                         className={`armor-class-badge enemy-ac-badge ${enemyEditField?.id === enemy.id && enemyEditField?.field === 'ac' ? 'editing' : ''}`}
@@ -2102,7 +3438,7 @@ export default function PlayerManager({
                                                                 onClick={e => e.stopPropagation()}
                                                             />
                                                         ) : (
-                                                            <span className="enemy-ac-display">🛡️ {enemy.ac} <span className="edit-pencil">✏️</span></span>
+                                                            <span className="enemy-ac-display">🛡️ {calculateEffectiveEnemyAC(enemy, buffsDatabase)} <span className="edit-pencil">✏️</span></span>
                                                         )}
                                                     </div>
                                                     <div className="player-controls">
@@ -2115,12 +3451,12 @@ export default function PlayerManager({
                                                             📋
                                                         </button>
                                                         <button className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                        </div>
+                                                        </div>
+                                                        </div>
 
-                                            {/* MAIN: HP and Ultimate — ALWAYS VISIBLE */}
-                                            <div className="stats-grid">
+                                                        {/* MAIN: HP and Ultimate — ALWAYS VISIBLE */}
+                                                        <div className="stats-grid">
                                                 <div className={`stat-block ${enemy.hp <= 0 ? 'ko-state' : ''}`}>
                                                     <div className="stat-label">
                                                         <span>{enemy.hp <= -0.5 * enemy.hpMax ? 'OVERKILL' : (enemy.hp <= 0 ? 'DEFEATED' : 'HP')}</span>
@@ -2158,7 +3494,7 @@ export default function PlayerManager({
                                                 {enemy.classType === 'Boss' && (() => {
                                                     const bossHpStart = enemy.bossHpStart || enemy.hpMax;
                                                     const damageTaken = Math.max(0, bossHpStart - enemy.hp);
-                                                    const rawUltPercent = Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
+                                                    const rawUltPercent = enemy.hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
                                                     const isEnemyLimitReady = rawUltPercent >= 100 && !enemy.limitBreakUsed;
                                                     const enemyUltPercent = enemy.limitBreakUsed ? 0 : Math.max(0, rawUltPercent);
                                                     return (
@@ -2183,7 +3519,7 @@ export default function PlayerManager({
                                                      {enemy.classType === 'Boss' && (() => {
                                                          const bossHpStart = enemy.bossHpStart || enemy.hpMax;
                                                          const damageTaken = Math.max(0, bossHpStart - enemy.hp);
-                                                         const rawUltPercent = Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
+                                                         const rawUltPercent = enemy.hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
                                                          const isEnemyLimitReady = rawUltPercent >= 100 && !enemy.limitBreakUsed;
                                                          return (
                                                              <button
@@ -2400,6 +3736,105 @@ export default function PlayerManager({
                                                                 </div>
                                                             </div>
                                                         </div>
+
+                                                        {/* CC Resistances & Vulnerabilities Editor */}
+                                                        <div className="rp-field full-width player-resistances-section">
+                                                            <label>CC Resistances &amp; Vulnerabilities</label>
+                                                            <div className="damage-mods-container">
+                                                                {/* CC Resistances */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccResistances || []).map(r => (
+                                                                            <span key={r} className="damage-pill pill-resistance">
+                                                                                {r}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccResistances || []).filter(x => x !== r);
+                                                                                    updateEnemy(enemy.id, 'ccResistances', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccResistances || []).includes(val)) {
+                                                                                    updateEnemy(enemy.id, 'ccResistances', [...(enemy.ccResistances || []), val]);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {ALL_CC_EFFECTS.filter(t => !(enemy.ccResistances || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* CC Immunities */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccImmunities || []).map(i => (
+                                                                            <span key={i} className="damage-pill pill-immunity">
+                                                                                {i}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccImmunities || []).filter(x => x !== i);
+                                                                                    updateEnemy(enemy.id, 'ccImmunities', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccImmunities || []).includes(val)) {
+                                                                                    updateEnemy(enemy.id, 'ccImmunities', [...(enemy.ccImmunities || []), val]);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {ALL_CC_EFFECTS.filter(t => !(enemy.ccImmunities || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* CC Vulnerabilities */}
+                                                                <div className="damage-mod-row">
+                                                                    <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
+                                                                    <div className="damage-mod-pills">
+                                                                        {(enemy.ccVulnerabilities || []).map(v => (
+                                                                            <span key={v} className="damage-pill pill-vulnerability">
+                                                                                {v}
+                                                                                <button type="button" className="pill-remove-btn" onClick={() => {
+                                                                                    const updated = (enemy.ccVulnerabilities || []).filter(x => x !== v);
+                                                                                    updateEnemy(enemy.id, 'ccVulnerabilities', updated);
+                                                                                }}>×</button>
+                                                                            </span>
+                                                                        ))}
+                                                                        <select
+                                                                            className="input pill-select-add"
+                                                                            value=""
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val && !(enemy.ccVulnerabilities || []).includes(val)) {
+                                                                                    updateEnemy(enemy.id, 'ccVulnerabilities', [...(enemy.ccVulnerabilities || []), val]);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">+ Add</option>
+                                                                            {ALL_CC_EFFECTS.filter(t => !(enemy.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                                <option key={t} value={t}>{t}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
 
                                                     {/* COMBAT */}
@@ -2560,22 +3995,65 @@ export default function PlayerManager({
                                                              onChange={() => {}} // Row click handles it
                                                              style={{ cursor: 'pointer' }}
                                                          />
-                                                         <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                             <span style={{ fontWeight: '500' }}>{player.name}</span>
-                                                             <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
-                                                                 <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {player.ac}</span>
-                                                                 <span style={{ color: player.hpCurrent <= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
-                                                                     ❤️ {player.hpCurrent}{player.hpTemp > 0 && (
-                                                                          <span style={{ color: '#60a5fa', marginLeft: '0.25rem' }}>
-                                                                              (+{player.hpTemp})
-                                                                          </span>
-                                                                      )} / {calculateMaxHP(player)}
-                                                                 </span>
-                                                             </div>
+                                                         <div style={{ flex: 1 }}>
+                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                 <span style={{ fontWeight: '500' }}>{player.name}</span>
+                                                                 <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
+                                                                     <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {calculateEffectiveAC(player, equipment, buffsDatabase)}</span>
+                                                                     <span style={{ color: player.hpCurrent <= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
+                                                                         ❤️ {player.hpCurrent}{player.hpTemp > 0 && (
+                                                                              <span style={{ color: '#60a5fa', marginLeft: '0.25rem' }}>
+                                                                                  (+{player.hpTemp})
+                                                                              </span>
+                                                                          )} / {calculateMaxHP(player)}
+                                                                     </span>
+                                                                     </div>
+                                                                     </div>
+                                                                     {/* Combat info strip */}
+                                                                     {(() => {
+                                                                     const extraEffect = attack.cc === 'custom' ? attack.ccCustom : (attack.cc || extractExtraEffects(attack.description));
+                                                                     const saveStat = (attack.save || 'Dexterity').toLowerCase();
+                                                                     const statKey = saveStat.substring(0, 3);
+                                                                     const saveMods = getSaveModifiers(player, extraEffect, equipment, buffsDatabase, statKey);
+                                                                     const advState = isSave ? saveMods.advantageState : getAttackAdvantageState(attack, player, equipment, buffsDatabase);
+                                                                     const dmgBreakdowns = (attack.damage || []).map(comp => ({ type: comp.type, ...getDamageModifierBreakdown(comp.type, player, equipment) }));
+                                                                     const activeCc = player.cc || [];
+                                                                     const advColor = advState === 'advantage' ? '#34d399' : advState === 'disadvantage' ? '#f87171' : 'var(--text-muted)';
+
+                                                                     let advLabel = '→ Normal Roll';
+                                                                     if (isSave) {
+                                                                     advLabel = advState === 'advantage' ? '▲ Save Adv.' : advState === 'disadvantage' ? '▼ Save Disadv.' : '→ Save Normal';
+                                                                     } else {
+                                                                     advLabel = advState === 'advantage' ? '▲ Advantage' : advState === 'disadvantage' ? '▼ Disadvantage' : '→ Normal Roll';
+                                                                     }
+
+                                                                     return (
+                                                                     <div style={{ marginTop: '0.3rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem', fontSize: '0.7rem' }}>
+                                                                         {activeCc.length > 0 && (
+                                                                             <span style={{ color: '#fb923c', background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '10px', padding: '0.1rem 0.45rem' }}>
+                                                                                 {activeCc.join(' · ')}
+                                                                             </span>
+                                                                         )}
+                                                                         {dmgBreakdowns.filter(b => b.charLabel || b.itemLabel).map((b, i) => (
+                                                                             <span key={i} style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.1rem 0.45rem' }}>
+                                                                                 {b.type}: {[b.charLabel && `Char:${b.charLabel}`, b.itemLabel && `Item:${b.itemLabel}`].filter(Boolean).join(' ')} → {b.overallLabel}
+                                                                             </span>
+                                                                         ))}
+                                                                         {isSave && saveMods.saveBonus !== 0 && (
+                                                                             <span style={{ color: '#60a5fa', background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', borderRadius: '10px', padding: '0.1rem 0.45rem', fontWeight: '600' }}>
+                                                                                 {saveMods.saveBonus > 0 ? `+${saveMods.saveBonus}` : saveMods.saveBonus} to save
+                                                                             </span>
+                                                                         )}
+                                                                         <span style={{ color: advColor, background: `${advColor}18`, border: `1px solid ${advColor}44`, borderRadius: '10px', padding: '0.1rem 0.45rem', fontWeight: '600' }}>
+                                                                             {advLabel}
+                                                                         </span>
+                                                                     </div>
+                                                                     );
+                                                                     })()}
                                                          </div>
-                                                     </div>
-                                                 );
-                                             } else {
+                                                         </div>
+                                                         );
+                                                         } else {
                                                  const status = selectedTargets[player.id] || 'none';
                                                  const getRowStyles = () => {
                                                      if (status === 'fail') {
@@ -2625,7 +4103,7 @@ export default function PlayerManager({
                                                          <div>
                                                              <div style={{ fontWeight: '500' }}>{player.name}</div>
                                                              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', marginTop: '0.15rem' }}>
-                                                                 <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {player.ac}</span>
+                                                                 <span style={{ color: 'var(--text-secondary)' }}>🛡️ AC {calculateEffectiveAC(player, equipment, buffsDatabase)}</span>
                                                                  <span style={{ color: player.hpCurrent <= 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
                                                                      ❤️ {player.hpCurrent}{player.hpTemp > 0 && (
                                                                           <span style={{ color: '#60a5fa', marginLeft: '0.25rem' }}>
@@ -2634,6 +4112,25 @@ export default function PlayerManager({
                                                                       )} / {calculateMaxHP(player)}
                                                                  </span>
                                                              </div>
+                                                             {/* Combat info strip for manual mode */}
+                                                             {(() => {
+                                                                 const dmgBreakdowns = (attack.damage || []).map(comp => ({ type: comp.type, ...getDamageModifierBreakdown(comp.type, player, equipment) }));
+                                                                 const activeCc = player.cc || [];
+                                                                 return (activeCc.length > 0 || dmgBreakdowns.some(b => b.charLabel || b.itemLabel)) && (
+                                                                     <div style={{ marginTop: '0.3rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem', fontSize: '0.68rem' }}>
+                                                                         {activeCc.length > 0 && (
+                                                                             <span style={{ color: '#fb923c', background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '10px', padding: '0.1rem 0.4rem' }}>
+                                                                                 {activeCc.join(' · ')}
+                                                                             </span>
+                                                                         )}
+                                                                         {dmgBreakdowns.filter(b => b.charLabel || b.itemLabel).map((b, i) => (
+                                                                             <span key={i} style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.1rem 0.4rem' }}>
+                                                                                 {b.type}: {[b.charLabel && `Char:${b.charLabel}`, b.itemLabel && `Item:${b.itemLabel}`].filter(Boolean).join(' ')} → {b.overallLabel}
+                                                                             </span>
+                                                                         ))}
+                                                                     </div>
+                                                                 );
+                                                             })()}
                                                          </div>
                                                          
                                                          <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -2748,26 +4245,37 @@ export default function PlayerManager({
                                                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                                                          <div>
                                                              {res.d20 === null ? (
-                                                                 res.isSave ? (
-                                                                     <>
-                                                                         Save (<strong>{res.saveStat.toUpperCase()}</strong>): <strong>Manual Resolution</strong> vs DC {res.dc}
-                                                                     </>
+                                                                     res.isSave ? (
+                                                                         <>
+                                                                             Save (<strong>{res.saveStat.toUpperCase()}</strong>): <strong>Manual Resolution</strong> vs DC {res.dc}
+                                                                         </>
+                                                                     ) : (
+                                                                         <>
+                                                                             Roll: <strong>Manual Resolution</strong> vs AC {res.ac}
+                                                                         </>
+                                                                     )
                                                                  ) : (
-                                                                     <>
-                                                                         Roll: <strong>Manual Resolution</strong> vs AC {res.ac}
-                                                                     </>
-                                                                 )
-                                                             ) : (
-                                                                 res.isSave ? (
-                                                                     <>
-                                                                         Save (<strong>{res.saveStat.toUpperCase()}</strong>): <strong>d20 ({res.d20})</strong> + {res.saveBonus} = <strong>{res.totalRoll}</strong> vs DC {res.dc}
-                                                                     </>
-                                                                 ) : (
-                                                                     <>
-                                                                         Roll: <strong>d20 ({res.d20})</strong> + {res.toHit} = <strong>{res.totalRoll}</strong> vs AC {res.ac}
-                                                                     </>
-                                                                 )
-                                                             )}
+                                                                     res.isSave ? (
+                                                                         <>
+                                                                             Save (<strong>{res.saveStat.toUpperCase()}</strong>): <strong>d20 ({res.d20})</strong> + {res.saveBonus} = <strong>{res.totalRoll}</strong> vs DC {res.dc}
+                                                                         </>
+                                                                     ) : (
+                                                                         <>
+                                                                             {res.advantageState && res.advantageState !== 'normal' && res.d20Rolls && res.d20Rolls.length === 2 ? (
+                                                                                 <>
+                                                                                     Roll: <span style={{ color: res.advantageState === 'advantage' ? '#34d399' : '#f87171', fontWeight: 600, fontSize: '0.75rem' }}>
+                                                                                         {res.advantageState === 'advantage' ? '▲ Advantage' : '▼ Disadvantage'}
+                                                                                     </span>{' '}
+                                                                                     <strong>d20 ({res.d20Rolls[0]}|{res.d20Rolls[1]}, using {res.d20})</strong> + {res.toHit} = <strong>{res.totalRoll}</strong> vs AC {res.ac}
+                                                                                 </>
+                                                                             ) : (
+                                                                                 <>
+                                                                                     Roll: <strong>d20 ({res.d20})</strong> + {res.toHit} = <strong>{res.totalRoll}</strong> vs AC {res.ac}
+                                                                                 </>
+                                                                             )}
+                                                                         </>
+                                                                     )
+                                                                 )}
                                                          </div>
                                                          {isHit && (
                                                              <>

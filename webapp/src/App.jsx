@@ -28,12 +28,217 @@ const DEFAULT_DATA = {
   chaos: { customTables: [] },
   notebook: { pages: [] },
   bestiaryReview: {},
+  buffsDatabase: [
+    {
+      id: 'b1',
+      name: 'Regeneration',
+      description: 'Regain 1d6 HP at the start of your turn.',
+      type: 'turn',
+      oncePerRest: 'none',
+      turnType: 'healHP',
+      turnFormula: '1d6'
+    },
+    {
+      id: 'b2',
+      name: 'Haste',
+      description: 'Target gains +2 AC, extra action, and double movement speed.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: 2,
+      dodge: false,
+      extraMovement: 30,
+      extraAction: true
+    },
+    {
+      id: 'b3',
+      name: 'Second Wind',
+      description: 'Once per short rest, heal 1d10.',
+      type: 'turn',
+      oncePerRest: 'short',
+      turnType: 'healHP',
+      turnFormula: '1d10'
+    },
+    {
+      id: 'b4',
+      name: 'Action Surge',
+      description: 'Once per short rest, gain an extra action.',
+      type: 'toggle',
+      oncePerRest: 'short',
+      additionalDamage: '',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: true
+    },
+    {
+      id: 'b5',
+      name: 'Bless',
+      description: 'Target gains a +2 bonus to saving throws and attack rolls.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false,
+      savingThrowBonus: 2
+    },
+    {
+      id: 'b6',
+      name: 'Bane',
+      description: 'Target suffers a -2 penalty to saving throws and attack rolls.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false,
+      savingThrowBonus: -2
+    },
+    {
+      id: 'b7',
+      name: 'Rage',
+      description: 'Barbarian Rage. Gain +2 additional melee damage, and +1 to saving throws.',
+      type: 'toggle',
+      oncePerRest: 'long',
+      additionalDamage: '2',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 10,
+      extraAction: false,
+      savingThrowBonus: 1
+    },
+    {
+      id: 'b8',
+      name: 'Shield of Faith',
+      description: 'A shimmering field surrounds the target, granting +2 AC.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: 2,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false
+    },
+    {
+      id: 'b9',
+      name: 'Blur',
+      description: 'Your body becomes blurred. Attacks against you have disadvantage (Dodge mode active).',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: 0,
+      dodge: true,
+      extraMovement: 0,
+      extraAction: false
+    },
+    {
+      id: 'b10',
+      name: 'Divine Smite',
+      description: 'Deal an extra 2d8 radiant damage on your next hit (Once per short rest).',
+      type: 'fixed',
+      oncePerRest: 'short',
+      additionalDamage: '2d8',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false
+    },
+    {
+      id: 'b11',
+      name: 'Slow',
+      description: 'Target AC is reduced by 2, and movement is reduced by 15 ft.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '',
+      additionalAC: -2,
+      dodge: false,
+      extraMovement: -15,
+      extraAction: false
+    },
+    {
+      id: 'b12',
+      name: 'Hunter\'s Mark',
+      description: 'You deal an extra 1d6 damage when hitting the marked target.',
+      type: 'toggle',
+      oncePerRest: 'none',
+      additionalDamage: '1d6',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false
+    },
+    {
+      id: 'b13',
+      name: 'Lay on Hands',
+      description: 'Once per long rest, heal a target for 15 HP.',
+      type: 'fixed',
+      oncePerRest: 'long',
+      additionalDamage: '',
+      additionalAC: 0,
+      dodge: false,
+      extraMovement: 0,
+      extraAction: false
+    }
+  ]
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState('players');
+  const [config, setConfig] = useState(() => {
+    const saved = localStorage.getItem('partyManagerConfig');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          theme: parsed.theme || 'dark',
+          fullscreenOnStartup: parsed.fullscreenOnStartup ?? false,
+          startupView: parsed.startupView || 'party-minimized',
+          uiScale: parsed.uiScale || '100%',
+          defaultRollMode: parsed.defaultRollMode || 'manual',
+        };
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return {
+      theme: 'dark',
+      fullscreenOnStartup: false,
+      startupView: 'party-minimized',
+      uiScale: '100%',
+      defaultRollMode: 'manual',
+    };
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedConfig = localStorage.getItem('partyManagerConfig');
+    let startupView = 'party-minimized';
+    if (savedConfig) {
+      try {
+        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
+      } catch (e) {}
+    }
+    if (startupView === 'last') {
+      return localStorage.getItem('partyManagerLastTab') || 'players';
+    }
+    return 'players';
+  });
+
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
   const [battleMode, setBattleMode] = useState(() => {
-    return localStorage.getItem('partyManagerBattleMode') === 'true';
+    const savedConfig = localStorage.getItem('partyManagerConfig');
+    let startupView = 'party-minimized';
+    if (savedConfig) {
+      try {
+        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
+      } catch (e) {}
+    }
+    if (startupView === 'last') {
+      return localStorage.getItem('partyManagerBattleMode') === 'true';
+    }
+    return false;
   });
   const [enemies, setEnemies] = useState(() => {
     const saved = localStorage.getItem('partyManagerEnemies');
@@ -43,17 +248,27 @@ function App() {
     const saved = localStorage.getItem('partyManagerMinimizedEnemies');
     return saved ? JSON.parse(saved) : {};
   });
+
   const switchTab = (tab) => {
     setActiveTab(tab);
+    localStorage.setItem('partyManagerLastTab', tab);
     window.scrollTo(0, 0);
   };
   const [saveMessage, setSaveMessage] = useState('');
   const importRef = useRef(null);
+
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem('partyManagerData');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // Merge to ensure new default buffs are populated even if older save lacks them
+        let mergedBuffs = parsed.buffsDatabase || [];
+        DEFAULT_DATA.buffsDatabase.forEach(defBuff => {
+          if (!mergedBuffs.some(b => b.name.toLowerCase() === defBuff.name.toLowerCase())) {
+            mergedBuffs.push(defBuff);
+          }
+        });
         // Merge to ensure new keys exist even if older save lacks them
         return {
           ...DEFAULT_DATA,
@@ -63,6 +278,7 @@ function App() {
           chaos: parsed.chaos || { customTables: [] },
           notebook: parsed.notebook || { pages: [] },
           bestiaryReview: parsed.bestiaryReview || {},
+          buffsDatabase: mergedBuffs,
         };
       }
       catch (e) {
@@ -87,6 +303,47 @@ function App() {
   useEffect(() => {
     localStorage.setItem('partyManagerMinimizedEnemies', JSON.stringify(minimizedEnemies));
   }, [minimizedEnemies]);
+
+  useEffect(() => {
+    localStorage.setItem('partyManagerConfig', JSON.stringify(config));
+    
+    // Apply body theme class
+    document.body.classList.remove('theme-bio');
+    if (config.theme === 'bio') {
+      document.body.classList.add('theme-bio');
+    }
+
+    // Apply UI Scaling
+    const scale = config.uiScale || '100%';
+    document.documentElement.style.fontSize = scale === '110%' ? '17.6px' : scale === '120%' ? '19.2px' : '16px';
+  }, [config]);
+
+  // Fullscreen Sync Effect
+  useEffect(() => {
+    const syncFullscreen = async () => {
+      try {
+        if (config.fullscreenOnStartup) {
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+          }
+        } else {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+          }
+        }
+      } catch (err) {
+        console.warn("Fullscreen toggle failed or not supported in this environment:", err);
+      }
+    };
+    syncFullscreen();
+  }, [config.fullscreenOnStartup]);
+
+  const handleConfigChange = (key, value) => {
+    setConfig(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
 
   const updateData = (key, newData) => {
     setData(prev => ({ ...prev, [key]: newData }));
@@ -146,6 +403,10 @@ function App() {
               setMinimizedEnemies={setMinimizedEnemies}
               library={data.library || []}
               updateLibrary={(l) => updateData('library', l)}
+              buffsDatabase={data.buffsDatabase || []}
+              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+              config={config}
+              configModalOpen={isConfigModalOpen}
             />
           )}
           {activeTab === 'notebook' && (
@@ -154,14 +415,16 @@ function App() {
               updateNotebookData={(d) => updateData('notebook', d)}
             />
           )}
-          {activeTab === 'inventory' && <Equipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} />}
-          {activeTab === 'charequip' && <CharacterEquipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} />}
+          {activeTab === 'inventory' && <Equipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
+          {activeTab === 'charequip' && <CharacterEquipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
           {activeTab === 'training' && <Training players={data.players} trainingData={data.training} updateTrainingData={(d) => updateData('training', d)} />}
           {activeTab === 'chaos' && <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />}
           {activeTab === 'bestiary' && (
             <EnemyLibrary
-              data={data.library || []}
-              updateData={(d) => updateData('library', d)}
+              library={data.library || []}
+              updateLibrary={(l) => updateData('library', l)}
+              buffsDatabase={data.buffsDatabase || []}
+              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
               bestiaryReview={data.bestiaryReview || {}}
               updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
             />
@@ -226,8 +489,8 @@ function App() {
           </svg>
         </button>
 
-        {/* 6 — Bestiary */}
-        <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Bestiary">
+        {/* 6 — Database */}
+        <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Database">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
@@ -254,6 +517,14 @@ function App() {
           </svg>
         </button>
 
+        {/* Config button */}
+        <button className="nav-item" onClick={() => setIsConfigModalOpen(true)} title="Settings" style={{ color: 'var(--text-secondary)' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+
         {/* Save message popup above bottom-nav */}
         {saveMessage && (
           <span className="save-flash" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '10px', pointerEvents: 'none', background: 'rgba(15, 17, 21, 0.95)', border: 'var(--glass-border)', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-sm)', boxShadow: 'var(--glass-shadow)', whiteSpace: 'nowrap' }}>
@@ -263,6 +534,121 @@ function App() {
 
         <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
       </nav>
+
+      {/* Settings Modal Dialog Overlay */}
+      {isConfigModalOpen && (
+        <div className="global-modal-overlay" onClick={() => setIsConfigModalOpen(false)}>
+          <div className="glass-panel damage-heal-popup" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', border: '1px solid var(--primary)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', width: '100%', textAlign: 'center' }}>
+              ⚙️ Application Settings
+            </h3>
+            
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Theme Configuration */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Theme Accent</label>
+                <select
+                  className="input"
+                  value={config.theme}
+                  onChange={(e) => handleConfigChange('theme', e.target.value)}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: 'var(--glass-border)' }}
+                >
+                  <option value="dark">Dark Default (Indigo & Pink Glass)</option>
+                  <option value="bio">Bio Theme (Rose Pink & Emerald Sage)</option>
+                </select>
+              </div>
+
+              {/* Startup View Mode */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Startup Page View</label>
+                <select
+                  className="input"
+                  value={config.startupView}
+                  onChange={(e) => handleConfigChange('startupView', e.target.value)}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: 'var(--glass-border)' }}
+                >
+                  <option value="last">Last Visited Page (Restore last session)</option>
+                  <option value="party-minimized">Always Party Manager (Cards Minimized)</option>
+                  <option value="party-expanded">Always Party Manager (Cards Expanded)</option>
+                </select>
+              </div>
+
+              {/* Startup Fullscreen Switch */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Startup in Fullscreen</span>
+                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
+                  <input
+                    type="checkbox"
+                    checked={config.fullscreenOnStartup}
+                    onChange={(e) => handleConfigChange('fullscreenOnStartup', e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: config.fullscreenOnStartup ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                    borderRadius: '20px', transition: '0.3s'
+                  }}>
+                    <span style={{
+                      position: 'absolute', content: '""', height: '14px', width: '14px', left: config.fullscreenOnStartup ? '22px' : '4px', bottom: '3px',
+                      backgroundColor: 'white', borderRadius: '50%', transition: '0.3s'
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              {/* UI Scaling */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>UI Scaling</span>
+                <select
+                  className="input"
+                  value={config.uiScale}
+                  onChange={(e) => handleConfigChange('uiScale', e.target.value)}
+                  style={{ width: '120px', padding: '0.2rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', border: 'var(--glass-border)' }}
+                >
+                  <option value="100%">Normal (100%)</option>
+                  <option value="110%">Medium (110%)</option>
+                  <option value="120%">Large (120%)</option>
+                </select>
+              </div>
+
+              {/* Mock Config Options */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Other Settings</h4>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Default Roll Mode</span>
+                  <select
+                    className="input"
+                    value={config.defaultRollMode}
+                    onChange={(e) => handleConfigChange('defaultRollMode', e.target.value)}
+                    style={{ width: '120px', padding: '0.2rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', border: 'var(--glass-border)' }}
+                  >
+                    <option value="manual">Manual Roll</option>
+                    <option value="auto">Auto Roll</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Auto-Save to File (Mock)</span>
+                  <select disabled className="input" style={{ width: '120px', padding: '0.2rem', fontSize: '0.8rem', opacity: 0.6 }} defaultValue="none">
+                    <option value="none">Disabled</option>
+                    <option value="5">5 Min</option>
+                    <option value="15">15 Min</option>
+                  </select>
+                </div>
+              </div>
+
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '1.5rem' }}>
+              <button className="btn" onClick={() => setIsConfigModalOpen(false)} style={{ minWidth: '100px' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
