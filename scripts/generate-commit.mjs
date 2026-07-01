@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * Generates a PR-style commit message from the current git diff.
- * Output: docs/LAST_COMMIT_MSG.txt (review before committing)
+ * Generates a PR-style message from git diff + docs/PR_TEMPLATE.md
+ * Output: docs/LAST_COMMIT_MSG.txt
  *
- * Optional: set OPENAI_API_KEY (+ OPENAI_MODEL, default gpt-4o-mini) for LLM draft.
- * Without a key, produces a structured heuristic draft from the diff.
+ * Env:
+ *   OPENAI_API_KEY   — optional; enables LLM fill
+ *   OPENAI_MODEL     — default gpt-4o-mini
+ *   GIT_BASE_BRANCH  — default main (diff when working tree clean)
  */
 
 import { execSync } from 'node:child_process';
@@ -15,190 +17,292 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_FILE = join(ROOT, 'docs', 'LAST_COMMIT_MSG.txt');
 const TEMPLATE_FILE = join(ROOT, 'docs', 'PR_TEMPLATE.md');
-const MAX_DIFF_CHARS = 48_000;
+const MAX_DIFF_CHARS = 64_000;
+const BASE_BRANCH = process.env.GIT_BASE_BRANCH || 'main';
+
+const TECH_LEAD_INSTRUCTION = `Atue como um Tech Lead. Com base neste DIFF do git, preencha o JSON abaixo com conteúdo real e específico (não deixe strings vazias).
+- "summary": uma frase do que o PR entrega
+- "patchNotes": array de bullets em linguagem amigável para Mestres de D&D (português OK)
+- "testSteps": array de itens de checklist markdown (- [ ] ...)
+- "area": áreas afetadas (battle, api, types, docs, etc.)
+- "technicalChanges": array de bullets técnicos (arquitetura, TypeScript, API, hooks)
+- "dataModelImpact": bloco markdown com checkboxes [x] ou [ ] conforme o diff
+- "filesTouched": array de paths importantes (máx 25, depois "… +N more")
+Responda APENAS JSON válido, sem markdown fence.`;
 
 function run(cmd) {
   try {
-    return execSync(cmd, { cwd: ROOT, encoding: 'utf8', maxBuffer: 12 * 1024 * 1024 }).trim();
+    return execSync(cmd, { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
   } catch {
     return '';
   }
 }
 
+function branchExists(name) {
+  return Boolean(run(`git rev-parse --verify ${name}`));
+}
+
+function countFilesInBundle(bundle) {
+  const fromStat = parseStatCount(bundle.stat);
+  const fromNames = parseNameStatus(bundle.nameStatus).length;
+  return Math.max(fromStat, fromNames, bundle.untracked?.length ?? 0);
+}
+
 function getDiffBundle() {
+  const useBranchOnly = process.argv.includes('--branch') || process.env.COMMIT_AI_USE_BRANCH === '1';
+  const useLocalOnly = process.argv.includes('--local');
+
   const staged = run('git diff --cached');
-  const unstaged = run('git diff');
-  const stagedStat = run('git diff --cached --stat');
-  const unstagedStat = run('git diff --stat');
-  const untracked = run('git ls-files --others --exclude-standard');
-
-  let diff = '';
-  let stat = '';
-  let mode = 'none';
-
-  if (staged) {
-    diff = staged;
-    stat = stagedStat;
-    mode = 'staged';
-  } else if (unstaged) {
-    diff = unstaged;
-    stat = unstagedStat;
-    mode = 'unstaged';
-  } else {
-    diff = run('git diff HEAD');
-    stat = run('git diff HEAD --stat');
-    mode = diff ? 'head' : 'none';
+  if (staged && !useBranchOnly) {
+    return {
+      diff: staged,
+      stat: run('git diff --cached --stat'),
+      nameStatus: run('git diff --cached --name-status'),
+      mode: 'staged',
+      untracked: [],
+    };
   }
 
-  return { diff, stat, mode, untracked: untracked ? untracked.split('\n').filter(Boolean) : [] };
+  const unstaged = run('git diff');
+  const untracked = run('git ls-files --others --exclude-standard');
+  const untrackedList = untracked ? untracked.split('\n').filter(Boolean) : [];
+
+  const localBundle = {
+    diff: unstaged,
+    stat: run('git diff --stat') || (untrackedList.length ? `${untrackedList.length} untracked file(s)` : ''),
+    nameStatus: run('git diff --name-status') + (untrackedList.length ? '\n' + untrackedList.map((f) => `A\t${f}`).join('\n') : ''),
+    mode: unstaged ? 'unstaged' : untrackedList.length ? 'untracked' : 'none',
+    untracked: untrackedList,
+  };
+
+  const base = branchExists(BASE_BRANCH) ? BASE_BRANCH : branchExists('master') ? 'master' : null;
+  const branchBundle = base
+    ? {
+        diff: run(`git diff ${base}...HEAD`),
+        stat: run(`git diff ${base}...HEAD --stat`),
+        nameStatus: run(`git diff ${base}...HEAD --name-status`),
+        mode: `branch vs ${base}`,
+        untracked: [],
+      }
+    : null;
+
+  if (useLocalOnly && (localBundle.diff || localBundle.untracked.length)) {
+    return localBundle;
+  }
+
+  if (useBranchOnly && branchBundle?.diff) {
+    return branchBundle;
+  }
+
+  const localCount = countFilesInBundle(localBundle);
+  const branchCount = branchBundle ? countFilesInBundle(branchBundle) : 0;
+
+  if (branchBundle?.diff && (localCount === 0 || branchCount > localCount)) {
+    if (localCount > 0 && branchCount > localCount) {
+      console.log(`Using branch diff (${branchCount} files vs ${localCount} unstaged). Pass --local for unstaged only.`);
+    }
+    return branchBundle;
+  }
+
+  if (localBundle.diff || localBundle.untracked.length) {
+    return localBundle;
+  }
+
+  if (branchBundle?.diff) return branchBundle;
+
+  return { diff: '', stat: '', nameStatus: '', mode: 'none', untracked: [] };
 }
 
 function truncate(text, max) {
-  if (text.length <= max) return text;
+  if (!text || text.length <= max) return text || '';
   return `${text.slice(0, max)}\n\n… [diff truncated — ${text.length - max} chars omitted]`;
 }
 
-function inferArea(filePaths) {
+function parseNameStatus(nameStatus) {
+  const files = [];
+  for (const line of nameStatus.split('\n').filter(Boolean)) {
+    const parts = line.split('\t');
+    const status = parts[0];
+    if (status.startsWith('R') || status.startsWith('C')) {
+      files.push({ status, path: parts[2], from: parts[1] });
+    } else {
+      files.push({ status, path: parts[1] });
+    }
+  }
+  return files;
+}
+
+function parseStatCount(stat) {
+  const m = stat.match(/(\d+) files? changed/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function inferAreas(filePaths) {
   const areas = new Set();
   for (const f of filePaths) {
     if (f.includes('features/battle')) areas.add('battle');
-    else if (f.includes('features/inventory')) areas.add('inventory');
-    else if (f.includes('features/bestiary')) areas.add('bestiary');
-    else if (f.includes('features/campaign')) areas.add('campaign');
-    else if (f.includes('features/auth')) areas.add('auth');
-    else if (f.startsWith('api/')) areas.add('api');
-    else if (f.includes('types/')) areas.add('types');
-    else if (f.startsWith('docs/')) areas.add('docs');
-    else if (f.includes('shared/utils/combatUtils')) areas.add('combat');
-    else if (f.includes('webapp/')) areas.add('webapp');
+    if (f.includes('features/inventory')) areas.add('inventory');
+    if (f.includes('features/bestiary')) areas.add('bestiary');
+    if (f.includes('features/campaign')) areas.add('campaign');
+    if (f.includes('features/auth')) areas.add('auth');
+    if (f.startsWith('api/')) areas.add('api');
+    if (f.includes('/types/')) areas.add('types');
+    if (f.startsWith('docs/') || f === '.cursorrules') areas.add('docs');
+    if (f.includes('shared/utils/combatUtils')) areas.add('combat');
+    if (f.startsWith('scripts/')) areas.add('tooling');
   }
-  return [...areas].join(', ') || 'general';
+  return [...areas];
 }
 
-function parseChangedFiles(stat, untracked) {
-  const fromStat = stat
-    .split('\n')
-    .slice(0, -1)
-    .map((line) => line.replace(/\s+\|\s+\d+.*$/, '').trim())
-    .filter(Boolean);
-  return [...new Set([...fromStat, ...untracked])];
+function analyzeDiffHeuristic({ diff, stat, nameStatus, mode, branch }) {
+  const entries = parseNameStatus(nameStatus);
+  const paths = entries.map((e) => e.path).filter(Boolean);
+  const fileCount = parseStatCount(stat) || paths.length;
+  const areas = inferAreas(paths);
+
+  const added = entries.filter((e) => e.status === 'A').length;
+  const deleted = entries.filter((e) => e.status === 'D').length;
+  const renamed = entries.filter((e) => e.status.startsWith('R')).length;
+  const modified = entries.filter((e) => e.status === 'M').length;
+
+  const hasTs = paths.some((p) => p.endsWith('.ts') || p.endsWith('.tsx'));
+  const hasApi = paths.some((p) => p.startsWith('api/'));
+  const hasBattle = paths.some((p) => p.includes('features/battle'));
+  const hasTypes = paths.some((p) => p.includes('types/index'));
+  const hasDocs = paths.some((p) => p.startsWith('docs/') || p === '.cursorrules');
+  const hasScripts = paths.some((p) => p.startsWith('scripts/'));
+  const removedGodComponent = paths.some((p) => p.includes('PlayerManager.jsx') && entries.find((e) => e.path === p)?.status === 'D');
+  const hasSubclass = paths.some((p) => p.includes('SubclassManager'));
+  const hasMigration = paths.some((p) => p.includes('migrationUtils'));
+  const hasAuth = paths.some((p) => p.includes('auth/') || p.includes('routes/auth'));
+
+  const patchNotes = [];
+  const technical = [];
+
+  if (hasApi && hasAuth) {
+    patchNotes.push('Campanhas agora são salvas no servidor com login por usuário — suas mesas persistem entre sessões e dispositivos.');
+    technical.push('API Express + MongoDB: rotas `auth` (JWT) e `campaigns` (CRUD + auto-save de `CampaignData`).');
+  }
+  if (hasBattle) {
+    patchNotes.push('Tela de Party/Combate reorganizada: cards de jogadores e inimigos mais estáveis, com modo batalha, VTT e resolução de ataques.');
+    technical.push('Refatoração `PlayerManager` → `features/battle/` (hooks `usePartyState`/`useCombatState` + componentes `PlayerCard`, `EnemyCard`, modais).');
+    technical.push('Correção de runtime: estado visual de dropdown CC movido para os cards (não mais em hooks de combate).');
+  }
+  if (hasSubclass) {
+    patchNotes.push('Subclasses homebrew editáveis com resistências, traços passivos e habilidades usáveis em combate.');
+    technical.push('`SubclassManager` + `ISubclass` em `types/index.ts`; integração com `combatUtils` para modificadores de dano.');
+  }
+  if (hasMigration) {
+    patchNotes.push('Importação de saves JSON antigos com normalização automática de jogadores, buffs e inimigos.');
+    technical.push('`shared/utils/migrationUtils.ts` + fluxo de import em `CampaignList`.');
+  }
+  if (hasTs) {
+    patchNotes.push('Base do app migrada para TypeScript — menos erros silenciosos ao carregar a campanha.');
+    technical.push('Migração JS → TS/TSX; `tsconfig.app.json`; tipos canônicos em `webapp/src/types/index.ts`.');
+  }
+  if (paths.some((p) => p.includes('partyUtils') || p.includes('usePartyState'))) {
+    patchNotes.push('Mestre pode definir nível individual ou do grupo inteiro; o XP é ajustado automaticamente nos thresholds D&D 5e.');
+    technical.push('`setLevel` / `setPartyLevel` em `usePartyState`; thresholds em `partyUtils.ts`.');
+  }
+  if (hasDocs) {
+    patchNotes.push('Documentação e regras para colaboração humano + IA (README, changelog de agentes, template de PR).');
+    technical.push('`.cursorrules`, `docs/CHANGELOG_AI.md`, `docs/PR_TEMPLATE.md`, README profissional.');
+  }
+  if (hasScripts) {
+    technical.push('Pipeline `npm run commit:ai` → `docs/LAST_COMMIT_MSG.txt` para mensagens de commit/PR.');
+  }
+  if (removedGodComponent) {
+    technical.push('Removido monólito `PlayerManager.jsx` (~4.3k linhas) em favor da estrutura feature-driven.');
+  }
+
+  if (patchNotes.length === 0) {
+    patchNotes.push(`Atualização em ${fileCount} arquivo(s) — revise o diff para impacto na mesa.`);
+  }
+  if (technical.length === 0) {
+    technical.push(`Alterações em: ${areas.join(', ') || 'geral'}.`);
+  }
+
+  technical.push(`Diff: ${fileCount} files — ${added} added, ${modified} modified, ${deleted} deleted, ${renamed} renamed (${mode} on \`${branch}\`).`);
+
+  const schemaChanged = paths.some((p) => p.includes('CampaignData') || p.includes('defaultData') || p.includes('types/index'));
+  const dataModelImpact = schemaChanged
+    ? `- [ ] No schema changes\n- [x] \`IAppData\` / MongoDB fields changed — players, equipment, subclasses, buffsDatabase, library, etc.\n- [x] Migration or \`migrationUtils\` update required`
+    : `- [x] No schema changes\n- [ ] \`IAppData\` / MongoDB fields changed — list fields:\n- [ ] Migration or \`migrationUtils\` update required`;
+
+  const testSteps = [
+    '- [ ] Login e lista de campanhas carregam',
+    '- [ ] Abrir campanha → Party Roster renderiza sem tela branca',
+    '- [ ] Modo batalha: adicionar inimigo e resolver um ataque',
+  ];
+  if (hasSubclass) testSteps.push('- [ ] Criar/editar subclasse e equipar em um jogador');
+  if (hasApi) testSteps.push('- [ ] Auto-save persiste após editar HP de um jogador');
+
+  const filesTouched = paths.slice(0, 25).map((p) => `- \`${p}\``);
+  if (paths.length > 25) filesTouched.push(`- … +${paths.length - 25} more files`);
+
+  const verification = [
+    '- [x] `npm run build --prefix webapp`',
+    '- [x] `npx tsc -b --prefix webapp`',
+    '- [ ] `npm run dev --prefix api` + smoke test manual',
+    '- [x] Entry added to `docs/CHANGELOG_AI.md`',
+  ];
+
+  const typeLabel = hasApi && hasBattle ? 'feat' : hasDocs && !hasBattle ? 'docs' : 'refactor';
+  const summary = `${typeLabel}: RPG Party Manager v1.1 — TypeScript, API MongoDB, feature-driven battle module (${fileCount} files)`;
+
+  return {
+    summary,
+    patchNotes,
+    testSteps,
+    area: areas.join(', ') || 'general',
+    technicalChanges: technical,
+    dataModelImpact,
+    filesTouched,
+    verification,
+  };
 }
 
-function inferCommitType(files) {
-  if (files.some((f) => f.startsWith('docs/') || f === '.cursorrules')) return 'docs';
-  if (files.some((f) => f.includes('test'))) return 'test';
-  if (files.some((f) => f.startsWith('scripts/'))) return 'chore';
-  if (files.some((f) => f.startsWith('api/'))) return 'feat';
-  return 'feat';
+function fillTemplate(template, data) {
+  const toBullets = (arr) => (Array.isArray(arr) ? arr.map((l) => (l.startsWith('-') ? l : `- ${l}`)).join('\n') : String(arr));
+  const toLines = (arr) => (Array.isArray(arr) ? arr.join('\n') : String(arr));
+
+  return template
+    .replace('{{SUMMARY}}', data.summary || '_No summary_')
+    .replace('{{PATCH_NOTES}}', toBullets(data.patchNotes))
+    .replace('{{TEST_STEPS}}', toLines(data.testSteps))
+    .replace('{{AREA}}', data.area || 'general')
+    .replace('{{TECHNICAL_CHANGES}}', toBullets(data.technicalChanges))
+    .replace('{{DATA_MODEL_IMPACT}}', data.dataModelImpact || '- [ ] No schema changes')
+    .replace('{{FILES_TOUCHED}}', toLines(data.filesTouched))
+    .replace('{{VERIFICATION}}', toLines(data.verification));
 }
 
-function buildHeuristicDraft({ diff, stat, mode, untracked, branch, template }) {
-  const files = parseChangedFiles(stat, untracked);
-  const area = inferArea(files);
-  const type = inferCommitType(files);
-  const titleHint = files.length === 1
-    ? `${type}: update ${relative(ROOT, files[0]).replace(/\\/g, '/')}`
-    : `${type}: update ${area} (${files.length} files)`;
-
-  const fileList = files.map((f) => `- \`${f}\``).join('\n') || '- _(no file list — empty diff?)_';
-  const diffPreview = diff
-    ? truncate(diff, 4_000)
-    : untracked.length
-      ? `_(no textual diff; ${untracked.length} untracked file(s))_`
-      : '_(empty diff)_';
-
-  const patchHint = files.some((f) => f.includes('features/') && !f.includes('docs'))
-    ? '- Review changed UI/features and describe what DMs will notice at the table.'
-    : '- Documentation or tooling change — note if players/DMs see anything new.';
-
-  return `## Summary
-
-${titleHint}
-
-_Source: heuristic draft (${mode} changes on \`${branch}\`). Set OPENAI_API_KEY for an LLM-generated version._
-
----
-
-### 🎮 Patch Notes
-
-${patchHint}
-
-- 
-- 
-
-**How to test at the table:**
-
-- [ ] Open a campaign and verify party roster loads
-- [ ] 
-- [ ] 
-
----
-
-### 🛠️ Technical Details
-
-**Area:** ${area}
-
-**Changes:**
-
-${files.slice(0, 12).map((f) => `- \`${f}\``).join('\n') || '- '}
-${files.length > 12 ? `- … and ${files.length - 12} more file(s)` : ''}
-
-**Data model impact:**
-
-- [ ] No schema changes
-- [ ] \`IAppData\` / MongoDB fields changed — list fields:
-- [ ] Migration or \`migrationUtils\` update required
-
-**Files touched:**
-
-${fileList}
-
-**Diff preview (for review / paste into Cursor):**
-
-\`\`\`diff
-${diffPreview}
-\`\`\`
-
-**Verification:**
-
-- [ ] \`npm run build --prefix webapp\`
-- [ ] \`npx tsc -b --prefix webapp\` (if types changed)
-- [ ] \`npm run dev --prefix api\` + manual smoke test
-- [ ] Entry added to \`docs/CHANGELOG_AI.md\`
-
----
-
-<!-- Template reference preserved below -->
-
-${template.trim()}
-`;
-}
-
-async function callOpenAI({ diff, stat, branch, template }) {
+async function callLLM({ diff, stat, nameStatus, branch, template }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-  const system = `You write PR descriptions for "RPG Party Manager", a D&D 5e homebrew DM tool.
-Follow the user's template exactly. You MUST include both sections:
-- "### 🎮 Patch Notes" (plain language for DMs; Portuguese is OK)
-- "### 🛠️ Technical Details" (for developers: architecture, files, data model)
-Fill in concrete bullets from the diff. Output markdown only — no outer code fences.`;
+  const userPayload = `${TECH_LEAD_INSTRUCTION}
 
-  const user = `Template to follow:
+Template structure (placeholders you must fill via JSON keys):
+- summary → {{SUMMARY}}
+- patchNotes → {{PATCH_NOTES}}
+- testSteps → {{TEST_STEPS}}
+- area → {{AREA}}
+- technicalChanges → {{TECHNICAL_CHANGES}}
+- dataModelImpact → {{DATA_MODEL_IMPACT}} (markdown checkboxes)
+- filesTouched → {{FILES_TOUCHED}} (array of markdown list lines with file paths)
+- verification → {{VERIFICATION}} (checkbox list)
 
-${template}
+Branch: ${branch}
+Stat:
+${stat}
 
----
+Name-status:
+${truncate(nameStatus, 12_000)}
 
-Git branch: ${branch}
-Diff stat:
-${stat || '(no stat)'}
-
-Git diff:
-${truncate(diff || '(empty diff)', MAX_DIFF_CHARS)}
-
-Generate the complete PR description. Start with "## Summary" and one sentence.`;
+Diff:
+${truncate(diff, MAX_DIFF_CHARS)}`;
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -208,53 +312,73 @@ Generate the complete PR description. Start with "## Summary" and one sentence.`
     },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
+      temperature: 0.25,
+      response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
+        {
+          role: 'system',
+          content: 'You are a Tech Lead for a D&D 5e homebrew DM tool. Output only valid JSON with the requested keys. Patch notes in Portuguese for DMs. Technical details in clear English or Portuguese.',
+        },
+        { role: 'user', content: userPayload },
       ],
     }),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    console.warn(`OpenAI API error (${res.status}): ${err.slice(0, 200)}`);
+    console.warn(`OpenAI API error (${res.status}): ${(await res.text()).slice(0, 300)}`);
     return null;
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || null;
+  const raw = data.choices?.[0]?.message?.content?.trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.filesTouched && Array.isArray(parsed.filesTouched)) {
+      parsed.filesTouched = parsed.filesTouched.map((f) => {
+        const path = String(f).replace(/^-\s*|`/g, '').trim();
+        return f.startsWith('-') ? f : `- \`${path}\``;
+      });
+    }
+    return parsed;
+  } catch (e) {
+    console.warn('Failed to parse LLM JSON:', e.message);
+    return null;
+  }
 }
 
 async function main() {
-  const { diff, stat, mode, untracked } = getDiffBundle();
-  const branch = run('git branch --show-current') || 'unknown';
   const template = readFileSync(TEMPLATE_FILE, 'utf8');
+  const branch = run('git branch --show-current') || 'unknown';
+  const bundle = getDiffBundle();
 
-  if (!diff && untracked.length === 0) {
-    console.error('Nothing to describe. Stage changes first: git add -A');
+  if (!bundle.diff && !bundle.nameStatus && bundle.untracked.length === 0) {
+    console.error('Nothing to describe. Make changes or ensure branch diverges from', BASE_BRANCH);
     process.exit(1);
   }
 
-  console.log(`Collecting diff (${mode}) on branch "${branch}"…`);
+  console.log(`Analyzing diff (${bundle.mode}) on branch "${branch}"…`);
 
-  let body = await callOpenAI({ diff, stat, branch, template });
-  if (body) {
+  let data = await callLLM({ ...bundle, branch, template });
+  if (data) {
     console.log('LLM draft generated via OpenAI.');
   } else {
     if (!process.env.OPENAI_API_KEY) {
-      console.log('No OPENAI_API_KEY — using heuristic draft. Set the key for LLM output.');
+      console.log('No OPENAI_API_KEY — using diff analyzer (heuristic). Set key for LLM output.');
     }
-    body = buildHeuristicDraft({ diff, stat, mode, untracked, branch, template });
+    data = analyzeDiffHeuristic({ ...bundle, branch });
   }
 
+  const body = fillTemplate(template, data);
   mkdirSync(join(ROOT, 'docs'), { recursive: true });
   writeFileSync(OUT_FILE, `${body.trim()}\n`, 'utf8');
 
   console.log(`\nWrote ${relative(ROOT, OUT_FILE)}`);
-  console.log('Review the file, then commit with:');
-  console.log('  git commit -F docs/LAST_COMMIT_MSG.txt');
-  console.log('Or copy sections into: gh pr create --body-file docs/LAST_COMMIT_MSG.txt');
+  console.log(`  Summary: ${data.summary}`);
+  console.log(`  Patch notes: ${data.patchNotes?.length ?? 0} bullets`);
+  console.log(`  Technical: ${data.technicalChanges?.length ?? 0} bullets`);
+  console.log('\nReview, then: git commit -F docs/LAST_COMMIT_MSG.txt');
 }
 
 main().catch((err) => {
