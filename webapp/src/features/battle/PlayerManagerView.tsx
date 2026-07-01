@@ -1,0 +1,112 @@
+import React from 'react';
+import PartyXpModal from './components/PartyXpModal';
+import CombatHeader from './components/CombatHeader';
+import PlayerCard from './components/PlayerCard';
+import EnemyCard from './components/EnemyCard';
+import VttOverlay from './components/VttOverlay';
+import AttackResolutionModal from './components/AttackResolutionModal';
+import FloatingActionBar from './components/FloatingActionBar';
+
+export default function PlayerManagerView({
+  party,
+  combat,
+  equipment,
+  subclasses,
+  buffsDatabase,
+  battleMode,
+  setBattleMode,
+  enemies,
+  setEnemies,
+  minimizedEnemies,
+  setMinimizedEnemies,
+  library,
+  updateLibrary,
+}) {
+  const { data: partyData } = party;
+  const players = partyData ?? [];
+  const enemyList = enemies ?? [];
+
+  return (
+    <div className="player-manager">
+      <PartyXpModal party={party} />
+
+      <CombatHeader
+        party={party}
+        combat={combat}
+        data={players}
+        enemies={enemyList}
+        battleMode={battleMode}
+        setBattleMode={setBattleMode}
+        minimizedEnemies={minimizedEnemies}
+        setMinimizedEnemies={setMinimizedEnemies}
+        setEnemies={setEnemies}
+      />
+
+      <div className={`battle-arena ${battleMode ? 'active' : ''} ${combat.isVttActive ? 'vtt-open' : ''}`}>
+        <div className={battleMode ? 'battle-party-col' : ''}>
+          {battleMode && (
+            <div className="battle-enemy-panel-header">
+              <h3 className="battle-col-title" style={{ color: '#60a5fa' }}>⚔️ Party</h3>
+            </div>
+          )}
+          <div className={`roster-grid ${battleMode ? 'battle-mode-roster' : ''}`}>
+            {players.map((player) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                party={party}
+                combat={combat}
+                battleMode={battleMode}
+                equipment={equipment}
+                subclasses={subclasses}
+                buffsDatabase={buffsDatabase}
+              />
+            ))}
+          </div>
+        </div>
+
+        <VttOverlay combat={combat} battleMode={battleMode} data={players} />
+
+        {battleMode && (
+          <div className="battle-enemy-panel">
+            <div className="battle-enemy-panel-header">
+              <h3 className="battle-col-title">💀 Enemies</h3>
+              <button type="button" className="btn btn-danger small-btn" onClick={combat.addEnemy}>+ Add Enemy</button>
+            </div>
+
+            {enemyList.length === 0 && (
+              <div className="empty-state" style={{ padding: '1rem' }}>
+                <p style={{ fontSize: '0.85rem' }}>No enemies yet. Add one!</p>
+              </div>
+            )}
+
+            <div className={`roster-grid ${battleMode ? 'battle-mode-roster' : ''}`}>
+              {enemyList.map((enemy) => (
+                <EnemyCard
+                  key={enemy.id}
+                  enemy={enemy}
+                  party={party}
+                  combat={combat}
+                  battleMode={battleMode}
+                  minimizedEnemies={minimizedEnemies}
+                  library={library}
+                  updateLibrary={updateLibrary}
+                  buffsDatabase={buffsDatabase}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <AttackResolutionModal
+        party={party}
+        combat={combat}
+        equipment={equipment}
+        buffsDatabase={buffsDatabase}
+      />
+
+      <FloatingActionBar combat={combat} />
+    </div>
+  );
+}

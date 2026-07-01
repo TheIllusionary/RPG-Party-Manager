@@ -1,0 +1,763 @@
+// @ts-nocheck — TODO: tighten hook return types and combatUtils result unions
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ALL_CC_EFFECTS, DND_SKILLS, STATS_LIST } from '../utils/constants';
+import { getXpForLevel, getLevelInfo, calculateModifier, formatModifier, calculateColor } from '../utils/partyUtils';
+import {
+    rollFormula,
+    getCCModifier,
+    applyDamageToPlayer,
+    applyHealToPlayer,
+    applyTempHpToPlayer,
+    castSpellOnPlayer,
+    convertHpToMana,
+    convertManaToHp,
+    isVampirePlayer,
+    HP_TO_MANA_HP_COST,
+    HP_TO_MANA_GAIN,
+    MANA_TO_HP_MANA_COST,
+    MANA_TO_HP_GAIN,
+} from '../../../shared/utils/combatUtils';
+
+export default function usePartyState({
+    data,
+    updateData,
+    equipment,
+    subclasses,
+    buffsDatabase,
+    config,
+    battleMode,
+    setBattleNotes = () => {},
+}) {
+const focusAndSelectRef = useCallback((el) => {
+    if (el) {
+        setTimeout(() => {
+            el.focus();
+            el.select();
+        }, 10);
+    }
+}, []);
+
+const [editingId, setEditingId] = useState(null);
+
+const [inlineCastPlayerId, setInlineCastPlayerId] = useState(null);
+const [actionToast, setActionToast] = useState('');
+const prevBattleModeRef = useRef(battleMode);
+
+const showActionToast = (msg) => {
+    setActionToast(msg);
+    setTimeout(() => setActionToast(''), 2500);
+};
+
+useEffect(() => {
+    if (prevBattleModeRef.current && !battleMode) {
+        if (!Array.isArray(data)) return;
+        const needsClear = data.some(p => (p.recentSpells || []).length > 0);
+        if (needsClear) {
+            updateData(data.map(p => ({ ...p, recentSpells: [] })));
+        }
+    }
+    prevBattleModeRef.current = battleMode;
+}, [battleMode]);
+
+const [playerEditField, setPlayerEditField] = useState(null); // { id, field }
+const [playerEditValue, setPlayerEditValue] = useState('');
+const [buffInputPlayerId, setBuffInputPlayerId] = useState<string | null>(null);
+const [buffSearchText, setBuffSearchText] = useState('');
+const [expandedPlayers, setExpandedPlayers] = useState({});
+
+const getPlayerSubclass = (player) => {
+    if (!player?.subclassId) return null;
+    return subclasses.find(s => s.id === player.subclassId) || null;
+};
+
+const playerUsesVampire = (player) => isVampirePlayer(player, getPlayerSubclass(player));
+
+const [minimizedPlayers, setMinimizedPlayers] = useState(() => {
+    const initial = {};
+    const isStartupMinimized = config?.startupView === 'party-minimized';
+    if (Array.isArray(data)) {
+        data.forEach(p => {
+            initial[p.id] = isStartupMinimized;
+        });
+    }
+    return initial;
+});
+const isPlayerMinimized = (id) => minimizedPlayers[id] === true;
+
+const computePlayerHpDelta = (player, amount, asTempHp = false) => {
+    const maxHp = calculateMaxHP(player);
+    if (asTempHp && amount !== 0) return applyTempHpToPlayer(player, amount);
+    if (amount > 0) return applyDamageToPlayer(player, amount, maxHp);
+    if (amount < 0) return applyHealToPlayer(player, amount, maxHp);
+    return {
+        hpCurrent: player.hpCurrent,
+        hpTemp: player.hpTemp || 0,
+        ultCurrent: player.ultCurrent ?? 0,
+    };
+};
+
+const computePlayerManaDelta = (player, amount) => {
+    const maxMana = calculateMaxMana(player);
+    if (amount > 0) return Math.max(0, player.manaCurrent - amount);
+    if (amount < 0) return Math.min(maxMana, player.manaCurrent + Math.abs(amount));
+    return player.manaCurrent;
+};
+
+const handleCastSpell = (playerId, spellLevel) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player) return;
+
+    const maxHp = calculateMaxHP(player);
+    const subclass = getPlayerSubclass(player);
+    const result = castSpellOnPlayer(player, spellLevel, maxHp, subclass);
+    if (!result.ok) {
+        showActionToast(`❌ ${result.error}`);
+        return;
+    }
+
+    const updates = {
+        hpCurrent: result.hpCurrent,
+        hpTemp: result.hpTemp,
+        ultCurrent: result.ultCurrent,
+        recentSpells: result.recentSpells,
+    };
+    if (result.manaCurrent !== undefined) updates.manaCurrent = result.manaCurrent;
+    updatePlayer(playerId, updates);
+    showActionToast(`✦ Lvl ${spellLevel} (−${result.costPaid} ${result.costResource.toUpperCase()})`);
+    setInlineCastPlayerId(null);
+};
+
+const handleHpToMana = (playerId) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player || playerUsesVampire(player)) return;
+    const result = convertHpToMana(player, calculateMaxHP(player), calculateMaxMana(player));
+    if (!result.ok) {
+        showActionToast(`❌ ${result.error}`);
+        return;
+    }
+    updatePlayer(playerId, {
+        hpCurrent: result.hpCurrent,
+        hpTemp: result.hpTemp,
+        ultCurrent: result.ultCurrent,
+        manaCurrent: result.manaCurrent,
+    });
+    showActionToast(`♥→✦ −${HP_TO_MANA_HP_COST} HP, +${HP_TO_MANA_GAIN} Mana`);
+};
+
+const handleManaToHp = (playerId) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player || playerUsesVampire(player)) return;
+    const result = convertManaToHp(player, calculateMaxHP(player));
+    if (!result.ok) {
+        showActionToast(`❌ ${result.error}`);
+        return;
+    }
+    updatePlayer(playerId, {
+        hpCurrent: result.hpCurrent,
+        hpTemp: result.hpTemp,
+        ultCurrent: result.ultCurrent,
+        manaCurrent: result.manaCurrent,
+    });
+    showActionToast(`✦→♥ −${MANA_TO_HP_MANA_COST} Mana, +${MANA_TO_HP_GAIN} HP`);
+};
+
+const getEquipmentBonus = (playerId, stat) => {
+    const player = data.find(p => p.id === playerId);
+    const baseStat = player ? (player[stat] || 10) : 10;
+    const equipped = equipment?.equipped?.[playerId];
+    if (!equipped) return 0;
+
+    let setVal = 0;
+    let modifierSum = 0;
+
+    Object.entries(equipped).forEach(([slotId, slot]) => {
+        if (slotId === '__wondrous__') {
+            if (Array.isArray(slot)) {
+                slot.forEach(wItem => {
+                    modifierSum += wItem?.modifiers?.[stat] || 0;
+                    const sVal = wItem?.setAttributes?.[stat] || 0;
+                    if (sVal > setVal) {
+                        setVal = sVal;
+                    }
+                });
+            }
+        } else {
+            modifierSum += slot?.modifiers?.[stat] || 0;
+            const sVal = slot?.setAttributes?.[stat] || 0;
+            if (sVal > setVal) {
+                setVal = sVal;
+            }
+        }
+    });
+
+    if (setVal > baseStat) {
+        return setVal - baseStat;
+    } else {
+        return modifierSum;
+    }
+};
+
+const effectiveStat = (player, stat) => {
+    return (player[stat] || 10) + getEquipmentBonus(player.id, stat);
+};
+
+const [partyXpModalOpen, setPartyXpModalOpen] = useState(false);
+const [partyXpAmount, setPartyXpAmount] = useState('');
+
+const addPlayer = () => {
+    const newPlayer = {
+        id: Date.now().toString(),
+        name: 'New Player',
+        classType: 'Class',
+        xp: 0,
+        inParty: true,
+        hpBase: 10,
+        hpCurrent: 10,
+        manaCurrent: 10,
+        ultMax: 100,
+        ultCurrent: 0,
+        ac: 10,
+        str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
+        skills: {},
+        manaExhaustion: 0,
+        resourceTrait: 'standard',
+        subclassId: null,
+        recentSpells: [],
+        background: '', race: '', alignment: '', features: '',
+        resistances: [], immunities: [], vulnerabilities: [],
+        ccResistances: [], ccImmunities: [], ccVulnerabilities: [],
+        buffs: []
+    };
+    updateData([...data, newPlayer]);
+};
+
+const calculateMaxHP = (player) => {
+    const level = getLevelInfo(player.xp).level;
+    const conMod = calculateModifier(effectiveStat(player, 'con'));
+    const baseHp = Math.max(1, (player.hpBase || 10) + (conMod * level));
+    if (playerUsesVampire(player)) {
+        return baseHp + calculateMaxMana(player);
+    }
+    return baseHp;
+};
+
+const getSlotLabel = (slotId) => {
+    const mapping = {
+        head: 'Head',
+        neck: 'Neck',
+        armor: 'Armor',
+        mainHand: 'Main Hand',
+        mainHand2: 'Main Hand 2',
+        offhand: 'Offhand',
+        offhand2: 'Offhand 2',
+        waist: 'Waist',
+        feet: 'Feet',
+        gloves: 'Gloves'
+    };
+    return mapping[slotId] || slotId;
+};
+
+const getPlayerBuffs = (player, equipment) => {
+    const list = [];
+
+    // 1. Character level buffs
+    if (player.buffs) {
+        player.buffs.forEach(b => {
+            list.push({ text: b, source: 'character', sourceName: player.name });
+        });
+    }
+
+    // 2. Equipped items level buffs
+    const equipped = equipment?.equipped?.[player.id];
+    if (equipped) {
+        Object.entries(equipped).forEach(([slotId, slot]) => {
+            if (slotId === '__wondrous__') {
+                if (Array.isArray(slot)) {
+                    slot.forEach(w => {
+                        if (w && w.name && w.name.trim().length > 0 && w.buffs) {
+                            w.buffs.forEach(b => {
+                                list.push({ text: b, source: 'wondrous', sourceName: w.name, slotLabel: 'Wondrous Item' });
+                            });
+                        }
+                    });
+                }
+            } else {
+                if (slot && slot.name && slot.name.trim().length > 0 && slot.buffs) {
+                    const slotLabel = getSlotLabel(slotId);
+                    slot.buffs.forEach(b => {
+                        list.push({ text: b, source: 'item', sourceName: slot.name, slotLabel });
+                    });
+                }
+            }
+        });
+    }
+
+    return list;
+};
+
+const handleRemoveBuffFromTop = (player, buff) => {
+    if (buff.source === 'character') {
+        const updated = (player.buffs || []).filter(x => x !== buff.name);
+        updatePlayer(player.id, 'buffs', updated);
+    } else if (buff.source === 'wondrous') {
+        alert(`This effect comes from the equipped item "${buff.sourceName}" (Wondrous Item). To remove it, please unequip the item or edit the item's properties.`);
+    } else {
+        alert(`This effect comes from the equipped item "${buff.sourceName}" (${buff.slotLabel}). To remove it, please unequip the item or edit the item's properties.`);
+    }
+};
+
+const getPlayerBuffsWithConfig = (player, equipment) => {
+    return getPlayerBuffs(player, equipment).map(buff => {
+        const config = buffsDatabase.find(x => x.name === buff.text);
+        return {
+            ...buff,
+            name: buff.text,
+            config
+        };
+    });
+};
+
+const handleToggleBuff = (entity, buff) => {
+    const config = buff.config;
+    if (!config) return;
+
+    const name = buff.name;
+    const isToggle = config.type === 'toggle';
+    const isFixed = config.type === 'fixed';
+    const isTurn = config.type === 'turn';
+    const isRestLimited = config.oncePerRest === 'short' || config.oncePerRest === 'long';
+
+    const spentBuffs = { ...(entity.spentBuffs || {}) };
+    const buffStates = { ...(entity.buffStates || {}) };
+
+    if (spentBuffs[name]) {
+        alert(`"${name}" has already been used and is spent. A rest is required.`);
+        return;
+    }
+
+    if (config.type === 'turn') {
+        const rolled = rollFormula(config.turnFormula || '0');
+        const amt = rolled.total;
+
+        let msg = '';
+        let hpCurrent = entity.hpCurrent !== undefined ? entity.hpCurrent : entity.hp;
+        let hpMax = entity.hpCurrent !== undefined ? calculateMaxHP(entity) : entity.hpMax;
+        let manaCurrent = entity.manaCurrent !== undefined ? entity.manaCurrent : 0;
+        let manaMax = entity.hpCurrent !== undefined ? calculateMaxMana(entity) : 0;
+        let tempHp = entity.hpTemp || 0;
+
+        if (config.turnType === 'healHP') {
+            const nextHp = Math.min(hpMax, hpCurrent + amt);
+            msg = `Healed ${entity.name} for ${amt} HP (${hpCurrent} -> ${nextHp})`;
+            hpCurrent = nextHp;
+        } else if (config.turnType === 'damageHP') {
+            const nextHp = Math.max(0, hpCurrent - amt);
+            msg = `Dealt ${amt} damage to ${entity.name} (${hpCurrent} -> ${nextHp})`;
+            hpCurrent = nextHp;
+        } else if (config.turnType === 'healTempHP') {
+            const nextTemp = Math.max(tempHp, amt);
+            msg = `${entity.name} gained ${amt} Temp HP (current: ${tempHp} -> new: ${nextTemp})`;
+            tempHp = nextTemp;
+        } else if (config.turnType === 'healMana') {
+            const nextMana = Math.min(manaMax, manaCurrent + amt);
+            msg = `Restored ${amt} Mana to ${entity.name} (${manaCurrent} -> ${nextMana})`;
+            manaCurrent = nextMana;
+        } else if (config.turnType === 'damageMana') {
+            const nextMana = Math.max(0, manaCurrent - amt);
+            msg = `Drained ${amt} Mana from ${entity.name} (${manaCurrent} -> ${nextMana})`;
+            manaCurrent = nextMana;
+        }
+
+        let formulaLog = `rolled ${config.turnFormula} = ${rolled.total}`;
+        if (rolled.rolls.length > 0) {
+            formulaLog = `rolled [${rolled.rolls.join('+')}]${rolled.modifier !== 0 ? (rolled.modifier > 0 ? '+' + rolled.modifier : rolled.modifier) : ''} = ${rolled.total}`;
+        }
+        const logText = `\n[Turn Buff: ${name}] ${msg} (${formulaLog})`;
+        setBattleNotes(prev => (prev ? prev + logText : logText));
+
+        if (isRestLimited) {
+            spentBuffs[name] = true;
+        }
+
+        updatePlayer(entity.id, { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs });
+        return;
+    }
+
+    if (isToggle) {
+        const currentlyActive = buffStates[name] !== false;
+        if (currentlyActive) {
+            buffStates[name] = false;
+            if (isRestLimited) {
+                spentBuffs[name] = true;
+            }
+        } else {
+            buffStates[name] = true;
+        }
+    } else if (isFixed) {
+        if (isRestLimited) {
+            if (window.confirm(`Use rest-limited buff "${name}"? This will consume its charge until the next rest.`)) {
+                spentBuffs[name] = true;
+            }
+        }
+    }
+
+    updatePlayer(entity.id, { buffStates, spentBuffs });
+};
+
+const getPlayerSpriteInfo = (player) => {
+    const cls = (player.classType || '').trim().toLowerCase();
+    const validClasses = [
+        'artificer', 'barbarian', 'bard', 'cleric', 'druid',
+        'fighter', 'monk', 'paladin', 'ranger', 'rogue',
+        'sorcerer', 'warlock', 'wizard'
+    ];
+    const spriteName = validClasses.includes(cls) ? cls : 'default';
+
+    const maxHp = calculateMaxHP(player);
+    const maxMana = calculateMaxMana(player);
+    const isKO = player.hpCurrent <= 0;
+    const isPowered = player.ultCurrent >= player.ultMax;
+    const isVampire = playerUsesVampire(player);
+    const isWinded = !isVampire && maxMana > 0 && player.manaCurrent < maxMana * 0.2;
+    const isHurt = player.hpCurrent < maxHp * 0.5;
+
+    let spriteState = 'normal';
+    if (isKO) spriteState = 'ko';
+    else if (isPowered) spriteState = 'powered';
+    else if (isWinded) spriteState = 'winded';
+    else if (isHurt) spriteState = 'hurt';
+
+    return { spriteName, spriteState };
+};
+
+const updatePlayer = (id, fieldOrFields, value) => {
+    const updated = data.map(p => {
+        if (p.id === id) {
+            if (typeof fieldOrFields === 'object') {
+                let nextP = { ...p, ...fieldOrFields };
+                if (nextP.hpCurrent !== undefined) {
+                    nextP.hpCurrent = Math.min(nextP.hpCurrent, calculateMaxHP(nextP));
+                    if (nextP.hpCurrent <= 0) {
+                        nextP.ultCurrent = 0;
+                    }
+                }
+                return nextP;
+            } else {
+                let val = value;
+                let extra = {};
+                if (fieldOrFields === 'hpCurrent') {
+                    val = Math.min(val, calculateMaxHP(p));
+                    if (val <= 0) {
+                        extra.ultCurrent = 0;
+                    }
+                }
+                if (fieldOrFields === 'ultCurrent') val = Math.max(0, Math.min(val, p.ultMax));
+                return { ...p, [fieldOrFields]: val, ...extra };
+            }
+        }
+        return p;
+    });
+    updateData(updated);
+};
+
+const startPlayerEdit = (player, field) => {
+    setPlayerEditField({ id: player.id, field });
+    if (field === 'level') {
+        setPlayerEditValue(String(getLevelInfo(player.xp).level));
+    } else {
+        setPlayerEditValue(String(player[field]));
+    }
+};
+
+const commitPlayerEdit = (player) => {
+    if (!playerEditField) return;
+    const field = playerEditField.field;
+
+    if (field === 'level') {
+        const lvl = parseInt(playerEditValue, 10);
+        if (!Number.isNaN(lvl)) setLevel(player.id, lvl);
+        setPlayerEditField(null);
+        setPlayerEditValue('');
+        return;
+    }
+
+    let val = parseInt(playerEditValue) || 0;
+    if (field === 'ultCurrent') {
+        val = Math.max(0, Math.min(val, player.ultMax || 100));
+    }
+    updatePlayer(player.id, field, val);
+    setPlayerEditField(null);
+    setPlayerEditValue('');
+};
+
+const cancelPlayerEdit = () => {
+    setPlayerEditField(null);
+    setPlayerEditValue('');
+};
+
+const addCc = (playerId, effect) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player) return;
+    if (getCCModifier(effect, player, equipment) === 'immune') {
+        alert(`${player.name} is immune to ${effect}!`);
+        return;
+    }
+    const currentCc = player.cc || [];
+    if (!currentCc.includes(effect)) {
+        updatePlayer(playerId, 'cc', [...currentCc, effect]);
+    }
+};
+
+const removeCc = (playerId, effect) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player) return;
+    const currentCc = player.cc || [];
+    updatePlayer(playerId, 'cc', currentCc.filter(x => x !== effect));
+};
+
+const getProficiencyBonus = (player) => {
+    const lvl = getLevelInfo(player.xp).level;
+    return lvl >= 17 ? 6 : Math.ceil(lvl / 4) + 1;
+};
+
+const toggleSaveProficiency = (id, stat) => {
+    const player = data.find(p => p.id === id);
+    if (!player) return;
+    const currentSaves = player.saves || {};
+    updatePlayer(id, 'saves', { ...currentSaves, [stat]: !currentSaves[stat] });
+};
+
+const calculateMaxMana = (player) => {
+    const level = getLevelInfo(player.xp).level;
+    const baseCasterPoints = level * 6 + 2;
+    const intScore = player.int || 10;
+    const wisScore = player.wis || 10;
+    const chaScore = player.cha || 10;
+    const intMultiplier = Math.max(0, (intScore - 10) / 10);
+    const wisMultiplier = Math.max(0, (wisScore - 10) / 20);
+    const chaMultiplier = Math.max(0, (chaScore - 10) / 20);
+    const totalBonusMult = 1 + intMultiplier + wisMultiplier + chaMultiplier;
+    const calculated = Math.floor(baseCasterPoints * totalBonusMult);
+    return Math.max(0, calculated + (player.manaModifier || 0));
+};
+
+const applyLevelToPlayer = (player, newLevel) => {
+    const clamped = Math.max(1, Math.min(20, Math.floor(Number(newLevel)) || 1));
+    const xp = getXpForLevel(clamped);
+    const withXp = { ...player, xp };
+    const maxHp = calculateMaxHP(withXp);
+    const maxMana = calculateMaxMana(withXp);
+    return {
+        xp,
+        hpCurrent: Math.min(player.hpCurrent ?? maxHp, maxHp),
+        manaCurrent: Math.min(player.manaCurrent ?? maxMana, maxMana),
+    };
+};
+
+const setLevel = (playerId, newLevel) => {
+    const player = data.find(p => p.id === playerId);
+    if (!player) return;
+    updatePlayer(playerId, applyLevelToPlayer(player, newLevel));
+};
+
+const setPartyLevel = () => {
+    const raw = window.prompt('Set level for all active party members (1–20):');
+    if (raw === null || raw.trim() === '') return;
+
+    const level = parseInt(raw, 10);
+    if (Number.isNaN(level) || level < 1 || level > 20) {
+        window.alert('Enter a level between 1 and 20.');
+        return;
+    }
+
+    const updated = data.map((p) => {
+        if (!p.inParty) return p;
+        return { ...p, ...applyLevelToPlayer(p, level) };
+    });
+    updateData(updated);
+};
+
+const toggleParty = (id) => {
+    const updated = data.map(p => p.id === id ? { ...p, inParty: !p.inParty } : p);
+    updateData(updated);
+};
+
+const removePlayer = (id) => {
+    if (window.confirm("Are you sure you want to delete this player?")) {
+        updateData(data.filter(p => p.id !== id));
+    }
+};
+
+const shortRest = () => {
+    const updated = data.map(p => {
+        if (!p.inParty) return p;
+        const nextSpent = { ...(p.spentBuffs || {}) };
+        Object.keys(nextSpent).forEach(buffName => {
+            const config = buffsDatabase.find(b => b.name === buffName);
+            if (config && config.oncePerRest === 'short') {
+                delete nextSpent[buffName];
+            }
+        });
+        return {
+            ...p,
+            hpCurrent: Math.min(calculateMaxHP(p), p.hpCurrent + Math.floor(calculateMaxHP(p) * 0.5)),
+            ultCurrent: Math.max(0, Math.round((p.ultCurrent || 0) * 0.75)),
+            spentBuffs: nextSpent
+        };
+    });
+    updateData(updated);
+};
+
+const longRest = () => {
+    const updated = data.map(p => {
+        if (!p.inParty) return p;
+        return {
+            ...p,
+            hpCurrent: calculateMaxHP(p),
+            manaCurrent: calculateMaxMana(p),
+            ultCurrent: Math.max(0, Math.round((p.ultCurrent || 0) * 0.5)),
+            spentBuffs: {},
+            recentSpells: [],
+        };
+    });
+    updateData(updated);
+};
+
+const givePartyXP = (type) => {
+    const activePlayers = data.filter(p => p.inParty);
+    if (activePlayers.length === 0) return;
+
+    if (type === 'flat') {
+        const amt = parseInt(partyXpAmount);
+        if (!isNaN(amt)) {
+            const updated = data.map(p => p.inParty ? { ...p, xp: Math.max(0, p.xp + amt) } : p);
+            updateData(updated);
+        }
+    } else if (type === 'percent') {
+        const pct = parseInt(partyXpAmount);
+        if (!isNaN(pct)) {
+            const updated = data.map(p => {
+                if (p.inParty) {
+                    const info = getLevelInfo(p.xp);
+                    if (info.nextLevelXp) {
+                        const req = info.nextLevelXp - info.currentLevelXp;
+                        return { ...p, xp: Math.max(0, p.xp + Math.floor(req * (pct / 100))) };
+                    }
+                }
+                return p;
+            });
+            updateData(updated);
+        }
+    } else if (type === 'levelup') {
+        const updated = data.map(p => {
+            if (p.inParty) {
+                const info = getLevelInfo(p.xp);
+                if (info.nextLevelXp) {
+                    return { ...p, xp: info.nextLevelXp };
+                }
+            }
+            return p;
+        });
+        updateData(updated);
+    }
+
+    setPartyXpModalOpen(false);
+    setPartyXpAmount('');
+};
+
+const calculateSkillBonus = (player, stat, skillName) => {
+    const mod = calculateModifier(effectiveStat(player, stat));
+    const profBonus = getLevelInfo(player.xp).level >= 17 ? 6 : Math.ceil(getLevelInfo(player.xp).level / 4) + 1;
+    const isProficient = player.skills && player.skills[skillName];
+    return mod + (isProficient ? profBonus : 0);
+};
+
+const toggleSkill = (playerId, skillName) => {
+    const player = data.find(p => p.id === playerId);
+    const currentSkills = player.skills || {};
+    updatePlayer(playerId, 'skills', { ...currentSkills, [skillName]: !currentSkills[skillName] });
+};
+
+const [xpModalId, setXpModalId] = useState<string | null>(null);
+const [xpModalType, setXpModalType] = useState('flat');
+const [xpInputValue, setXpInputValue] = useState('');
+
+
+    return {
+        data,
+        updateData,
+        focusAndSelectRef,
+        editingId,
+        setEditingId,
+        inlineCastPlayerId,
+        setInlineCastPlayerId,
+        actionToast,
+        showActionToast,
+        playerEditField,
+        setPlayerEditField,
+        playerEditValue,
+        setPlayerEditValue,
+        buffInputPlayerId,
+        setBuffInputPlayerId,
+        buffSearchText,
+        setBuffSearchText,
+        expandedPlayers,
+        setExpandedPlayers,
+        minimizedPlayers,
+        setMinimizedPlayers,
+        isPlayerMinimized,
+        partyXpModalOpen,
+        setPartyXpModalOpen,
+        partyXpAmount,
+        setPartyXpAmount,
+        xpModalId,
+        setXpModalId,
+        xpModalType,
+        setXpModalType,
+        xpInputValue,
+        setXpInputValue,
+        getPlayerSubclass,
+        playerUsesVampire,
+        computePlayerHpDelta,
+        computePlayerManaDelta,
+        handleCastSpell,
+        handleHpToMana,
+        handleManaToHp,
+        getEquipmentBonus,
+        effectiveStat,
+        addPlayer,
+        calculateMaxHP,
+        calculateMaxMana,
+        getSlotLabel,
+        getPlayerBuffs,
+        handleRemoveBuffFromTop,
+        getPlayerBuffsWithConfig,
+        handleToggleBuff,
+        getPlayerSpriteInfo,
+        updatePlayer,
+        startPlayerEdit,
+        commitPlayerEdit,
+        cancelPlayerEdit,
+        addCc,
+        removeCc,
+        getProficiencyBonus,
+        toggleSaveProficiency,
+        formatModifier,
+        getLevelInfo,
+        getXpForLevel,
+        calculateModifier,
+        setLevel,
+        setPartyLevel,
+        toggleParty,
+        removePlayer,
+        shortRest,
+        longRest,
+        givePartyXP,
+        calculateColor,
+        calculateSkillBonus,
+        toggleSkill,
+        dndSkills: DND_SKILLS,
+        statsList: STATS_LIST,
+        ALL_CC_EFFECTS,
+    };
+}

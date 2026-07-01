@@ -1,5 +1,7 @@
 # Node / Build artifacts
 node_modules/
+api/node_modules/
+api/.env
 webapp/node_modules/
 webapp/dist/
 webapp/dist-electron/
@@ -26,3 +28,6 @@ npm-debug.log*
 *save*.json
 *.BACKUP.json
 # SSH check-in test
+
+# AI-generated commit drafts (review locally, do not commit)
+docs/LAST_COMMIT_MSG.txt

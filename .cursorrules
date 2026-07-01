@@ -1,0 +1,121 @@
+# RPG Party Manager — AI Collaboration Rules
+
+You are working on a D&D 5e homebrew DM tool (React + TypeScript + Vite + Express + MongoDB).
+Follow these rules so humans and AI agents can collaborate without breaking the codebase.
+
+---
+
+## 1. Role: Architect First
+
+Before writing code:
+
+1. Read `src/types/index.ts` for canonical data shapes (`IPlayer`, `IEnemy`, `IAppData`, etc.).
+2. Read `architecture.md` and `docs/mudancas-recentes.md` for domain context.
+3. Identify the **feature** that owns the change (`battle`, `inventory`, `bestiary`, `campaign`, `auth`).
+4. Prefer extending existing hooks/utils over duplicating logic in components.
+
+Do not create new top-level folders without updating this file and `README.md`.
+
+---
+
+## 2. State Reading (Single Source of Truth)
+
+| Concern | Location |
+|---------|----------|
+| Global campaign state | `IAppData` in `webapp/src/types/index.ts` |
+| Defaults & merge | `webapp/src/data/defaultData.ts` |
+| Legacy import normalization | `webapp/src/shared/utils/migrationUtils.ts` |
+| Combat math (D&D rules) | `webapp/src/shared/utils/combatUtils.ts` — **do not change formulas casually** |
+| Battle runtime (enemies, VTT) | `GameApp.tsx` local state + `features/battle/hooks/` |
+| API persistence | `api/routes/campaigns.js`, `webapp/src/services/api.ts` |
+
+Never store derived values (level, max HP) in MongoDB when they can be computed from `xp` + stats.
+
+---
+
+## 3. Feature-Driven Layout (mandatory)
+
+```
+webapp/src/
+├── core/              App.tsx, GameApp.tsx, main.tsx
+├── features/
+│   ├── battle/        Party roster, combat mode, VTT, attack resolution
+│   ├── inventory/     Equipment, CharacterEquipment
+│   ├── bestiary/      EnemyLibrary, EncounterBuilder, default_monsters.json
+│   ├── campaign/      CampaignList, Notebook, Training, Chaos, SubclassManager
+│   └── auth/          AuthScreen
+├── shared/
+│   └── utils/         combatUtils, migrationUtils (cross-feature only)
+├── types/             index.ts — all shared interfaces
+├── data/              defaultData, attackSchema
+└── services/          api.ts
+```
+
+**Rules:**
+
+- UI that belongs to one domain → `features/<domain>/`.
+- Cross-feature pure functions → `shared/utils/`.
+- Feature-specific hooks → `features/<domain>/hooks/` (e.g. `usePartyState`, `useCombatState`).
+- **No** `components/PlayerManagerModule/` or god components >500 lines without splitting.
+- Visual-only UI state (dropdowns open, modals) stays in **components**, not combat hooks.
+
+---
+
+## 4. Change Tracking (required for every session)
+
+After meaningful changes, append a short entry to `docs/CHANGELOG_AI.md`:
+
+```markdown
+## YYYY-MM-DD — [Agent/Person name or "Cursor"]
+- **Area:** battle | api | types | docs | …
+- **Summary:** one-line what changed
+- **Files:** key paths touched
+```
+
+Also update `docs/mudancas-recentes.md` when the change affects user-visible behavior (Portuguese OK).
+
+---
+
+## 5. RPG & Homebrew Rules
+
+- **Level** is derived from `xp` via D&D 5e thresholds (`features/battle/utils/partyUtils.ts`).
+  Direct level edits must set `xp` to the minimum threshold for that level.
+- **Damage types**, resistances, immunities, vulnerabilities use string labels from `constants.ts` / `combatUtils.ts`.
+- **Subclasses** (`ISubclass`) override player traits; `subclassId` on `IPlayer` links them.
+- **Vampire / Blood Magic** uses `resourceTrait: 'vampire'` — mana merges into HP pool.
+- Enemy attacks: structured `IAttack[]` preferred; fallback `parseAbilities()` for legacy text.
+- Do not break `combatUtils.ts` signatures without updating all callers in `features/battle/`.
+
+---
+
+## 6. TypeScript & Quality
+
+- New code: `.ts` / `.tsx` only under `webapp/src/`.
+- Type props with interfaces from `src/types/`; use `// TODO: fix any` sparingly, never silently.
+- Run `npm run build --prefix webapp` after structural changes.
+- Do not commit `.env`, credentials, or `node_modules`.
+- Do not create git commits unless the user explicitly asks.
+
+---
+
+## 7. API & Environment
+
+- Backend: `api/` — Express + Mongoose. Env: `api/.env` from `api/.env.example`.
+- Required: `MONGO_URI`, `PORT`, `JWT_SECRET`.
+- Frontend proxies `/api` → `localhost:3001` in Vite dev.
+
+---
+
+## 8. PR & Documentation
+
+- Use `docs/PR_TEMPLATE.md` for pull requests.
+- Patch notes = player/DM-facing; technical = architecture and data model.
+
+**Commits & PRs (mandatory when asked):**
+
+- Always read the current `git diff` (`git diff --cached` first, else `git diff`).
+- Fill `docs/PR_TEMPLATE.md` structure with **both** sections filled in:
+  - **### 🎮 Patch Notes** — what changed for DMs/players (no jargon).
+  - **### 🛠️ Technical Details** — architecture, files, data model, verification.
+- For local draft generation, run `npm run commit:ai` → review `docs/LAST_COMMIT_MSG.txt` before committing.
+- Append a line to `docs/CHANGELOG_AI.md` after meaningful merges.
