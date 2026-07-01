@@ -1,0 +1,24 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# After connecting GitHub (TheIllusionary org) to Render, use Dashboard → New → Blueprint
+# or create the web service manually with the same settings below.
+
+services:
+  - type: web
+    name: rpg-party-manager-api
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: cd api && npm install
+    startCommand: cd api && node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: '*'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false

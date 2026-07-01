@@ -1,34 +1,56 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import { applyCloudDefaults } from './config/applyDefaults.js';
 import { connectDB } from './config/db.js';
 import authRouter from './routes/auth.js';
 import campaignsRouter from './routes/campaigns.js';
 
 dotenv.config({ override: true });
+applyCloudDefaults();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-];
+app.disable('x-powered-by');
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+function resolveCorsOrigin() {
+  const configured = process.env.CORS_ORIGIN?.trim();
+  if (configured === '*' || !configured) {
+    return true;
+  }
+  return configured.split(',').map((origin) => origin.trim()).filter(Boolean);
+}
+
+const corsOrigin = resolveCorsOrigin();
+const devOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('file://')) {
+    if (!origin || origin.startsWith('file://')) {
       callback(null, true);
-    } else {
-      callback(null, true);
+      return;
     }
+    if (corsOrigin === true) {
+      callback(null, true);
+      return;
+    }
+    if (corsOrigin.includes(origin) || (!isProduction && devOrigins.includes(origin))) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', uptime: process.uptime() });
 });
 
 app.use('/auth', authRouter);

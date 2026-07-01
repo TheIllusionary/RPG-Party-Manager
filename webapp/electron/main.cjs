@@ -1,11 +1,92 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, Menu } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { fork } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow = null;
 let vttView = null;
 let apiProcess = null;
+
+const updater = autoUpdater;
+
+function setupAutoUpdater() {
+    if (!app.isPackaged) {
+        console.log('[AutoUpdate] Skipped in development.');
+        return;
+    }
+
+    updater.autoDownload = true;
+    updater.autoInstallOnAppQuit = true;
+    updater.logger = console;
+
+    updater.on('checking-for-update', () => {
+        console.log('[AutoUpdate] Checking for updates…');
+    });
+
+    updater.on('update-available', (info) => {
+        console.log('[AutoUpdate] Update available:', info.version);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-update-status', {
+                status: 'available',
+                version: info.version,
+            });
+        }
+    });
+
+    updater.on('update-not-available', (info) => {
+        console.log('[AutoUpdate] App is up to date.', info?.version ?? '');
+    });
+
+    updater.on('download-progress', (progress) => {
+        const pct = Math.round(progress.percent);
+        console.log(`[AutoUpdate] Downloading… ${pct}%`);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-update-status', {
+                status: 'downloading',
+                percent: pct,
+            });
+        }
+    });
+
+    updater.on('update-downloaded', (info) => {
+        console.log('[AutoUpdate] Update downloaded:', info.version);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-update-status', {
+                status: 'downloaded',
+                version: info.version,
+            });
+        }
+
+        dialog.showMessageBox({
+            type: 'info',
+            title: 'Update ready',
+            message: `Party Manager ${info.version} was downloaded.`,
+            detail: 'The update will install automatically when you close the app.',
+            buttons: ['Restart now', 'Later'],
+            defaultId: 0,
+            cancelId: 1,
+        }).then(({ response }) => {
+            if (response === 0) {
+                updater.quitAndInstall(false, true);
+            }
+        });
+    });
+
+    updater.on('error', (err) => {
+        console.error('[AutoUpdate] Error:', err);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-update-status', {
+                status: 'error',
+                message: err?.message ?? String(err),
+            });
+        }
+    });
+
+    updater.checkForUpdatesAndNotify().catch((err) => {
+        console.error('[AutoUpdate] checkForUpdates failed:', err);
+    });
+}
 
 function getApiPaths() {
   if (app.isPackaged) {
@@ -146,6 +227,7 @@ app.whenReady().then(() => {
     );
 
     createWindow();
+    setupAutoUpdater();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

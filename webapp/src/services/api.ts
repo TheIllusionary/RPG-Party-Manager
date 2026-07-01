@@ -1,5 +1,7 @@
 // @ts-nocheck — TODO: type API client options and responses
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { DEFAULT_API_URL } from '../config/cloudDefaults';
+
+const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 const TOKEN_KEY = 'partyManagerAuthToken';
 const USER_KEY = 'partyManagerAuthUser';
 

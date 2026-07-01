@@ -70,21 +70,23 @@ npm install
 
 This runs `postinstall` for both `api/` and `webapp/`.
 
-### 2. API environment
+### 2. API environment (optional)
+
+No setup required — the project ships with **cloud defaults** in `shared/cloudDefaults.js` (hosted API on Render + MongoDB Atlas). Clone, install, and run.
+
+To use a **local MongoDB** or custom secrets, copy the example file:
 
 ```bash
 cp api/.env.example api/.env
 ```
 
-Edit `api/.env`:
+Edit `api/.env` only when overriding defaults:
 
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/rpg_party_manager
 PORT=3001
-JWT_SECRET=change-me-to-a-long-random-string
+JWT_SECRET=your-own-secret
 ```
-
-For Atlas, paste your connection string as `MONGO_URI`.
 
 ### 3. Seed database (optional)
 
@@ -96,7 +98,15 @@ Creates a default campaign with sample players and data.
 
 ### 4. Run development
 
-**Web only** (API + Vite hot reload):
+**Zero-config (cloud API — no local MongoDB):**
+
+```bash
+npm run dev --prefix webapp
+```
+
+Opens Vite at [http://localhost:5173](http://localhost:5173) and talks to the hosted API on Render.
+
+**Full local stack** (API + Vite hot reload):
 
 ```bash
 npm run dev:web
@@ -131,6 +141,45 @@ npm run build:electron   # Windows desktop package
 | `npm run dev --prefix api` | API only (watch mode) |
 | `npm run seed --prefix api` | Reset & seed MongoDB |
 | `npm run commit:ai` | Generate PR-style commit message → `docs/LAST_COMMIT_MSG.txt` |
+| `npm run build:electron` | Build Windows installer locally (no upload) |
+| `npm run publish:electron` | Build + upload to GitHub Releases (`GH_TOKEN` required) |
+
+### Desktop auto-update (Electron)
+
+The packaged app checks **GitHub Releases** on startup (`electron-updater`) and downloads updates in the background.
+
+**Local build (no publish):**
+
+```bash
+npm run build:electron
+# Output: webapp/dist-electron/PartyManager-Setup-<version>.exe
+```
+
+**Release via GitHub tag (CI):**
+
+```bash
+# 1. Bump version in webapp/package.json (e.g. 1.0.1) — or let CI read the tag
+git add webapp/package.json
+git commit -m "chore: release v1.0.1"
+git tag v1.0.1
+git push origin main
+git push origin v1.0.1
+```
+
+GitHub Actions (`.github/workflows/release.yml`) will:
+
+1. Set `webapp` version from the tag (`v1.0.1` → `1.0.1`)
+2. Build the Vite frontend + bundle API + create NSIS installer
+3. Publish `PartyManager-Setup-<version>.exe` and `latest.yml` to GitHub Releases
+
+Installed apps detect the new release automatically on next launch.
+
+**Manual publish from your machine:**
+
+```bash
+$env:GH_TOKEN = "ghp_..."   # GitHub PAT with repo scope
+npm run publish:electron --prefix webapp
+```
 
 ### AI-assisted commits
 
@@ -141,7 +190,6 @@ npm run commit:ai          # optional: OPENAI_API_KEY=sk-... for LLM draft
 git commit -F docs/LAST_COMMIT_MSG.txt
 gh pr create --body-file docs/LAST_COMMIT_MSG.txt
 ```
-
 
 ## Contributing & AI agents
 

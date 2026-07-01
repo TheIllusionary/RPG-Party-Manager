@@ -7,9 +7,11 @@ import Campaign from './models/Campaign.js';
 import CampaignData from './models/CampaignData.js';
 import User from './models/User.js';
 import { DEFAULT_DATA } from './data/defaultData.js';
+import { applyCloudDefaults } from './config/applyDefaults.js';
 import { connectDB, disconnectDB, getMongoUri, maskMongoUri } from './config/db.js';
 
 dotenv.config({ override: true });
+applyCloudDefaults();
 
 const SEED_USER = { username: 'dm', password: 'dungeon123' };
 

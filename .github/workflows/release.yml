@@ -1,0 +1,57 @@
+name: Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Sync app version from git tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Release version: $VERSION"
+          npm version "$VERSION" --no-git-tag-version --prefix webapp
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install API production dependencies
+        run: npm install --prefix api --omit=dev
+
+      - name: Build frontend
+        run: npm run build --prefix webapp
+        env:
+          VITE_API_URL: http://localhost:3001
+
+      - name: Build & publish to GitHub Releases
+        working-directory: webapp
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+
+      - name: Upload build artifacts (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PartyManager-Windows-${{ env.APP_VERSION }}
+          path: |
+            webapp/dist-electron/PartyManager-Setup-*.exe
+            webapp/dist-electron/latest.yml
+          if-no-files-found: error

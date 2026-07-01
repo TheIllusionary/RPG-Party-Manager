@@ -7,7 +7,9 @@ import mongoose from 'mongoose';
 export function getMongoUri() {
   const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error('MONGO_URI is not defined in environment variables');
+    throw new Error(
+      'MONGO_URI is not defined. Copy api/.env.example to api/.env or set MONGO_URI on Render.',
+    );
   }
   return uri;
 }
