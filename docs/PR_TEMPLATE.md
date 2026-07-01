@@ -1,48 +1,35 @@
 ## Summary
 
-<!-- One sentence: what does this PR accomplish? -->
+{{SUMMARY}}
 
 ---
 
 ### 🎮 Patch Notes
 
-<!-- For DMs and players — no jargon. What feels different at the table? -->
-
-- 
-- 
+{{PATCH_NOTES}}
 
 **How to test at the table:**
 
-- [ ] Open a campaign and verify party roster loads
-- [ ] 
-- [ ] 
+{{TEST_STEPS}}
 
 ---
 
 ### 🛠️ Technical Details
 
-<!-- For developers and AI agents — architecture, API, data model, hooks -->
-
-**Area:** <!-- battle | inventory | bestiary | campaign | api | types | docs -->
+**Area:** {{AREA}}
 
 **Changes:**
 
-- 
-- 
+{{TECHNICAL_CHANGES}}
 
 **Data model impact:**
 
-- [ ] No schema changes
-- [ ] `IAppData` / MongoDB fields changed — list fields:
-- [ ] Migration or `migrationUtils` update required
+{{DATA_MODEL_IMPACT}}
 
 **Files touched:**
 
-- 
+{{FILES_TOUCHED}}
 
 **Verification:**
 
-- [ ] `npm run build --prefix webapp`
-- [ ] `npx tsc -b --prefix webapp` (if types changed)
-- [ ] `npm run dev --prefix api` + manual smoke test
-- [ ] Entry added to `docs/CHANGELOG_AI.md`
+{{VERIFICATION}}
