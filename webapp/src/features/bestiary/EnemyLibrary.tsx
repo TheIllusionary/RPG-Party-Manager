@@ -1,8 +1,11 @@
-// @ts-nocheck — TODO: align bestiary draft shapes with IMonster
 import React, { useState } from 'react';
 import './EnemyLibrary.css';
-import defaultMonsters from './default_monsters.json';
+import defaultMonstersJson from './default_monsters.json';
 import { parseAbilities, rollFormula, extractExtraEffects } from '../../shared/utils/combatUtils';
+import type { IBestiaryReviewStatus, IEnemyLibraryProps } from '../../types/bestiary';
+import type { IMonster } from '../../types';
+
+const defaultMonsters = defaultMonstersJson as IMonster[];
 
 const CC_OPTIONS = [
     'Blind 🕶️',
@@ -65,25 +68,14 @@ const DAMAGE_TYPES = [
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
 ];
 
-import type { IBuff, IMonster } from '../../types';
-
-interface EnemyLibraryProps {
-  library?: IMonster[];
-  updateLibrary?: (library: IMonster[]) => void;
-  buffsDatabase?: IBuff[];
-  updateBuffsDatabase?: (buffs: IBuff[]) => void;
-  bestiaryReview?: Record<string, unknown>;
-  updateBestiaryReview?: (review: Record<string, unknown>) => void;
-}
-
-export default function EnemyLibrary({ 
+export default function EnemyLibrary({
     library = [], 
     updateLibrary = () => {}, 
     buffsDatabase = [], 
     updateBuffsDatabase = () => {}, 
     bestiaryReview = {}, 
     updateBestiaryReview = () => {} 
-}: EnemyLibraryProps) {
+}: IEnemyLibraryProps) {
     const data = library;
     const updateData = updateLibrary;
 
@@ -593,7 +585,7 @@ export default function EnemyLibrary({
                             <tbody>
                                 {editingBuffId === 'new' && buffDraft && (
                                     <tr className="buff-editor-row">
-                                        <td colSpan="5" style={{ padding: '0.5rem 1rem' }}>
+                                        <td colSpan={5} style={{ padding: '0.5rem 1rem' }}>
                                             {renderBuffEditor()}
                                         </td>
                                     </tr>
@@ -622,7 +614,7 @@ export default function EnemyLibrary({
                                             </tr>
                                             {editingBuffId === b.id && buffDraft && (
                                                 <tr className="buff-editor-row">
-                                                    <td colSpan="5" style={{ padding: '0.5rem 1rem' }}>
+                                                    <td colSpan={5} style={{ padding: '0.5rem 1rem' }}>
                                                         {renderBuffEditor()}
                                                     </td>
                                                 </tr>
@@ -632,7 +624,7 @@ export default function EnemyLibrary({
                                 }
                                 {buffsDatabase.length === 0 && (
                                     <tr>
-                                        <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                             No Buffs or Debuffs in the database. Click "+ Create Buff/Debuff" to add one!
                                         </td>
                                     </tr>
@@ -696,8 +688,11 @@ export default function EnemyLibrary({
                                         <td>❤️ {enemy.hpMax || 20}</td>
                                         <td>
                                             <select
-                                                value={bestiaryReview[enemy.id] || ''}
-                                                onChange={e => updateBestiaryReview({ ...bestiaryReview, [enemy.id]: e.target.value })}
+                                                value={String(bestiaryReview[enemy.id] ?? '')}
+                                                onChange={e => updateBestiaryReview({
+                                                    ...bestiaryReview,
+                                                    [enemy.id]: e.target.value as IBestiaryReviewStatus,
+                                                })}
                                                 className={`review-status-select ${bestiaryReview[enemy.id] || 'blank'}`}
                                             >
                                                 <option value="">(Blank)</option>
@@ -892,7 +887,7 @@ export default function EnemyLibrary({
                                                                                 type="text"
                                                                                 className="input"
                                                                                 placeholder="e.g. 5 ft."
-                                                                                value={atk.reach || ''}
+                                                                                value={typeof atk.reach === 'string' ? atk.reach : ''}
                                                                                 onChange={(e) => {
                                                                                     const updated = [...(enemy.attacks || [])];
                                                                                     updated[idx] = { ...atk, reach: e.target.value };
@@ -907,7 +902,7 @@ export default function EnemyLibrary({
                                                                                 type="text"
                                                                                 className="input"
                                                                                 placeholder="e.g. 30/120 ft."
-                                                                                value={atk.range || ''}
+                                                                                value={typeof atk.range === 'string' ? atk.range : ''}
                                                                                 onChange={(e) => {
                                                                                     const updated = [...(enemy.attacks || [])];
                                                                                     updated[idx] = { ...atk, range: e.target.value };

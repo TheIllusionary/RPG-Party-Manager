@@ -1,6 +1,7 @@
 import React from 'react';
+import type { IFloatingActionBarProps } from '../../../types/battle';
 
-export default function FloatingActionBar({ combat }) {
+export default function FloatingActionBar({ combat }: IFloatingActionBarProps) {
   const {
     selectedTargets,
     bulkActionValue,

@@ -1,7 +1,6 @@
-// @ts-nocheck — TODO: tighten inventory component types
 import React, { useState } from 'react';
 import './CharacterEquipment.css';
-import type { IBuff, IEquipment, IPlayer } from '../../types';
+import type { ICharacterEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
@@ -90,19 +89,17 @@ const SLOT_POSITIONS = {
     gloves: { left: '27%', top: '38%', anchor: 'left' },
 };
 
-interface CharacterEquipmentProps {
-  data: IEquipment;
-  updateData: (d: IEquipment) => void;
-  players: IPlayer[];
-  buffsDatabase?: IBuff[];
-  updateBuffsDatabase?: (b: IBuff[]) => void;
-}
-
-export default function CharacterEquipment({ data, updateData, players, buffsDatabase = [], updateBuffsDatabase = () => {} }: CharacterEquipmentProps) {
+export default function CharacterEquipment({
+  data,
+  updateData,
+  players,
+  buffsDatabase = [],
+  updateBuffsDatabase = () => {},
+}: ICharacterEquipmentProps) {
     const equipped = data?.equipped || {};
     const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
     const [openSlot, setOpenSlot] = useState(null); // slot id currently expanded
-    const [editingWondrous, setEditingWondrous] = useState({}); // { [itemId]: draftItem }
+    const [editingWondrous, setEditingWondrous] = useState<IEditingItemsMap>({});
     const [slotDraft, setSlotDraft] = useState(null); // { slotId, name, description, modifiers }
 
     // Searchable/quick-create buffs local states
@@ -386,7 +383,7 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
         setEditingWondrous(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
-    const cancelWondrousEdit = (itemId) => {
+    const cancelWondrousEdit = (itemId: string) => {
         setEditingWondrous(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
@@ -941,8 +938,8 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                                                             updateDraftField('buffs', [...(openSlotData.buffs || []), b.name]);
                                                                             setIsSlotBuffDropdownOpen(false);
                                                                         }}
-                                                                        onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-                                                                        onMouseLeave={(e) => e.target.style.background = 'none'}
+                                                                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                                                                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
                                                                     >
                                                                         {b.name}
                                                                     </button>
@@ -1299,8 +1296,8 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                                                                         updateWondrousDraft(item.id, 'buffs', [...(display.buffs || []), b.name]);
                                                                                         setIsWondrousBuffDropdownOpen(null);
                                                                                     }}
-                                                                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-                                                                                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                                                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                                                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
                                                                                 >
                                                                                     {b.name}
                                                                                 </button>

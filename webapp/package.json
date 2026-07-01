@@ -14,8 +14,8 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev:local\" \"wait-on tcp:5173 && electron .\"",
     "build:api-deps": "npm install --prefix ../api --omit=dev",
-    "electron:build": "npm run build:api-deps && cross-env VITE_API_URL=http://localhost:3001 vite build && electron-builder --win --publish never",
-    "electron:publish": "npm run build:api-deps && cross-env VITE_API_URL=http://localhost:3001 vite build && electron-builder --win --publish always"
+    "electron:build": "npm run build:api-deps && vite build && electron-builder --win --publish never",
+    "electron:publish": "npm run build:api-deps && vite build && electron-builder --win --publish always"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

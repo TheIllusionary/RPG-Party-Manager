@@ -1,7 +1,6 @@
-// @ts-nocheck — TODO: tighten inventory component types
 import React, { useState, useEffect } from 'react';
 import './Equipment.css';
-import type { IBuff, IEquipment, IPlayer } from '../../types';
+import type { IEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
@@ -68,20 +67,18 @@ const emptyItemExtras = () => ({
     setAttributes: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
 });
 
-interface EquipmentProps {
-  data: IEquipment;
-  updateData: (d: IEquipment) => void;
-  players: IPlayer[];
-  buffsDatabase?: IBuff[];
-  updateBuffsDatabase?: (b: IBuff[]) => void;
-}
-
-export default function Equipment({ data, updateData, players, buffsDatabase = [], updateBuffsDatabase = () => {} }: EquipmentProps) {
+export default function Equipment({
+  data,
+  updateData,
+  players,
+  buffsDatabase = [],
+  updateBuffsDatabase = () => {},
+}: IEquipmentProps) {
     const isArray = Array.isArray(data);
     const inventories = isArray ? {} : data.inventories || {};
     const playerGold = isArray ? {} : data.playerGold || {};
 
-    const [editingItems, setEditingItems] = useState({});
+    const [editingItems, setEditingItems] = useState<IEditingItemsMap>({});
     // Gold modal: { playerId, amount }
     const [goldModal, setGoldModal] = useState(null); // { id: playerId }
     const [goldDelta, setGoldDelta] = useState('');
@@ -422,7 +419,7 @@ export default function Equipment({ data, updateData, players, buffsDatabase = [
         setEditingItems(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
-    const cancelEdit = (itemId) => {
+    const cancelEdit = (itemId: string) => {
         setEditingItems(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
@@ -1105,8 +1102,8 @@ export default function Equipment({ data, updateData, players, buffsDatabase = [
                                                                                                         updateDraft(item.id, 'buffs', [...(display.buffs || []), b.name]);
                                                                                                         setIsBuffDropdownOpen(null);
                                                                                                     }}
-                                                                                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-                                                                                                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                                                                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                                                                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
                                                                                                 >
                                                                                                     {b.name}
                                                                                                 </button>

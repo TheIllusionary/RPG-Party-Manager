@@ -208,9 +208,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    if (app.isPackaged) {
-        startApiServer();
-    }
+    // Packaged app uses the hosted API (see shared/cloudDefaults.js / Vite DEFAULT_API_URL).
+    // Local API fork is only for a future offline mode with api/.env beside the install.
 
     session.defaultSession.webRequest.onHeadersReceived(
         { urls: ['*://*.owlbear.rodeo/*'] },

@@ -1,9 +1,20 @@
-// @ts-nocheck — TODO: type chaos table entries
 import React, { useState, useRef, useEffect } from 'react';
 import './Chaos.css';
+import type {
+  IChaosData,
+  IChaosProps,
+  IChaosRow,
+  IChaosTable,
+  IChaosTableProps,
+  IChaosTableRowItemProps,
+  IChaosResultPanelProps,
+  IDescriptionDisplayProps,
+  IInlineDiceProps,
+  IDescriptionPart,
+} from '../../types/campaign';
 
 // ── Default Tables (read-only, not stored in state) ───────────────────────────
-const DEFAULT_TABLES = [
+const DEFAULT_TABLES: IChaosTable[] = [
   {
     id: 'default-magic-fumble',
     name: 'Magic Fumble',
@@ -118,7 +129,7 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function rollDice(count, sides) {
+function rollDice(count: number, sides: number): number {
   let total = 0;
   for (let i = 0; i < count; i++) {
     total += Math.floor(Math.random() * sides) + 1;
@@ -127,8 +138,8 @@ function rollDice(count, sides) {
 }
 
 // Parses description text and returns an array of {type:'text'|'dice', value, count, sides}
-function parseDescription(text) {
-  const parts = [];
+function parseDescription(text: string): IDescriptionPart[] {
+  const parts: IDescriptionPart[] = [];
   const regex = /\[(\d+)d(\d+)\]/g;
   let lastIndex = 0;
   let match;
@@ -146,8 +157,8 @@ function parseDescription(text) {
 }
 
 // ── InlineDice ────────────────────────────────────────────────────────────────
-function InlineDice({ count, sides, label }) {
-  const [result, setResult] = useState(null);
+function InlineDice({ count, sides, label }: IInlineDiceProps) {
+  const [result, setResult] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
 
   function handleRoll() {
@@ -172,7 +183,7 @@ function InlineDice({ count, sides, label }) {
 }
 
 // ── DescriptionDisplay ────────────────────────────────────────────────────────
-function DescriptionDisplay({ text }) {
+function DescriptionDisplay({ text }: IDescriptionDisplayProps) {
   const parts = parseDescription(text);
   return (
     <span className="desc-display">
@@ -186,7 +197,7 @@ function DescriptionDisplay({ text }) {
 }
 
 // ── ResultPanel ───────────────────────────────────────────────────────────────
-function ResultPanel({ roll, row, tableId }) {
+function ResultPanel({ roll, row, tableId }: IChaosResultPanelProps) {
   if (!row) return null;
   return (
     <div className="result-panel" key={`${tableId}-${roll}`}>
@@ -200,7 +211,7 @@ function ResultPanel({ roll, row, tableId }) {
 }
 
 // ── TableRow ──────────────────────────────────────────────────────────────────
-function TableRowItem({ row, highlighted, rowRef, isEditing, onChange, onDelete }) {
+function TableRowItem({ row, highlighted, rowRef, isEditing, onChange, onDelete }: IChaosTableRowItemProps) {
   if (isEditing) {
     return (
       <div className={`chaos-row editing-row`}>
@@ -251,8 +262,8 @@ function TableRowItem({ row, highlighted, rowRef, isEditing, onChange, onDelete 
 }
 
 // ── ChaosTable ────────────────────────────────────────────────────────────────
-function ChaosTable({ table, onDelete, onDuplicate, onUpdate }) {
-  const [rollResult, setRollResult] = useState(null); // { roll, row }
+function ChaosTable({ table, onDelete, onDuplicate, onUpdate }: IChaosTableProps) {
+  const [rollResult, setRollResult] = useState<{ roll: number; row: IChaosRow | undefined } | null>(null);
   const [rolling, setRolling] = useState(false);
   const highlightRef = useRef(null);
 
@@ -274,7 +285,7 @@ function ChaosTable({ table, onDelete, onDuplicate, onUpdate }) {
     }, 500);
   }
 
-  function handleRowChange(updatedRow) {
+  function handleRowChange(updatedRow: IChaosRow) {
     onUpdate({
       ...table,
       rows: table.rows.map(r => r.id === updatedRow.id ? updatedRow : r),
@@ -289,7 +300,7 @@ function ChaosTable({ table, onDelete, onDuplicate, onUpdate }) {
     });
   }
 
-  function handleDeleteRow(rowId) {
+  function handleDeleteRow(rowId: string) {
     onUpdate({ ...table, rows: table.rows.filter(r => r.id !== rowId) });
   }
 
@@ -382,25 +393,25 @@ function ChaosTable({ table, onDelete, onDuplicate, onUpdate }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function Chaos({ chaosData, updateChaosData }: { chaosData: { customTables: unknown[] }; updateChaosData: (d: { customTables: unknown[] }) => void }) {
+export default function Chaos({ chaosData, updateChaosData }: IChaosProps) {
   const customTables = chaosData?.customTables ?? [];
-  const allTables = [...DEFAULT_TABLES, ...customTables];
+  const allTables: IChaosTable[] = [...DEFAULT_TABLES, ...customTables];
 
-  function handleUpdate(updatedTable) {
+  function handleUpdate(updatedTable: IChaosTable) {
     updateChaosData({
       ...chaosData,
       customTables: customTables.map(t => t.id === updatedTable.id ? updatedTable : t),
     });
   }
 
-  function handleDelete(tableId) {
+  function handleDelete(tableId: string) {
     updateChaosData({
       ...chaosData,
       customTables: customTables.filter(t => t.id !== tableId),
     });
   }
 
-  function handleDuplicate(table) {
+  function handleDuplicate(table: IChaosTable) {
     const newTable = {
       ...table,
       id: generateId(),
@@ -427,7 +438,7 @@ export default function Chaos({ chaosData, updateChaosData }: { chaosData: { cus
     });
   }
 
-  function scrollToTable(id) {
+  function scrollToTable(id: string) {
     const el = document.getElementById(`table-${id}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });

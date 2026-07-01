@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: tighten hook return types
 import { useState, useEffect, useRef } from 'react';
 import defaultMonsters from '../../bestiary/default_monsters.json';
 import { generateUniqueId, ALL_CC_EFFECTS } from '../utils/constants';
@@ -18,6 +17,8 @@ import {
     getCCModifier,
     applyDamageToPlayer,
 } from '../../../shared/utils/combatUtils';
+import type { ICombatState, IPartyState, IUseCombatStateParams, IEnemySpriteInfo } from '../../../types/battle';
+import type { IAttack, IEnemy, IMonster, IPlayer, StatAbbr } from '../../../types';
 
 export default function useCombatState({
     enemies,
@@ -34,7 +35,7 @@ export default function useCombatState({
     equipment,
     battleNotes: battleNotesProp,
     setBattleNotes: setBattleNotesProp,
-}, party) {
+}: IUseCombatStateParams, party: IPartyState): ICombatState {
     const {
         data,
         updateData,
@@ -48,6 +49,7 @@ export default function useCombatState({
         computePlayerManaDelta,
         showActionToast,
         partyXpModalOpen,
+        partyLevelModalOpen,
         setMinimizedPlayers,
         minimizedPlayers,
     } = party;
@@ -660,14 +662,15 @@ const addEnemy = () => {
     setMinimizedEnemies(prev => ({ ...prev, [newId]: true }));
 };
 
-const updateEnemy = (id, field, val) => setEnemies(prev => prev.map(e => {
+const updateEnemy = (id: string, field: keyof IEnemy, val: IEnemy[keyof IEnemy]) =>
+    setEnemies(prev => prev.map((e): IEnemy => {
     if (e.id === id) {
         if (field === 'classType') {
-            if (val === 'Boss') {
-                return { ...e, classType: val, bossHpStart: e.hp, limitBreakUsed: false };
-            } else {
-                return { ...e, classType: val, bossHpStart: undefined, limitBreakUsed: false };
+            const classType = String(val);
+            if (classType === 'Boss') {
+                return { ...e, classType, bossHpStart: e.hp, limitBreakUsed: false };
             }
+            return { ...e, classType, bossHpStart: undefined, limitBreakUsed: false };
         }
         return { ...e, [field]: val };
     }
@@ -875,7 +878,7 @@ useEffect(() => {
 }, [battleMode]);
 
 useEffect(() => {
-    if (partyXpModalOpen || isVttFullscreen) {
+    if (partyXpModalOpen || partyLevelModalOpen || isVttFullscreen) {
         document.body.style.overflow = 'hidden';
     } else {
         document.body.style.overflow = 'unset';
@@ -883,9 +886,9 @@ useEffect(() => {
     return () => {
         document.body.style.overflow = 'unset';
     };
-}, [partyXpModalOpen, isVttFullscreen]);
+}, [partyXpModalOpen, partyLevelModalOpen, isVttFullscreen]);
 
-const isVttActive = battleMode && isVttOpen && !partyXpModalOpen && !activeAttackState && !configModalOpen;
+const isVttActive = battleMode && isVttOpen && !partyXpModalOpen && !partyLevelModalOpen && !activeAttackState && !configModalOpen;
 
 // Auto-exit VTT fullscreen if VTT becomes inactive
 useEffect(() => {
@@ -1041,7 +1044,7 @@ const getEnemySpriteInfo = (enemy) => {
     }
     const isHurt = enemy.hp < enemy.hpMax * 0.5;
 
-    let spriteState = 'normal';
+    let spriteState: IEnemySpriteInfo['spriteState'] = 'normal';
     if (isKO) spriteState = 'ko';
     else if (isPowered) spriteState = 'powered';
     else if (isHurt) spriteState = 'hurt';
@@ -1461,6 +1464,6 @@ const triggerTurnEffects = () => {
         longRest,
         buffInputEnemyId,
         setBuffInputEnemyId,
-        defaultMonsters,
-    };
+        defaultMonsters: defaultMonsters as IMonster[],
+    } satisfies ICombatState;
 }

@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: add strict types to combat utility signatures
+// @ts-nocheck — internal OCR parsers; public exports typed via shared/types/combat.ts
 /**
  * Normalizes text to handle typical OCR/copy typos in D&D monster sheets.
  */

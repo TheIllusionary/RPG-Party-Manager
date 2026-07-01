@@ -1,31 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
-import { listCampaigns, createCampaign, updateCampaignData, updateCampaign } from '../../services/api';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
+import { listCampaigns, createCampaign, updateCampaignData, updateCampaign, deleteCampaign } from '../../services/api';
 import { mergeCampaignData, toApiPayload, DEFAULT_DATA } from '../../data/defaultData';
 import { normalizeImportedData } from '../../shared/utils/migrationUtils';
+import type { ICampaign, ICampaignListItem } from '../../types';
+import type { ICampaignListProps } from '../../types/campaign';
+import type { IAppData } from '../../types';
 
-function unwrapLegacySave(parsed) {
+function unwrapLegacySave(parsed: unknown): Partial<IAppData> | null {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-  if (parsed.players || parsed.equipment) return parsed;
-  if (parsed.data && typeof parsed.data === 'object') return parsed.data;
-  if (parsed.partyManagerData && typeof parsed.partyManagerData === 'object') return parsed.partyManagerData;
-  return parsed;
+  const record = parsed as Record<string, unknown>;
+  if (record.players || record.equipment) return record as Partial<IAppData>;
+  if (record.data && typeof record.data === 'object') return record.data as Partial<IAppData>;
+  if (record.partyManagerData && typeof record.partyManagerData === 'object') {
+    return record.partyManagerData as Partial<IAppData>;
+  }
+  return record as Partial<IAppData>;
 }
 
-function isValidLegacySave(data) {
+function isValidLegacySave(data: Partial<IAppData> | null): data is Partial<IAppData> {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-  return Array.isArray(data.players) || (data.equipment && typeof data.equipment === 'object');
+  return Array.isArray(data.players) || (data.equipment !== undefined && typeof data.equipment === 'object');
 }
 
-export default function CampaignList({ user, onSelectCampaign, onLogout }) {
-  const [campaigns, setCampaigns] = useState([]);
+export default function CampaignList({ user, onSelectCampaign, onLogout }: ICampaignListProps) {
+  const [campaigns, setCampaigns] = useState<ICampaignListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [newName, setNewName] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const importRef = useRef(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   const loadCampaigns = async () => {
     try {
@@ -33,8 +40,8 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
       setError('');
       const list = await listCampaigns();
       setCampaigns(list);
-    } catch (err) {
-      setError(err.message || 'Failed to load campaigns');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load campaigns');
     } finally {
       setLoading(false);
     }
@@ -44,7 +51,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
     loadCampaigns();
   }, []);
 
-  const handleCreate = async (e) => {
+  const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const name = newName.trim() || 'Nova Campanha';
     setCreating(true);
@@ -55,14 +62,14 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
       setNewName('');
       await loadCampaigns();
       onSelectCampaign(result.campaign);
-    } catch (err) {
-      setError(err.message || 'Failed to create campaign');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create campaign');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleImportLegacy = (e) => {
+  const handleImportLegacy = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -90,8 +97,8 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
         const campaignId = result.campaign._id;
         await updateCampaignData(campaignId, toApiPayload(merged));
         await loadCampaigns();
-      } catch (err) {
-        setError(err.message || 'Failed to import campaign');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to import campaign');
       } finally {
         setImporting(false);
         e.target.value = '';
@@ -107,13 +114,13 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
     reader.readAsText(file);
   };
 
-  const startRename = (campaign, e) => {
+  const startRename = (campaign: ICampaign, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(campaign._id);
     setEditingName(campaign.name);
   };
 
-  const commitRename = async (campaignId) => {
+  const commitRename = async (campaignId: string) => {
     const trimmed = editingName.trim();
     setEditingId(null);
     if (!trimmed) return;
@@ -124,12 +131,34 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
     try {
       const updated = await updateCampaign(campaignId, { name: trimmed });
       setCampaigns((prev) => prev.map((c) => (c._id === campaignId ? { ...c, ...updated } : c)));
-    } catch (err) {
-      setError(err.message || 'Failed to rename campaign');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to rename campaign');
     }
   };
 
-  const formatDate = (dateStr) => {
+  const handleDelete = async (campaign: ICampaignListItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${campaign.name}"? All party data will be permanently removed.`)) {
+      return;
+    }
+
+    setDeletingId(campaign._id);
+    setError('');
+
+    try {
+      await deleteCampaign(campaign._id);
+      if (localStorage.getItem('partyManagerLastCampaignId') === campaign._id) {
+        localStorage.removeItem('partyManagerLastCampaignId');
+      }
+      setCampaigns((prev) => prev.filter((c) => c._id !== campaign._id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete campaign');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString(undefined, {
       day: '2-digit',
@@ -138,7 +167,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
     });
   };
 
-  const busy = creating || importing;
+  const busy = creating || importing || deletingId !== null;
 
   return (
     <div className="container" style={{ maxWidth: '720px', margin: '0 auto', paddingTop: '2rem', paddingBottom: '4rem' }}>
@@ -265,15 +294,28 @@ export default function CampaignList({ user, onSelectCampaign, onLogout }) {
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                   {editingId !== campaign._id && (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={(e) => startRename(campaign, e)}
-                      title="Rename campaign"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'transparent', border: 'var(--glass-border)' }}
-                    >
-                      ✎
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={(e) => startRename(campaign, e)}
+                        title="Rename campaign"
+                        disabled={deletingId === campaign._id}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'transparent', border: 'var(--glass-border)' }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={(e) => handleDelete(campaign, e)}
+                        title="Delete campaign"
+                        disabled={deletingId === campaign._id}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                      >
+                        {deletingId === campaign._id ? '…' : '🗑️'}
+                      </button>
+                    </>
                   )}
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                     {formatDate(campaign.lastAccessed)}

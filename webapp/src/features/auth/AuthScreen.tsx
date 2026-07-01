@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { login, register } from '../../services/api';
+import type { IAuthScreenProps } from '../../types/auth';
 
-export default function AuthScreen({ onAuthenticated }) {
+export default function AuthScreen({ onAuthenticated }: IAuthScreenProps) {
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -17,8 +18,9 @@ export default function AuthScreen({ onAuthenticated }) {
       const fn = mode === 'login' ? login : register;
       const result = await fn(username.trim(), password);
       onAuthenticated(result);
-    } catch (err) {
-      setError(err.message || 'Authentication failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Authentication failed';
+      setError(message);
     } finally {
       setLoading(false);
     }

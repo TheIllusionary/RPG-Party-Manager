@@ -1,6 +1,7 @@
 import React from 'react';
+import type { IVttOverlayProps } from '../../../types/battle';
 
-export default function VttOverlay({ combat, battleMode, data }) {
+export default function VttOverlay({ combat, battleMode, data }: IVttOverlayProps) {
   const {
     isVttOpen,
     vttInputVal,

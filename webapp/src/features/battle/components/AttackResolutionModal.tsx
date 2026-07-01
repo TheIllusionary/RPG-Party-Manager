@@ -7,10 +7,14 @@ import {
   getSaveModifiers,
   getAttackAdvantageState,
 } from '../../../shared/utils/combatUtils';
+import type { IAttackResolutionModalProps } from '../../../types/battle';
 
 export default function AttackResolutionModal({
-  party, combat, equipment, buffsDatabase,
-}) {
+  party,
+  combat,
+  equipment,
+  buffsDatabase,
+}: IAttackResolutionModalProps) {
   const { data, getPlayerSubclass, getLevelInfo, calculateMaxHP } = party;
   const {
     activeAttackState, setActiveAttackState, autoRollEnabled, setAutoRollEnabled,

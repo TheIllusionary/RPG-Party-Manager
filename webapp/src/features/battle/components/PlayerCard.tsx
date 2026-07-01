@@ -9,18 +9,17 @@ import {
   MANA_TO_HP_GAIN,
 } from '../../../shared/utils/combatUtils';
 import type { IBuff, IEquipment, IPlayer, ISubclass } from '../../../types';
+import type { IPlayerCardProps } from '../../../types/battle';
 
-interface PlayerCardProps {
-  player: IPlayer;
-  party: any; // TODO: fix any — usePartyState return type
-  combat: any; // TODO: fix any — useCombatState return type
-  battleMode: boolean;
-  equipment: IEquipment;
-  subclasses: ISubclass[];
-  buffsDatabase: IBuff[];
-}
-
-export default function PlayerCard({ player, party, combat, battleMode, equipment, subclasses, buffsDatabase }: PlayerCardProps) {
+export default function PlayerCard({
+  player,
+  party,
+  combat,
+  battleMode,
+  equipment,
+  subclasses,
+  buffsDatabase,
+}: IPlayerCardProps) {
   const [ccDropdownOpen, setCcDropdownOpen] = useState(false);
 
   useEffect(() => {

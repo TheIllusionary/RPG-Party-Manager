@@ -131,6 +131,7 @@ export interface IInventoryItem {
   ccVulnerabilities?: string[];
   buffs?: string[];
   category?: string;
+  isWondrousOnly?: boolean;
 }
 
 export type SlotItem = IInventoryItem | null | undefined;
@@ -191,31 +192,27 @@ export interface ISubclass {
 
 export interface IMonster extends IEnemy {
   hpMax: number;
+  hpFormula?: string;
+  exp?: number;
 }
 
-export interface INotebookPage {
-  id?: string;
-  title?: string;
-  content?: string;
-  [key: string]: unknown;
-}
-
-export interface IChaosTable {
-  id?: string;
-  name?: string;
-  entries?: unknown[];
-  [key: string]: unknown;
-}
+export type { INotebookPage, INotebookData, ITrainingEntry, ITrainingData, IChaosRow, IChaosTable, IChaosData } from './campaign';
+export type { IBestiaryReview, IEncounterCombatant } from './bestiary';
+export type { IApiErrorBody, IAuthResponse, ICampaignListItem, ICampaignDataDto } from './api';
+export type { IAuthScreenProps, IAuthSession } from './auth';
+export type { IEquipmentProps, ICharacterEquipmentProps } from './inventory';
+export type { IEnemyLibraryProps, IEncounterBuilderProps } from './bestiary';
+export type { IGameAppProps, AppTab, UpdateAppDataFn, IStoredAppConfig } from './app';
 
 export interface IAppData {
   players: IPlayer[];
   equipment: IEquipment;
   library: IMonster[];
-  encounters: unknown[];
-  training: Record<string, unknown[]>;
-  chaos: { customTables: IChaosTable[] };
-  notebook: { pages: INotebookPage[] };
-  bestiaryReview: Record<string, unknown>;
+  encounters: import('./bestiary').IEncounterCombatant[];
+  training: import('./campaign').ITrainingData;
+  chaos: import('./campaign').IChaosData;
+  notebook: import('./campaign').INotebookData;
+  bestiaryReview: import('./bestiary').IBestiaryReview;
   buffsDatabase: IBuff[];
   subclasses: ISubclass[];
   customSubclasses?: ISubclass[];
@@ -240,3 +237,21 @@ export interface IUser {
   id: string;
   username: string;
 }
+
+export type { ILibrary } from './battle';
+export type {
+  IPartyState,
+  ICombatState,
+  IPlayerManagerShellProps,
+  IPlayerManagerViewProps,
+  ICombatHeaderProps,
+  IPlayerCardProps,
+  IEnemyCardProps,
+  IPartyXpModalProps,
+  IPartyLevelModalProps,
+  IVttOverlayProps,
+  IAttackResolutionModalProps,
+  IFloatingActionBarProps,
+  IMinimizedMap,
+  IActiveAttackState,
+} from './battle';

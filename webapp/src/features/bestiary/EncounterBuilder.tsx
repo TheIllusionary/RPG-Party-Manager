@@ -1,26 +1,24 @@
 import React, { useState } from 'react';
 import './EncounterBuilder.css';
+import type { IEncounterBuilderProps } from '../../types/bestiary';
 
-export default function EncounterBuilder({ data, updateData, library }) {
+export default function EncounterBuilder({ data, updateData, library }: IEncounterBuilderProps) {
     const [selectedEnemyId, setSelectedEnemyId] = useState('');
     const [quantity, setQuantity] = useState(1);
 
-    // Parse formula like "2d6+2" or "15" and roll
-    const rollHP = (formula) => {
-        if (!formula) return 10; // Fallback
-        // Check if flat number
-        if (!isNaN(formula)) return parseInt(formula);
+    const rollHP = (formula: string | undefined): number => {
+        if (!formula) return 10;
+        if (!Number.isNaN(Number(formula))) return parseInt(formula, 10);
 
-        // Parse NdM+P
         const regex = /(\d+)?d(\d+)(?:\s*([+-])\s*(\d+))?/i;
         const match = formula.match(regex);
 
-        if (!match) return 10; // Fallback if parse fails
+        if (!match) return 10;
 
-        const count = parseInt(match[1]) || 1;
-        const sides = parseInt(match[2]);
+        const count = parseInt(match[1] ?? '1', 10);
+        const sides = parseInt(match[2], 10);
         const operator = match[3];
-        const modifier = parseInt(match[4]) || 0;
+        const modifier = parseInt(match[4] ?? '0', 10);
 
         let total = 0;
         for (let i = 0; i < count; i++) {
@@ -35,31 +33,30 @@ export default function EncounterBuilder({ data, updateData, library }) {
 
     const addEnemies = () => {
         if (!selectedEnemyId) return;
-        const baseEnemy = library.find(e => e.id === selectedEnemyId);
+        const baseEnemy = library.find((e) => e.id === selectedEnemyId);
         if (!baseEnemy) return;
 
         const newEnemies = [];
-        // Count existing enemies of same type to number them correctly
-        const existingCount = data.filter(e => e.baseId === baseEnemy.id).length;
+        const existingCount = data.filter((e) => e.baseId === baseEnemy.id).length;
 
         for (let i = 0; i < quantity; i++) {
             const rolledHP = rollHP(baseEnemy.hpFormula);
             newEnemies.push({
-                id: Date.now().toString() + i, // Unique ID
+                id: `${Date.now()}${i}`,
                 baseId: baseEnemy.id,
                 name: `${baseEnemy.name} ${existingCount + i + 1}`,
                 hpCurrent: rolledHP,
                 hpMax: rolledHP,
                 ac: baseEnemy.ac,
-                exp: baseEnemy.exp
+                exp: baseEnemy.exp,
             });
         }
 
         updateData([...data, ...newEnemies]);
     };
 
-    const updateEnemyHP = (id, change) => {
-        const updated = data.map(e => {
+    const updateEnemyHP = (id: string, change: number) => {
+        const updated = data.map((e) => {
             if (e.id === id) {
                 return { ...e, hpCurrent: Math.max(0, Math.min(e.hpMax, e.hpCurrent + change)) };
             }
@@ -68,26 +65,25 @@ export default function EncounterBuilder({ data, updateData, library }) {
         updateData(updated);
     };
 
-    const removeEnemy = (id) => {
-        updateData(data.filter(e => e.id !== id));
+    const removeEnemy = (id: string) => {
+        updateData(data.filter((e) => e.id !== id));
     };
 
     const clearEncounter = () => {
-        if (window.confirm("Are you sure you want to clear the entire encounter?")) {
+        if (window.confirm('Are you sure you want to clear the entire encounter?')) {
             updateData([]);
         }
     };
 
     const totalExp = data.reduce((sum, e) => sum + (e.exp || 0), 0);
 
-    // Grouping for visual display: Let's just list them individually so HP can be tracked
     return (
         <div className="encounter-builder-tab">
             <div className="encounter-header">
                 <h2>Encounter Builder</h2>
                 <div className="encounter-stats">
                     <div className="stat-badge exp-badge">Total EXP: {totalExp}</div>
-                    <button className="btn btn-danger" onClick={clearEncounter}>Clear All</button>
+                    <button type="button" className="btn btn-danger" onClick={clearEncounter}>Clear All</button>
                 </div>
             </div>
 
@@ -99,7 +95,7 @@ export default function EncounterBuilder({ data, updateData, library }) {
                         onChange={(e) => setSelectedEnemyId(e.target.value)}
                     >
                         <option value="">-- Select Monster --</option>
-                        {library.map(e => (
+                        {library.map((e) => (
                             <option key={e.id} value={e.id}>{e.name} (CR: {e.cr})</option>
                         ))}
                     </select>
@@ -109,20 +105,20 @@ export default function EncounterBuilder({ data, updateData, library }) {
                         className="input quantity-input"
                         min="1"
                         value={quantity}
-                        onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                        onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)}
                     />
 
-                    <button className="btn btn-primary" onClick={addEnemies}>+ Add</button>
+                    <button type="button" className="btn btn-primary" onClick={addEnemies}>+ Add</button>
                 </div>
             </div>
 
             <div className="encounter-grid">
-                {data.map(enemy => (
+                {data.map((enemy) => (
                     <div key={enemy.id} className="glass-panel combatant-card">
                         <div className="combatant-header">
                             <h3>{enemy.name}</h3>
                             <div className="combatant-ac">🛡️ {enemy.ac}</div>
-                            <button className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
+                            <button type="button" className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
                         </div>
 
                         <div className="combatant-hp">
@@ -134,18 +130,18 @@ export default function EncounterBuilder({ data, updateData, library }) {
                                     className="hp-bar-fill"
                                     style={{
                                         width: `${(enemy.hpCurrent / enemy.hpMax) * 100}%`,
-                                        backgroundColor: enemy.hpCurrent === 0 ? '#ef4444' : '#10b981'
+                                        backgroundColor: enemy.hpCurrent === 0 ? '#ef4444' : '#10b981',
                                     }}
                                 />
                             </div>
 
                             <div className="hp-controls">
-                                <button onClick={() => updateEnemyHP(enemy.id, -1)}>-1</button>
-                                <button onClick={() => updateEnemyHP(enemy.id, -5)}>-5</button>
-                                <button onClick={() => updateEnemyHP(enemy.id, -10)}>-10</button>
-                                <div className="spacer"></div>
-                                <button onClick={() => updateEnemyHP(enemy.id, +1)}>+1</button>
-                                <button onClick={() => updateEnemyHP(enemy.id, +5)}>+5</button>
+                                <button type="button" onClick={() => updateEnemyHP(enemy.id, -1)}>-1</button>
+                                <button type="button" onClick={() => updateEnemyHP(enemy.id, -5)}>-5</button>
+                                <button type="button" onClick={() => updateEnemyHP(enemy.id, -10)}>-10</button>
+                                <div className="spacer" />
+                                <button type="button" onClick={() => updateEnemyHP(enemy.id, 1)}>+1</button>
+                                <button type="button" onClick={() => updateEnemyHP(enemy.id, 5)}>+5</button>
                             </div>
                         </div>
                         {enemy.hpCurrent <= 0 && (

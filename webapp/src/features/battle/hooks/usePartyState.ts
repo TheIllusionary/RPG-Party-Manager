@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: tighten hook return types and combatUtils result unions
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ALL_CC_EFFECTS, DND_SKILLS, STATS_LIST } from '../utils/constants';
 import { getXpForLevel, getLevelInfo, calculateModifier, formatModifier, calculateColor } from '../utils/partyUtils';
@@ -17,6 +16,14 @@ import {
     MANA_TO_HP_MANA_COST,
     MANA_TO_HP_GAIN,
 } from '../../../shared/utils/combatUtils';
+import type { IPartyState, IUsePartyStateParams } from '../../../types/battle';
+import type { IInventoryItem, IPlayer, StatAbbr } from '../../../types';
+import type {
+  ICastSpellResult,
+  IHpManaConversionResult,
+  IPlayerSpriteInfo,
+  IDndSkill,
+} from '../../../types/battle';
 
 export default function usePartyState({
     data,
@@ -27,7 +34,7 @@ export default function usePartyState({
     config,
     battleMode,
     setBattleNotes = () => {},
-}) {
+}: IUsePartyStateParams): IPartyState {
 const focusAndSelectRef = useCallback((el) => {
     if (el) {
         setTimeout(() => {
@@ -109,19 +116,21 @@ const handleCastSpell = (playerId, spellLevel) => {
 
     const maxHp = calculateMaxHP(player);
     const subclass = getPlayerSubclass(player);
-    const result = castSpellOnPlayer(player, spellLevel, maxHp, subclass);
-    if (!result.ok) {
+    const result = castSpellOnPlayer(player, spellLevel, maxHp, subclass) as ICastSpellResult;
+    if (result.ok === false) {
         showActionToast(`❌ ${result.error}`);
         return;
     }
 
-    const updates = {
+    const updates: Partial<IPlayer> = {
         hpCurrent: result.hpCurrent,
         hpTemp: result.hpTemp,
         ultCurrent: result.ultCurrent,
         recentSpells: result.recentSpells,
     };
-    if (result.manaCurrent !== undefined) updates.manaCurrent = result.manaCurrent;
+    if (result.manaCurrent !== undefined) {
+        updates.manaCurrent = result.manaCurrent;
+    }
     updatePlayer(playerId, updates);
     showActionToast(`✦ Lvl ${spellLevel} (−${result.costPaid} ${result.costResource.toUpperCase()})`);
     setInlineCastPlayerId(null);
@@ -130,8 +139,8 @@ const handleCastSpell = (playerId, spellLevel) => {
 const handleHpToMana = (playerId) => {
     const player = data.find(p => p.id === playerId);
     if (!player || playerUsesVampire(player)) return;
-    const result = convertHpToMana(player, calculateMaxHP(player), calculateMaxMana(player));
-    if (!result.ok) {
+    const result = convertHpToMana(player, calculateMaxHP(player), calculateMaxMana(player)) as IHpManaConversionResult;
+    if (result.ok === false) {
         showActionToast(`❌ ${result.error}`);
         return;
     }
@@ -147,8 +156,8 @@ const handleHpToMana = (playerId) => {
 const handleManaToHp = (playerId) => {
     const player = data.find(p => p.id === playerId);
     if (!player || playerUsesVampire(player)) return;
-    const result = convertManaToHp(player, calculateMaxHP(player));
-    if (!result.ok) {
+    const result = convertManaToHp(player, calculateMaxHP(player)) as IHpManaConversionResult;
+    if (result.ok === false) {
         showActionToast(`❌ ${result.error}`);
         return;
     }
@@ -173,7 +182,7 @@ const getEquipmentBonus = (playerId, stat) => {
     Object.entries(equipped).forEach(([slotId, slot]) => {
         if (slotId === '__wondrous__') {
             if (Array.isArray(slot)) {
-                slot.forEach(wItem => {
+                slot.forEach((wItem: IInventoryItem) => {
                     modifierSum += wItem?.modifiers?.[stat] || 0;
                     const sVal = wItem?.setAttributes?.[stat] || 0;
                     if (sVal > setVal) {
@@ -203,6 +212,8 @@ const effectiveStat = (player, stat) => {
 
 const [partyXpModalOpen, setPartyXpModalOpen] = useState(false);
 const [partyXpAmount, setPartyXpAmount] = useState('');
+const [partyLevelModalOpen, setPartyLevelModalOpen] = useState(false);
+const [partyLevelInput, setPartyLevelInput] = useState('1');
 
 const addPlayer = () => {
     const newPlayer = {
@@ -282,10 +293,11 @@ const getPlayerBuffs = (player, equipment) => {
                     });
                 }
             } else {
-                if (slot && slot.name && slot.name.trim().length > 0 && slot.buffs) {
+                const item = slot as IInventoryItem | null | undefined;
+                if (item?.name && item.name.trim().length > 0 && item.buffs) {
                     const slotLabel = getSlotLabel(slotId);
-                    slot.buffs.forEach(b => {
-                        list.push({ text: b, source: 'item', sourceName: slot.name, slotLabel });
+                    item.buffs.forEach((b) => {
+                        list.push({ text: b, source: 'item', sourceName: item.name, slotLabel });
                     });
                 }
             }
@@ -421,7 +433,7 @@ const getPlayerSpriteInfo = (player) => {
     const isWinded = !isVampire && maxMana > 0 && player.manaCurrent < maxMana * 0.2;
     const isHurt = player.hpCurrent < maxHp * 0.5;
 
-    let spriteState = 'normal';
+    let spriteState: IPlayerSpriteInfo['spriteState'] = 'normal';
     if (isKO) spriteState = 'ko';
     else if (isPowered) spriteState = 'powered';
     else if (isWinded) spriteState = 'winded';
@@ -430,7 +442,13 @@ const getPlayerSpriteInfo = (player) => {
     return { spriteName, spriteState };
 };
 
-const updatePlayer = (id, fieldOrFields, value) => {
+function updatePlayer(id: string, fields: Partial<IPlayer>): void;
+function updatePlayer(id: string, field: keyof IPlayer, value: IPlayer[keyof IPlayer]): void;
+function updatePlayer(
+    id: string,
+    fieldOrFields: keyof IPlayer | Partial<IPlayer>,
+    value?: IPlayer[keyof IPlayer],
+): void {
     const updated = data.map(p => {
         if (p.id === id) {
             if (typeof fieldOrFields === 'object') {
@@ -444,21 +462,21 @@ const updatePlayer = (id, fieldOrFields, value) => {
                 return nextP;
             } else {
                 let val = value;
-                let extra = {};
+                const extra: Partial<IPlayer> = {};
                 if (fieldOrFields === 'hpCurrent') {
-                    val = Math.min(val, calculateMaxHP(p));
-                    if (val <= 0) {
+                    val = Math.min(val as number, calculateMaxHP(p));
+                    if ((val as number) <= 0) {
                         extra.ultCurrent = 0;
                     }
                 }
-                if (fieldOrFields === 'ultCurrent') val = Math.max(0, Math.min(val, p.ultMax));
+                if (fieldOrFields === 'ultCurrent') val = Math.max(0, Math.min(val as number, p.ultMax));
                 return { ...p, [fieldOrFields]: val, ...extra };
             }
         }
         return p;
     });
     updateData(updated);
-};
+}
 
 const startPlayerEdit = (player, field) => {
     setPlayerEditField({ id: player.id, field });
@@ -560,13 +578,23 @@ const setLevel = (playerId, newLevel) => {
     updatePlayer(playerId, applyLevelToPlayer(player, newLevel));
 };
 
-const setPartyLevel = () => {
-    const raw = window.prompt('Set level for all active party members (1–20):');
-    if (raw === null || raw.trim() === '') return;
+const openPartyLevelModal = () => {
+    const active = data.filter(p => p.inParty);
+    if (active.length > 0) {
+        const avg = Math.round(
+            active.reduce((sum, p) => sum + getLevelInfo(p.xp).level, 0) / active.length,
+        );
+        setPartyLevelInput(String(avg));
+    } else {
+        setPartyLevelInput('1');
+    }
+    setPartyLevelModalOpen(true);
+};
 
-    const level = parseInt(raw, 10);
+const applyPartyLevel = () => {
+    const level = parseInt(partyLevelInput, 10);
     if (Number.isNaN(level) || level < 1 || level > 20) {
-        window.alert('Enter a level between 1 and 20.');
+        showActionToast('❌ Enter a level between 1 and 20');
         return;
     }
 
@@ -575,6 +603,8 @@ const setPartyLevel = () => {
         return { ...p, ...applyLevelToPlayer(p, level) };
     });
     updateData(updated);
+    setPartyLevelModalOpen(false);
+    showActionToast(`📊 Party set to level ${level}`);
 };
 
 const toggleParty = (id) => {
@@ -710,6 +740,12 @@ const [xpInputValue, setXpInputValue] = useState('');
         setPartyXpModalOpen,
         partyXpAmount,
         setPartyXpAmount,
+        partyLevelModalOpen,
+        setPartyLevelModalOpen,
+        partyLevelInput,
+        setPartyLevelInput,
+        openPartyLevelModal,
+        applyPartyLevel,
         xpModalId,
         setXpModalId,
         xpModalType,
@@ -747,7 +783,6 @@ const [xpInputValue, setXpInputValue] = useState('');
         getXpForLevel,
         calculateModifier,
         setLevel,
-        setPartyLevel,
         toggleParty,
         removePlayer,
         shortRest,
@@ -756,8 +791,8 @@ const [xpInputValue, setXpInputValue] = useState('');
         calculateColor,
         calculateSkillBonus,
         toggleSkill,
-        dndSkills: DND_SKILLS,
-        statsList: STATS_LIST,
+        dndSkills: DND_SKILLS as readonly IDndSkill[],
+        statsList: STATS_LIST as readonly StatAbbr[],
         ALL_CC_EFFECTS,
-    };
+    } satisfies IPartyState;
 }

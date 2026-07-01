@@ -2,21 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { DAMAGE_TYPES, ALL_CC_EFFECTS } from '../utils/constants';
 import { calculateEffectiveEnemyAC } from '../../../shared/utils/combatUtils';
 import type { IBuff, IEnemy } from '../../../types';
-
-interface EnemyCardProps {
-  enemy: IEnemy;
-  party: any; // TODO: fix any
-  combat: any; // TODO: fix any
-  battleMode: boolean;
-  minimizedEnemies: Record<string, boolean>;
-  library: IEnemy[];
-  updateLibrary: (library: IEnemy[]) => void;
-  buffsDatabase: IBuff[];
-}
+import type { IEnemyCardProps } from '../../../types/battle';
 
 export default function EnemyCard({
-  enemy, party, combat, battleMode, minimizedEnemies, library, updateLibrary, buffsDatabase,
-}: EnemyCardProps) {
+  enemy,
+  party,
+  combat,
+  battleMode,
+  minimizedEnemies,
+  library,
+  updateLibrary,
+  buffsDatabase,
+}: IEnemyCardProps) {
   const [ccDropdownOpen, setCcDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -34,7 +31,6 @@ export default function EnemyCard({
     statsList,
     dndSkills,
     calculateModifier,
-    toggleSaveProficiency,
     formatModifier,
   } = party;
   const {
@@ -68,6 +64,7 @@ export default function EnemyCard({
     handleRemoveEnemyBuff,
     handleToggleEnemyBuff,
     getEnemySpriteInfo,
+    toggleSaveProficiency,
     enemySearchText,
     setEnemySearchText,
     buffInputEnemyId,
@@ -245,7 +242,7 @@ export default function EnemyCard({
                                                                         })()}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleToggleEnemyBuff(enemy, buff, false);
+                                                                            handleToggleEnemyBuff(enemy, buff);
                                                                         }}
                                                                         style={{ cursor: 'pointer' }}
                                                                     >

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 
 import PlayerManager from '../features/battle/PlayerManager';
 import Equipment from '../features/inventory/Equipment';
@@ -10,12 +10,14 @@ import SubclassManager from '../features/campaign/SubclassManager';
 import Notebook from '../features/campaign/Notebook';
 import { mergeCampaignData, toApiPayload } from '../data/defaultData';
 import { getCampaignData, updateCampaignData } from '../services/api';
-import type { IAppConfig, IAppData, ICampaign, IEnemy } from '../types';
+import type { IAppData, IEnemy } from '../types';
+import type { IMinimizedMap } from '../types/battle';
+import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppDataFn } from '../types/app';
 
 const SAVE_DEBOUNCE_MS = 800;
 
-function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackToCampaigns: () => void }) {
-  const [config, setConfig] = useState<IAppConfig>(() => {
+function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
+  const [config, setConfig] = useState<IStoredAppConfig>(() => {
     const saved = localStorage.getItem('partyManagerConfig');
     if (saved) {
       try {
@@ -40,16 +42,18 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
     };
   });
 
-  const [activeTab, setActiveTab] = useState(() => {
+  const [activeTab, setActiveTab] = useState<AppTab>(() => {
     const savedConfig = localStorage.getItem('partyManagerConfig');
     let startupView = 'party-minimized';
     if (savedConfig) {
       try {
         startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
-      } catch (e) {}
+      } catch {
+        /* ignore */
+      }
     }
     if (startupView === 'last') {
-      return localStorage.getItem('partyManagerLastTab') || 'players';
+      return (localStorage.getItem('partyManagerLastTab') as AppTab) || 'players';
     }
     return 'players';
   });
@@ -73,27 +77,27 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
     const saved = localStorage.getItem('partyManagerEnemies');
     return saved ? JSON.parse(saved) : [];
   });
-  const [minimizedEnemies, setMinimizedEnemies] = useState(() => {
+  const [minimizedEnemies, setMinimizedEnemies] = useState<IMinimizedMap>(() => {
     const saved = localStorage.getItem('partyManagerMinimizedEnemies');
     return saved ? JSON.parse(saved) : {};
   });
 
-  const switchTab = (tab) => {
+  const switchTab = (tab: AppTab) => {
     setActiveTab(tab);
     localStorage.setItem('partyManagerLastTab', tab);
     window.scrollTo(0, 0);
   };
   const [saveMessage, setSaveMessage] = useState('');
-  const importRef = useRef(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   const [campaignId, setCampaignId] = useState(campaign._id);
   const [dataLoading, setDataLoading] = useState(true);
-  const [dataError, setDataError] = useState(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [data, setData] = useState<IAppData | null>(null);
 
   const skipSaveRef = useRef(true);
-  const saveTimerRef = useRef(null);
-  const campaignIdRef = useRef(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const campaignIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     campaignIdRef.current = campaignId;
@@ -119,7 +123,7 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
       } catch (err) {
         console.error('Failed to load campaign:', err);
         if (!cancelled) {
-          setDataError(err.message || 'Failed to connect to API');
+          setDataError(err instanceof Error ? err.message : 'Failed to connect to API');
         }
       } finally {
         if (!cancelled) setDataLoading(false);
@@ -131,7 +135,7 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
   }, [campaign._id]);
 
   // Debounced auto-save to MongoDB (replaces localStorage for partyManagerData)
-  const persistCampaignData = useCallback(async (payload) => {
+  const persistCampaignData = useCallback(async (payload: IAppData) => {
     const id = campaignIdRef.current;
     if (!id) return;
     await updateCampaignData(id, toApiPayload(payload));
@@ -206,15 +210,15 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
     syncFullscreen();
   }, [config.fullscreenOnStartup]);
 
-  const handleConfigChange = (key, value) => {
+  const handleConfigChange = <K extends keyof IStoredAppConfig>(key: K, value: IStoredAppConfig[K]) => {
     setConfig(prev => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
-  const updateData = (key, newData) => {
-    setData(prev => ({ ...prev, [key]: newData }));
+  const updateData: UpdateAppDataFn = <K extends IAppDataField>(key: K, newData: IAppData[K]) => {
+    setData(prev => (prev ? { ...prev, [key]: newData } : prev));
   };
 
   // ===== EXPORT / IMPORT =====
@@ -231,7 +235,7 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
     flashSave('💾 Saved!');
   };
 
-  const handleImport = (e) => {
+  const handleImport = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -257,7 +261,7 @@ function GameApp({ campaign, onBackToCampaigns }: { campaign: ICampaign; onBackT
     e.target.value = '';
   };
 
-  const flashSave = (msg) => {
+  const flashSave = (msg: string) => {
     setSaveMessage(msg);
     setTimeout(() => setSaveMessage(''), 2500);
   };

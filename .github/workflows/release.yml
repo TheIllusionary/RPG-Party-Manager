@@ -38,8 +38,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build --prefix webapp
-        env:
-          VITE_API_URL: http://localhost:3001
 
       - name: Build & publish to GitHub Releases
         working-directory: webapp

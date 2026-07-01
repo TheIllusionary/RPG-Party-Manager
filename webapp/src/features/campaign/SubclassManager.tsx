@@ -9,12 +9,15 @@ const DAMAGE_TYPES = [
 
 const DAMAGE_MOD_KEYS = ['resistances', 'immunities', 'vulnerabilities'];
 
-const normDamageType = (t) => (t || '').toLowerCase().trim();
+import type { IAttack, ISubclass } from '../../types';
+import type { IDamageModEditorProps, IAttackEditorProps, ISubclassManagerProps } from '../../types/campaign';
 
-function DamageModEditor({ label, items, onChange, pillClass }) {
+const normDamageType = (t: string) => (t || '').toLowerCase().trim();
+
+function DamageModEditor({ label, items, onChange, pillClass }: IDamageModEditorProps) {
   const [draft, setDraft] = useState('');
 
-  const addType = (val) => {
+  const addType = (val: string) => {
     if (!val || items.some((item) => normDamageType(item) === normDamageType(val))) return;
     onChange([...items, val]);
     setDraft('');
@@ -44,9 +47,9 @@ function DamageModEditor({ label, items, onChange, pillClass }) {
   );
 }
 
-function AttackEditor({ attack, onChange, onRemove }) {
-  const update = (patch) => onChange({ ...attack, ...patch });
-  const updateDamage = (dIdx, patch) => {
+function AttackEditor({ attack, onChange, onRemove }: IAttackEditorProps) {
+  const update = (patch: Partial<IAttack>) => onChange({ ...attack, ...patch });
+  const updateDamage = (dIdx: number, patch: Partial<IAttack['damage'][number]>) => {
     const damage = [...(attack.damage || [])];
     damage[dIdx] = { ...damage[dIdx], ...patch };
     update({ damage });
@@ -99,9 +102,7 @@ function AttackEditor({ attack, onChange, onRemove }) {
   );
 }
 
-import type { ISubclass } from '../../types';
-
-export default function SubclassManager({ subclasses = [], updateSubclasses }: { subclasses?: ISubclass[]; updateSubclasses: (s: ISubclass[]) => void }) {
+export default function SubclassManager({ subclasses = [], updateSubclasses }: ISubclassManagerProps) {
   const [selectedId, setSelectedId] = useState(subclasses[0]?.id || null);
   const [traitName, setTraitName] = useState('');
   const [traitDesc, setTraitDesc] = useState('');

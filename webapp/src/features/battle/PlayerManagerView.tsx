@@ -1,11 +1,13 @@
 import React from 'react';
 import PartyXpModal from './components/PartyXpModal';
+import PartyLevelModal from './components/PartyLevelModal';
 import CombatHeader from './components/CombatHeader';
 import PlayerCard from './components/PlayerCard';
 import EnemyCard from './components/EnemyCard';
 import VttOverlay from './components/VttOverlay';
 import AttackResolutionModal from './components/AttackResolutionModal';
 import FloatingActionBar from './components/FloatingActionBar';
+import type { IPlayerManagerViewProps } from '../../types/battle';
 
 export default function PlayerManagerView({
   party,
@@ -21,14 +23,14 @@ export default function PlayerManagerView({
   setMinimizedEnemies,
   library,
   updateLibrary,
-}) {
-  const { data: partyData } = party;
-  const players = partyData ?? [];
-  const enemyList = enemies ?? [];
+}: IPlayerManagerViewProps) {
+  const players = party.data;
+  const enemyList = enemies;
 
   return (
     <div className="player-manager">
       <PartyXpModal party={party} />
+      <PartyLevelModal party={party} />
 
       <CombatHeader
         party={party}
@@ -65,13 +67,11 @@ export default function PlayerManagerView({
           </div>
         </div>
 
-        <VttOverlay combat={combat} battleMode={battleMode} data={players} />
-
         {battleMode && (
           <div className="battle-enemy-panel">
             <div className="battle-enemy-panel-header">
               <h3 className="battle-col-title">💀 Enemies</h3>
-              <button type="button" className="btn btn-danger small-btn" onClick={combat.addEnemy}>+ Add Enemy</button>
+              <button type="button" className="btn btn-danger small-btn" onClick={combat.addEnemy}> Add Enemy</button>
             </div>
 
             {enemyList.length === 0 && (
@@ -99,13 +99,13 @@ export default function PlayerManagerView({
         )}
       </div>
 
+      <VttOverlay combat={combat} battleMode={battleMode} data={players} />
       <AttackResolutionModal
         party={party}
         combat={combat}
         equipment={equipment}
         buffsDatabase={buffsDatabase}
       />
-
       <FloatingActionBar combat={combat} />
     </div>
   );

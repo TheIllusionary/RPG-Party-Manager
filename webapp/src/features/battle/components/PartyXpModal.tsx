@@ -1,6 +1,7 @@
 import React from 'react';
+import type { IPartyXpModalProps } from '../../../types/battle';
 
-export default function PartyXpModal({ party }) {
+export default function PartyXpModal({ party }: IPartyXpModalProps) {
   const {
     partyXpModalOpen,
     setPartyXpModalOpen,
@@ -28,11 +29,11 @@ export default function PartyXpModal({ party }) {
           onWheel={(e) => {
             e.preventDefault();
             const dir = Math.sign(e.deltaY) * -1;
-            setPartyXpAmount((prev) => (parseInt(prev) || 0) + dir);
+            setPartyXpAmount((prev) => String((parseInt(prev, 10) || 0) + dir));
           }}
           onKeyDown={(e) => {
-            if (e.key === 'w' || e.key === 'ArrowUp') setPartyXpAmount((prev) => (parseInt(prev) || 0) + 1);
-            if (e.key === 's' || e.key === 'ArrowDown') setPartyXpAmount((prev) => (parseInt(prev) || 0) - 1);
+            if (e.key === 'w' || e.key === 'ArrowUp') setPartyXpAmount((prev) => String((parseInt(prev, 10) || 0) + 1));
+            if (e.key === 's' || e.key === 'ArrowDown') setPartyXpAmount((prev) => String((parseInt(prev, 10) || 0) - 1));
           }}
           placeholder="0"
         />

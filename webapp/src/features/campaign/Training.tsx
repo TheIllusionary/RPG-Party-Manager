@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import './Training.css';
+import type { StatAbbr } from '../../types';
+import type {
+  ITrainingEntry,
+  ITrainingProps,
+  IPlayerTrainingCardProps,
+  ITrainingEntryProps,
+} from '../../types/campaign';
 
-const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-const STAT_LABELS = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+const STATS: StatAbbr[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+const STAT_LABELS: Record<StatAbbr, string> = {
+  str: 'STR',
+  dex: 'DEX',
+  con: 'CON',
+  int: 'INT',
+  wis: 'WIS',
+  cha: 'CHA',
+};
 
-function generateId() {
+function generateId(): string {
   return Math.random().toString(36).substr(2, 9);
 }
 
-function getNextSteppedValue(val, step, direction) {
+function getNextSteppedValue(val: number, step: number, direction: number): number {
   const currentMultiple = Math.round(val / step) * step;
   let next = currentMultiple;
   if (direction > 0) {
@@ -23,7 +37,7 @@ function getNextSteppedValue(val, step, direction) {
   return next;
 }
 
-function createTrainingEntry() {
+function createTrainingEntry(): ITrainingEntry {
   return {
     id: generateId(),
     name: 'New Training',
@@ -34,7 +48,7 @@ function createTrainingEntry() {
   };
 }
 
-function TrainingEntry({ entry, player, onChange, onRemove }) {
+function TrainingEntry({ entry, player, onChange, onRemove }: ITrainingEntryProps) {
   const [rolling, setRolling] = useState(false);
 
   const statScore = player[entry.stat] ?? 10;
@@ -42,16 +56,16 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
   const pct = entry.goal > 0 ? Math.min(100, Math.round((entry.progress / entry.goal) * 100)) : 0;
   const isComplete = entry.progress >= entry.goal;
 
-  function handleField(field, value) {
+  function handleField<K extends keyof ITrainingEntry>(field: K, value: ITrainingEntry[K]) {
     onChange({ ...entry, [field]: value });
   }
 
-  const handleGoalScrollOrArrow = (direction) => {
+  const handleGoalScrollOrArrow = (direction: number) => {
     const nextVal = getNextSteppedValue(entry.goal, 100, direction);
     handleField('goal', Math.max(1, nextVal));
   };
 
-  const handleProgressScrollOrArrow = (direction) => {
+  const handleProgressScrollOrArrow = (direction: number) => {
     const nextVal = getNextSteppedValue(entry.progress, 10, direction);
     handleField('progress', Math.max(0, nextVal));
   };
@@ -87,6 +101,7 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
           className="delete-btn training-remove-btn"
           onClick={onRemove}
           title="Remove training"
+          type="button"
         >
           ×
         </button>
@@ -97,6 +112,7 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
         {STATS.map(s => (
           <button
             key={s}
+            type="button"
             className={`training-stat-btn${entry.stat === s ? ' training-stat-btn--active' : ''}`}
             onClick={() => handleField('stat', s)}
           >
@@ -114,7 +130,7 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
             min={1}
             step={100}
             value={entry.goal}
-            onChange={e => handleField('goal', Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={e => handleField('goal', Math.max(1, parseInt(e.target.value, 10) || 1))}
             onWheel={e => {
               e.preventDefault();
               handleGoalScrollOrArrow(Math.sign(e.deltaY) * -1);
@@ -138,7 +154,7 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
             min={0}
             step={10}
             value={entry.progress}
-            onChange={e => handleField('progress', Math.max(0, parseInt(e.target.value) || 0))}
+            onChange={e => handleField('progress', Math.max(0, parseInt(e.target.value, 10) || 0))}
             onWheel={e => {
               e.preventDefault();
               handleProgressScrollOrArrow(Math.sign(e.deltaY) * -1);
@@ -155,6 +171,7 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
           />
         </div>
         <button
+          type="button"
           className={`training-roll-btn${rolling ? ' training-roll-btn--rolling' : ''}`}
           onClick={handleRoll}
           disabled={rolling}
@@ -182,13 +199,13 @@ function TrainingEntry({ entry, player, onChange, onRemove }) {
   );
 }
 
-function PlayerTrainingCard({ player, entries, onUpdate }) {
-  function handleEntryChange(updatedEntry) {
+function PlayerTrainingCard({ player, entries, onUpdate }: IPlayerTrainingCardProps) {
+  function handleEntryChange(updatedEntry: ITrainingEntry) {
     const newEntries = entries.map(e => e.id === updatedEntry.id ? updatedEntry : e);
     onUpdate(newEntries);
   }
 
-  function handleRemove(id) {
+  function handleRemove(id: string) {
     onUpdate(entries.filter(e => e.id !== id));
   }
 
@@ -223,16 +240,14 @@ function PlayerTrainingCard({ player, entries, onUpdate }) {
         ))}
       </div>
 
-      <button className="btn training-add-btn" onClick={handleAdd}>
+      <button type="button" className="btn training-add-btn" onClick={handleAdd}>
         + Add Training
       </button>
     </div>
   );
 }
 
-import type { IPlayer } from '../../types';
-
-export default function Training({ players, trainingData, updateTrainingData }: { players: IPlayer[]; trainingData: Record<string, unknown[]>; updateTrainingData: (d: Record<string, unknown[]>) => void }) {
+export default function Training({ players, trainingData, updateTrainingData }: ITrainingProps) {
   const partyMembers = (players || []).filter(p => p.inParty);
 
   useEffect(() => {
@@ -244,7 +259,7 @@ export default function Training({ players, trainingData, updateTrainingData }: 
     };
   }, []);
 
-  function handlePlayerUpdate(playerId, newEntries) {
+  function handlePlayerUpdate(playerId: string, newEntries: ITrainingEntry[]) {
     updateTrainingData({ ...trainingData, [playerId]: newEntries });
   }
 

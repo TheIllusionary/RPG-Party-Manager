@@ -1,16 +1,15 @@
-// @ts-nocheck — TODO: type notebook page form fields
 import React, { useState } from 'react';
 import './Notebook.css';
 
-import type { INotebookPage } from '../../types';
+import type { INotebookPage, INotebookProps, NotebookPageType } from '../../types/campaign';
 
-export default function Notebook({ notebookData, updateNotebookData }: { notebookData: { pages: INotebookPage[] }; updateNotebookData: (d: { pages: INotebookPage[] }) => void }) {
+export default function Notebook({ notebookData, updateNotebookData }: INotebookProps) {
     const pages = notebookData.pages || [];
-    const [selectedPageId, setSelectedPageId] = useState(null);
-    const [activeType, setActiveType] = useState('quest'); // 'quest' or 'note'
+    const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+    const [activeType, setActiveType] = useState<NotebookPageType>('quest');
     const [isListExpanded, setIsListExpanded] = useState(true);
 
-    const handleSelectTab = (type) => {
+    const handleSelectTab = (type: NotebookPageType) => {
         if (activeType === type) {
             // Clicked active tab icon, toggle collapse
             setIsListExpanded(prev => !prev);
@@ -22,7 +21,7 @@ export default function Notebook({ notebookData, updateNotebookData }: { noteboo
     };
 
     const addPage = () => {
-        const newPage = {
+        const newPage: INotebookPage = {
             id: Date.now().toString(),
             title: `New ${activeType === 'quest' ? 'Quest' : 'Note'}`,
             content: '',
@@ -126,9 +125,9 @@ export default function Notebook({ notebookData, updateNotebookData }: { noteboo
                                         className="input type-select"
                                         value={currentActivePage.type}
                                         onChange={(e) => {
-                                            const newType = e.target.value;
+                                            const newType = e.target.value as NotebookPageType;
                                             updatePage(currentActivePage.id, 'type', newType);
-                                            setActiveType(newType); // switch view to match new type
+                                            setActiveType(newType);
                                         }}
                                     >
                                         <option value="quest">Quest 📜</option>

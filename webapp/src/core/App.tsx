@@ -10,6 +10,7 @@ import {
   getStoredUser,
   setAuthSession,
 } from '../services/api';
+import type { IAuthSession } from '../types/auth';
 import type { ICampaign, IUser } from '../types';
 
 function App() {
@@ -46,7 +47,7 @@ function App() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleAuthenticated = ({ token, user: authUser }: { token: string; user: IUser }) => {
+  const handleAuthenticated = ({ token, user: authUser }: IAuthSession) => {
     setAuthSession({ token, user: authUser });
     setUser(authUser);
     setActiveCampaign(null);
