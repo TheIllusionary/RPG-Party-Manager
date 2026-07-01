@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
-    "electron:build": "npm run build && electron-packager . PartyManager --platform=win32 --arch=x64 --out=dist-electron --overwrite"
+    "electron:build": "npm run build:api-deps && cross-env VITE_API_URL=http://localhost:3001 vite build && electron-packager . PartyManager --platform=win32 --arch=x64 --out=dist-electron --overwrite --extra-resource=../api",
+    "build:api-deps": "npm install --prefix ../api"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -22,6 +23,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
     "electron-packager": "^17.1.2",
@@ -29,6 +31,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "typescript": "^6.0.3",
     "vite": "^7.3.1",
     "wait-on": "^9.0.4"
   }

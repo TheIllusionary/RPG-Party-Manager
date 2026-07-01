@@ -1,6 +1,11 @@
 @echo off
-echo Starting Party Manager Development Server...
-cd webapp
-start http://localhost:5173/
-cmd /c "npm run dev"
+echo Starting Party Manager (API + Electron)...
+cd /d "%~dp0"
+
+if not exist "node_modules\" (
+  echo Installing root dependencies...
+  call npm install
+)
+
+npm run dev
 pause

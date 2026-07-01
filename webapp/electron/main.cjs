@@ -1,8 +1,96 @@
 const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const { fork } = require('child_process');
 
 let mainWindow = null;
 let vttView = null;
+let apiProcess = null;
+
+function getApiPaths() {
+  if (app.isPackaged) {
+    return {
+      entry: path.join(process.resourcesPath, 'api', 'index.js'),
+      cwd: path.join(process.resourcesPath, 'api'),
+      envFile: path.join(process.resourcesPath, 'api', '.env'),
+    };
+  }
+
+  return {
+    entry: path.join(__dirname, '../../api/index.js'),
+    cwd: path.join(__dirname, '../../api'),
+    envFile: path.join(__dirname, '../../api/.env'),
+  };
+}
+
+function loadApiEnv() {
+  const { envFile } = getApiPaths();
+  const env = { ...process.env };
+
+  if (!fs.existsSync(envFile)) return env;
+
+  const lines = fs.readFileSync(envFile, 'utf8').split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim();
+    env[key] = value;
+  }
+
+  return env;
+}
+
+function startApiServer() {
+  if (apiProcess) return;
+
+  const { entry, cwd } = getApiPaths();
+
+  if (!fs.existsSync(entry)) {
+    console.error('[API] Entry not found:', entry);
+    return;
+  }
+
+  const env = loadApiEnv();
+  env.NODE_ENV = app.isPackaged ? 'production' : 'development';
+
+  console.log('[API] Starting server from', entry);
+
+  apiProcess = fork(entry, [], {
+    cwd,
+    env,
+    stdio: 'inherit',
+    silent: false,
+  });
+
+  apiProcess.on('error', (err) => {
+    console.error('[API] Process error:', err);
+  });
+
+  apiProcess.on('exit', (code, signal) => {
+    console.log(`[API] Process exited (code=${code}, signal=${signal})`);
+    apiProcess = null;
+  });
+}
+
+function stopApiServer() {
+  if (!apiProcess) return;
+
+  const proc = apiProcess;
+  apiProcess = null;
+
+  try {
+    if (process.platform === 'win32') {
+      proc.kill();
+    } else {
+      proc.kill('SIGTERM');
+    }
+  } catch (err) {
+    console.error('[API] Failed to kill process:', err);
+  }
+}
 
 function createWindow() {
     Menu.setApplicationMenu(null);
@@ -17,8 +105,6 @@ function createWindow() {
         }
     });
 
-    // Check if we are in development mode by seeing if an environment variable is set
-    // When running `wait-on tcp:5173 && electron .`, Vite is running on localhost:5173
     const isDev = !app.isPackaged;
 
     if (isDev) {
@@ -41,7 +127,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    // Intercept response headers to remove x-frame-options and content-security-policy for Owlbear Rodeo
+    if (app.isPackaged) {
+        startApiServer();
+    }
+
     session.defaultSession.webRequest.onHeadersReceived(
         { urls: ['*://*.owlbear.rodeo/*'] },
         (details, callback) => {
@@ -65,13 +154,16 @@ app.whenReady().then(() => {
     });
 });
 
+app.on('before-quit', () => {
+    stopApiServer();
+});
+
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
 });
 
-// IPC handlers for VTT View
 ipcMain.on('vtt-toggle-visibility', (event, { visible }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
