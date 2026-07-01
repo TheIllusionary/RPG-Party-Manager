@@ -3,7 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "description": "D&D 5e homebrew party manager — desktop app",
-  "author": "TheIllusionary",
+  "author": "GuilhermeDanzer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GuilhermeDanzer/RPG-Party-Manager.git"
+  },
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -83,7 +87,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "TheIllusionary",
+        "owner": "GuilhermeDanzer",
         "repo": "RPG-Party-Manager",
         "releaseType": "release"
       }

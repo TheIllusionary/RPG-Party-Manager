@@ -155,24 +155,34 @@ npm run build:electron
 # Output: webapp/dist-electron/PartyManager-Setup-<version>.exe
 ```
 
-**Release via GitHub tag (CI):**
+**Release on push to `main` (CI — recommended):**
+
+Every push to `main` that changes `webapp/**` triggers GitHub Actions:
+
+1. Sets version to `1.0.<build>` (monotonic — each CI run bumps the number)
+2. Builds the Vite frontend + NSIS installer
+3. Publishes `PartyManager-Setup-<version>.exe` and `latest.yml` to [GitHub Releases](https://github.com/GuilhermeDanzer/RPG-Party-Manager/releases)
+
+Installed apps check for updates on startup and download in the background (`electron-updater`).
+
+> **Note:** Only `webapp/` changes trigger a desktop release. API-only commits (Render deploy) do not rebuild the installer.
+
+**Release via GitHub tag (optional, semver):**
 
 ```bash
-# 1. Bump version in webapp/package.json (e.g. 1.0.1) — or let CI read the tag
-git add webapp/package.json
-git commit -m "chore: release v1.0.1"
-git tag v1.0.1
-git push origin main
-git push origin v1.0.1
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
-GitHub Actions (`.github/workflows/release.yml`) will:
+CI uses the tag as the version (`1.2.0`) instead of `1.0.<build>`.
 
-1. Set `webapp` version from the tag (`v1.0.1` → `1.0.1`)
-2. Build the Vite frontend + bundle API + create NSIS installer
-3. Publish `PartyManager-Setup-<version>.exe` and `latest.yml` to GitHub Releases
+**Legacy tag + main flow:**
 
-Installed apps detect the new release automatically on next launch.
+```bash
+# Bump version in webapp/package.json manually if you prefer (optional with main CI)
+git tag v1.0.1
+git push origin v1.0.1
+```
 
 **Manual publish from your machine:**
 
