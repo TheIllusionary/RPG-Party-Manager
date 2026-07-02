@@ -10,6 +10,9 @@ on:
       - main
     paths:
       - 'webapp/**'
+      - 'api/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/release.yml'
     tags:
       - 'v*'
@@ -33,8 +36,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            webapp/package-lock.json
 
       - name: Set release version
         shell: bash
@@ -49,10 +55,9 @@ jobs:
           echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Install API production dependencies
-        run: npm install --prefix api --omit=dev
+        run: |
+          npm install --prefix api --omit=dev
+          npm install --prefix webapp
 
       - name: Build frontend
         run: npm run build --prefix webapp
@@ -69,7 +74,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "v${{ env.APP_VERSION }}"
-          $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" | Select-Object -First 1
+          $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" |
+            Where-Object { $_.Name -ne 'PartyManager-Setup.exe' } |
+            Select-Object -First 1
           if (-not $installer) { throw "Versioned installer not found." }
           $fixed = "webapp/dist-electron/PartyManager-Setup.exe"
           Copy-Item $installer.FullName $fixed -Force
