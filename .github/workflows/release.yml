@@ -63,11 +63,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
 
+      - name: Upload fixed-name installer (PartyManager-Setup.exe)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v${{ env.APP_VERSION }}"
+          $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Versioned installer not found." }
+          $fixed = "webapp/dist-electron/PartyManager-Setup.exe"
+          Copy-Item $installer.FullName $fixed -Force
+          gh release upload $tag $fixed --clobber
+
       - name: Upload build artifacts (backup)
         uses: actions/upload-artifact@v4
         with:
           name: PartyManager-Windows-${{ env.APP_VERSION }}
           path: |
             webapp/dist-electron/PartyManager-Setup-*.exe
+            webapp/dist-electron/PartyManager-Setup.exe
             webapp/dist-electron/latest.yml
           if-no-files-found: error
