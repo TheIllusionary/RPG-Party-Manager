@@ -146,7 +146,14 @@ npm run build:electron   # Windows desktop package
 
 ### Desktop auto-update (Electron)
 
-The packaged app checks **GitHub Releases** on startup (`electron-updater`) and downloads updates in the background.
+The packaged app checks the **public releases repo** on startup (`electron-updater`) and downloads updates in the background.
+
+**Public download (share with players):**
+
+- Latest installer: https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases/latest/download/PartyManager-Setup.exe
+- Releases page: https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases
+
+Source code stays in the private repo; only installers and `latest.yml` are published publicly.
 
 **Local build (no publish):**
 
@@ -161,7 +168,7 @@ Every push to `main` that changes `webapp/**` triggers GitHub Actions:
 
 1. Sets version to `1.0.<build>` (monotonic — each CI run bumps the number)
 2. Builds the Vite frontend + NSIS installer
-3. Publishes `PartyManager-Setup-<version>.exe` and `latest.yml` to [GitHub Releases](https://github.com/GuilhermeDanzer/RPG-Party-Manager/releases)
+3. Publishes `PartyManager-Setup-<version>.exe`, `PartyManager-Setup.exe`, and `latest.yml` to the [public releases repo](https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases)
 
 Installed apps check for updates on startup and download in the background (`electron-updater`).
 
@@ -187,7 +194,7 @@ git push origin v1.0.1
 **Manual publish from your machine:**
 
 ```bash
-$env:GH_TOKEN = "ghp_..."   # GitHub PAT with repo scope
+$env:GH_TOKEN = "ghp_..."   # GitHub PAT with repo scope (needs access to RPG-Party-Manager-Releases)
 npm run publish:electron --prefix webapp
 ```
 

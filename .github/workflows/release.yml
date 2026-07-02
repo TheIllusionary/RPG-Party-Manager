@@ -1,6 +1,9 @@
 name: Release Electron App
 
-# Publishes a new installer to GitHub Releases so installed apps auto-update via electron-updater.
+# Builds in the private source repo and publishes installers to the public releases repo:
+# https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases
+#
+# Requires secret RELEASES_REPO_TOKEN (PAT with repo scope) on the source repo.
 # - Push to main (webapp changes) → version 1.0.<run_number>
 # - Push tag v* → version from tag (e.g. v1.2.0 → 1.2.0)
 
@@ -19,11 +22,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: electron-release
   cancel-in-progress: true
+
+env:
+  RELEASES_REPO: GuilhermeDanzer/RPG-Party-Manager-Releases
 
 jobs:
   build-windows:
@@ -62,16 +68,16 @@ jobs:
       - name: Build frontend
         run: npm run build --prefix webapp
 
-      - name: Build & publish to GitHub Releases
+      - name: Build & publish to public releases repo
         working-directory: webapp
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: npx electron-builder --win --publish always
 
       - name: Upload fixed-name installer (PartyManager-Setup.exe)
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           $tag = "v${{ env.APP_VERSION }}"
           $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" |
@@ -80,7 +86,7 @@ jobs:
           if (-not $installer) { throw "Versioned installer not found." }
           $fixed = "webapp/dist-electron/PartyManager-Setup.exe"
           Copy-Item $installer.FullName $fixed -Force
-          gh release upload $tag $fixed --clobber
+          gh release upload $tag $fixed --repo $env:RELEASES_REPO --clobber
 
       - name: Upload build artifacts (backup)
         uses: actions/upload-artifact@v4
