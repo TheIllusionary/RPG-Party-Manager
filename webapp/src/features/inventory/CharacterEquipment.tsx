@@ -795,7 +795,7 @@ export default function CharacterEquipment({
                                                         const val = e.target.value;
                                                         if (val && !(openSlotData[key] || []).includes(val)) updateDraftField(key, [...(openSlotData[key] || []), val]);
                                                     }}>
-                                                    <option value="">+ Add</option>
+                                                    <option value="">Add</option>
                                                     {DAMAGE_TYPES.filter(t => !(openSlotData[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
                                             </div>
@@ -821,7 +821,7 @@ export default function CharacterEquipment({
                                                         const val = e.target.value;
                                                         if (val && !(openSlotData[key] || []).includes(val)) updateDraftField(key, [...(openSlotData[key] || []), val]);
                                                     }}>
-                                                    <option value="">+ Add</option>
+                                                    <option value="">Add</option>
                                                     {ALL_CC_EFFECTS.filter(t => !(openSlotData[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
                                             </div>
@@ -867,7 +867,7 @@ export default function CharacterEquipment({
                                                                 setQuickSlotBuffDesc('');
                                                             }}
                                                         >
-                                                            + Add Buff
+                                                            Add Buff
                                                         </button>
                                                     ) : (
                                                         <div className="buff-dropdown-container glass-panel" style={{ 
@@ -1028,7 +1028,7 @@ export default function CharacterEquipment({
                         <h3 className="wondrous-title">✨ Wondrous Items (Custom)</h3>
                         <p className="wondrous-subtitle">Homebrew &amp; magical items that don't fit standard slots</p>
                     </div>
-                    <button className="btn btn-primary" onClick={addWondrousItem}>+ Add Item</button>
+                    <button className="btn btn-primary" onClick={addWondrousItem}>Add Item</button>
                 </div>
 
                 {wondrousItems.length === 0 && (
@@ -1157,7 +1157,7 @@ export default function CharacterEquipment({
                                                             ))}
                                                             <select className="input" style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }} value=""
                                                                 onChange={e => { const val = e.target.value; if (val && !(display[key] || []).includes(val)) updateWondrousDraft(item.id, key, [...(display[key] || []), val]); }}>
-                                                                <option value="">+ Add</option>
+                                                                <option value="">Add</option>
                                                                 {DAMAGE_TYPES.filter(t => !(display[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                             </select>
                                                         </div>
@@ -1179,7 +1179,7 @@ export default function CharacterEquipment({
                                                             ))}
                                                             <select className="input" style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }} value=""
                                                                 onChange={e => { const val = e.target.value; if (val && !(display[key] || []).includes(val)) updateWondrousDraft(item.id, key, [...(display[key] || []), val]); }}>
-                                                                <option value="">+ Add</option>
+                                                                <option value="">Add</option>
                                                                 {ALL_CC_EFFECTS.filter(t => !(display[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                             </select>
                                                         </div>
@@ -1225,7 +1225,7 @@ export default function CharacterEquipment({
                                                                             setQuickWondrousBuffDesc('');
                                                                         }}
                                                                     >
-                                                                        + Add Buff
+                                                                        Add Buff
                                                                     </button>
                                                                 ) : (
                                                                     <div className="buff-dropdown-container glass-panel" style={{ 

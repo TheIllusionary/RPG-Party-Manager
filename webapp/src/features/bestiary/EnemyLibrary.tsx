@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import './EnemyLibrary.css';
-import defaultMonstersJson from './default_monsters.json';
 import { parseAbilities, rollFormula, extractExtraEffects } from '../../shared/utils/combatUtils';
 import type { IBestiaryReviewStatus, IEnemyLibraryProps } from '../../types/bestiary';
 import type { IMonster } from '../../types';
+import { useCompendiumMonsters } from '../../shared/hooks/useCompendiumMonsters';
 
-const defaultMonsters = defaultMonstersJson as IMonster[];
+const defaultMonsters = [] as IMonster[];
 
 const CC_OPTIONS = [
     'Blind 🕶️',
@@ -76,13 +76,15 @@ export default function EnemyLibrary({
     bestiaryReview = {}, 
     updateBestiaryReview = () => {} 
 }: IEnemyLibraryProps) {
-    const data = library;
+    const { monsters: compendiumMonsters } = useCompendiumMonsters();
+    const data = [...compendiumMonsters, ...library];
     const updateData = updateLibrary;
 
     const [activeSubTab, setActiveSubTab] = useState('bestiary'); // 'bestiary' | 'buffs' | 'items'
     const [buffSearchTerm, setBuffSearchTerm] = useState('');
     const [editingBuffId, setEditingBuffId] = useState(null);
     const [buffDraft, setBuffDraft] = useState(null);
+    const [creatingMonster, setCreatingMonster] = useState(false);
 
     const startCreateBuff = () => {
         setBuffDraft({
@@ -437,28 +439,38 @@ export default function EnemyLibrary({
     };
 
     const addEnemy = () => {
-        const newId = Date.now().toString();
-        const newEnemy = {
-            id: newId,
-            name: 'New Monster',
-            classType: 'Enemy',
-            ac: 12,
-            hpMax: 20,
-            str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
-            proficiency: 2,
-            background: 'CR 1',
-            abilities: '',
-            features: '',
-            skills: {},
-            saves: {},
-            resistances: [],
-            immunities: [],
-            vulnerabilities: [],
-            attacks: []
-        };
-        updateData([...data, newEnemy]);
-        setExpandedEnemyId(newId);
-        setExpandedOriginalName('New Monster');
+        if (creatingMonster) return;
+        setCreatingMonster(true);
+        try {
+            const newId = generateUniqueId();
+            const newEnemy = {
+                id: newId,
+                name: 'New Monster',
+                classType: 'Enemy',
+                ac: 12,
+                hpMax: 20,
+                str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
+                proficiency: 2,
+                background: 'CR 1',
+                abilities: '',
+                features: '',
+                skills: {},
+                saves: {},
+                resistances: [],
+                immunities: [],
+                vulnerabilities: [],
+                attacks: []
+            };
+            updateData([...data, newEnemy]);
+            setExpandedEnemyId(newId);
+            setExpandedOriginalName('New Monster');
+            setDetailsMonsterId(null);
+            requestAnimationFrame(() => {
+                document.getElementById(`monster-row-${newId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        } finally {
+            setCreatingMonster(false);
+        }
     };
 
     const updateEnemy = (id, field, value) => {
@@ -639,7 +651,14 @@ export default function EnemyLibrary({
                 <>
                     <div className="library-header">
                         <h2>Bestiary Database</h2>
-                        <button className="btn btn-primary" onClick={addEnemy}>+ Create Monster</button>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={addEnemy}
+                            disabled={creatingMonster}
+                        >
+                            {creatingMonster ? 'Creating…' : 'Create Monster'}
+                        </button>
                     </div>
 
                     <div className="library-search-bar">
@@ -671,7 +690,7 @@ export default function EnemyLibrary({
                             const miniSprite = (enemy.classType || '').toLowerCase() === 'boss' ? 'boss' : 'enemy';
                             return (
                                 <React.Fragment key={enemy.id}>
-                                    <tr className={`monster-row ${isExpanded ? 'expanded-row' : ''}`}>
+                                    <tr id={`monster-row-${enemy.id}`} className={`monster-row ${isExpanded ? 'expanded-row' : ''}`}>
                                         <td className="monster-name-cell">
                                             <div className="monster-name-avatar">
                                                 <img src={`./sprites/${miniSprite}.png`} alt={enemy.classType} className="monster-mini-sprite" />
@@ -1043,7 +1062,7 @@ export default function EnemyLibrary({
                                                                             }}
                                                                             style={{ marginTop: '0.4rem', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                                                                         >
-                                                                            + Add Damage Component
+                                                                            Add Damage Component
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -1078,7 +1097,7 @@ export default function EnemyLibrary({
                                                             }}
                                                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                                         >
-                                                            + Add Structured Attack
+                                                            Add Structured Attack
                                                         </button>
                                                     </div>
                                                     
@@ -1186,7 +1205,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.resistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1218,7 +1237,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.immunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1250,7 +1269,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.vulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1288,7 +1307,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccResistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1320,7 +1339,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccImmunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1352,7 +1371,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccVulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1397,7 +1416,7 @@ export default function EnemyLibrary({
                                                                     }}
                                                                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
                                                                 >
-                                                                    <option value="">+ Add Buff/Debuff...</option>
+                                                                    <option value="">Add Buff/Debuff...</option>
                                                                     {buffsDatabase
                                                                         .filter(b => !(enemy.buffs || []).includes(b.name))
                                                                         .map(b => (

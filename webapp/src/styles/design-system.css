@@ -1,0 +1,275 @@
+/**
+ * Shared UI primitives — plain CSS only (no Tailwind).
+ */
+
+/* ── Header inner (AppNavBar) ── */
+.app-shell-header-inner {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.app-nav-title-block {
+  display: flex;
+  width: 100%;
+  max-width: 48rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+/* ── Button rows ── */
+.app-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  padding: 8px;
+  margin-block: 4px;
+}
+
+.app-button-row--end {
+  justify-content: flex-end;
+}
+
+.app-button-row--start {
+  justify-content: flex-start;
+}
+
+/* ── Page blocks ── */
+.app-page {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-page-header {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.app-page-title {
+  margin: 0;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .app-page-title {
+    font-size: 1.5rem;
+  }
+}
+
+.app-page-title--sm {
+  font-size: 1.125rem;
+}
+
+.app-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface);
+  padding: 24px;
+}
+
+.app-section-title {
+  margin: 0;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.app-prose {
+  max-width: 65ch;
+  line-height: 1.625;
+  color: var(--text-secondary);
+}
+
+.app-prose p {
+  margin-bottom: 16px;
+}
+
+.app-prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Buttons ── */
+.app-btn {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.app-btn:hover {
+  opacity: 0.8;
+}
+
+.app-icon-btn {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  color: var(--text-secondary);
+  transition: opacity 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.app-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.9;
+}
+
+.btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-block {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.small-btn {
+  min-height: 2.25rem;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+}
+
+/* ── Grids ── */
+.app-responsive-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* ── Stacks (flex columns) ── */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.stack-lg {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* ── Icons (lucide) ── */
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Text helpers ── */
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+.u-hidden {
+  display: none;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}

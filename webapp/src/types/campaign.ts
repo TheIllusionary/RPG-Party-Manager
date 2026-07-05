@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { RefObject } from 'react';
 import type { IAttack, IPlayer, ISubclass, StatAbbr } from './index';
 
 export type NotebookPageType = 'quest' | 'note';
@@ -66,6 +66,11 @@ export interface ISubclassManagerProps {
   updateSubclasses: (subclasses: ISubclass[]) => void;
 }
 
+export interface ICampaignRulesPanelProps {
+  logicBlocks: import('./domain').LogicBlock[];
+  updateLogicBlocks: (blocks: import('./domain').LogicBlock[]) => void;
+}
+
 export interface IDamageModEditorProps {
   label: string;
   items: string[];
@@ -83,6 +88,7 @@ export interface ICampaignListProps {
   user: { username: string };
   onSelectCampaign: (campaign: import('./index').ICampaign) => void;
   onLogout: () => void;
+  onOpenDashboard?: () => void;
 }
 
 export type IDescriptionPart =

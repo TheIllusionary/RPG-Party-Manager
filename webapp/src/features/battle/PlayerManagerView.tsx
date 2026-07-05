@@ -7,7 +7,9 @@ import EnemyCard from './components/EnemyCard';
 import VttOverlay from './components/VttOverlay';
 import AttackResolutionModal from './components/AttackResolutionModal';
 import FloatingActionBar from './components/FloatingActionBar';
+import EncounterScenePanel from './components/EncounterScenePanel';
 import type { IPlayerManagerViewProps } from '../../types/battle';
+import { useCompendiumMonsters } from '../../shared/hooks/useCompendiumMonsters';
 
 export default function PlayerManagerView({
   party,
@@ -23,12 +25,16 @@ export default function PlayerManagerView({
   setMinimizedEnemies,
   library,
   updateLibrary,
+  compendiumClasses,
+  compendiumSubclasses,
+  compendiumRaces,
 }: IPlayerManagerViewProps) {
   const players = party.data;
   const enemyList = enemies;
+  const { monsters: compendiumMonsters } = useCompendiumMonsters();
 
   return (
-    <div className="player-manager">
+    <div className="player-manager stack">
       <PartyXpModal party={party} />
       <PartyLevelModal party={party} />
 
@@ -45,13 +51,18 @@ export default function PlayerManagerView({
       />
 
       <div className={`battle-arena ${battleMode ? 'active' : ''} ${combat.isVttActive ? 'vtt-open' : ''}`}>
+        {battleMode && <EncounterScenePanel combat={combat} />}
+
+        <div className="battle-arena-cols">
         <div className={battleMode ? 'battle-party-col' : ''}>
           {battleMode && (
             <div className="battle-enemy-panel-header">
               <h3 className="battle-col-title" style={{ color: '#60a5fa' }}>⚔️ Party</h3>
             </div>
           )}
-          <div className={`roster-grid ${battleMode ? 'battle-mode-roster' : ''}`}>
+          <div
+            className={`roster-grid ${battleMode ? 'battle-mode-roster' : 'app-responsive-grid'}`}
+          >
             {players.map((player) => (
               <PlayerCard
                 key={player.id}
@@ -62,6 +73,9 @@ export default function PlayerManagerView({
                 equipment={equipment}
                 subclasses={subclasses}
                 buffsDatabase={buffsDatabase}
+                compendiumClasses={compendiumClasses}
+                compendiumSubclasses={compendiumSubclasses}
+                compendiumRaces={compendiumRaces}
               />
             ))}
           </div>
@@ -80,7 +94,7 @@ export default function PlayerManagerView({
               </div>
             )}
 
-            <div className={`roster-grid ${battleMode ? 'battle-mode-roster' : ''}`}>
+            <div className="roster-grid battle-mode-roster">
               {enemyList.map((enemy) => (
                 <EnemyCard
                   key={enemy.id}
@@ -90,6 +104,7 @@ export default function PlayerManagerView({
                   battleMode={battleMode}
                   minimizedEnemies={minimizedEnemies}
                   library={library}
+                  compendiumMonsters={compendiumMonsters}
                   updateLibrary={updateLibrary}
                   buffsDatabase={buffsDatabase}
                 />
@@ -97,6 +112,7 @@ export default function PlayerManagerView({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <VttOverlay combat={combat} battleMode={battleMode} data={players} />

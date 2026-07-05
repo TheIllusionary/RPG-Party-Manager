@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "./styles/layout.css";
+@import "./styles/design-system.css";
 
 :root {
   /* Color Palette - Premium Dark Mode */
@@ -148,6 +149,13 @@ body {
   padding: 1.5rem;
 }
 
+.glass-panel > .btn,
+.glass-panel > button,
+.app-section > .btn,
+.app-section > button {
+  margin-block: 0.125rem;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
@@ -160,9 +168,17 @@ p {
 }
 
 /* Base App Layout */
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+}
+
 #root {
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-height: 100vh;
   padding-bottom: 80px; /* Space for bottom nav */
 }
@@ -173,7 +189,8 @@ p {
   color: var(--text-primary);
   border: var(--glass-border);
   border-radius: var(--radius-sm);
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -220,11 +237,14 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
+  min-height: 2.75rem;
   color: var(--text-primary);
   font-size: 0.95rem;
+  line-height: 1.5;
   outline: none;
   transition: var(--transition);
   width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
@@ -262,8 +282,10 @@ p {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.25rem;
   background: rgba(15, 17, 21, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -277,8 +299,12 @@ p {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  width: 48px;
-  height: 48px;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0.5rem;
+  margin: 0.125rem;
   border-radius: 50%;
   display: flex;
   align-items: center;

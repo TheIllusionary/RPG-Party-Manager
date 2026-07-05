@@ -1,4 +1,5 @@
 import { DEFAULT_API_URL } from '../config/cloudDefaults';
+import { clearAuthTokenFromSync, pushAuthTokenToSync } from './syncBridge';
 import type {
   IAuthResponse,
   ICampaignDataDto,
@@ -14,7 +15,7 @@ const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 const TOKEN_KEY = 'partyManagerAuthToken';
 const USER_KEY = 'partyManagerAuthUser';
 
-function getStoredToken(): string | null {
+export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
@@ -63,12 +64,14 @@ export function getStoredUser(): IUser | null {
 export function setAuthSession({ token, user }: IAuthResponse): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  pushAuthTokenToSync(token);
 }
 
 export function clearAuthSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem('partyManagerLastCampaignId');
+  clearAuthTokenFromSync();
 }
 
 export function register(username: string, password: string): Promise<IAuthResponse> {

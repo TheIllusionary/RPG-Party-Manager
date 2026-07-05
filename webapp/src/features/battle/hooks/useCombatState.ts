@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import defaultMonsters from '../../bestiary/default_monsters.json';
+const defaultMonsters = [] as any[];
 import { generateUniqueId, ALL_CC_EFFECTS } from '../utils/constants';
 import {
     parseAbilities,
@@ -17,6 +17,16 @@ import {
     getCCModifier,
     applyDamageToPlayer,
 } from '../../../shared/utils/combatUtils';
+import {
+  applyEnemyRuleTrigger,
+  applyPlayerRuleTrigger,
+  hpChangeTrigger,
+  hpChangeVariables,
+  mergeEnemyWithRules,
+  mergePlayerWithRules,
+  resolveEnemyResources,
+} from '../../../shared/utils/campaignRulesRuntime';
+import { useRuleEngineCombat } from './useRuleEngineCombat';
 import type { ICombatState, IPartyState, IUseCombatStateParams, IEnemySpriteInfo } from '../../../types/battle';
 import type { IAttack, IEnemy, IMonster, IPlayer, StatAbbr } from '../../../types';
 
@@ -33,6 +43,7 @@ export default function useCombatState({
     config,
     configModalOpen,
     equipment,
+    logicBlocks,
     battleNotes: battleNotesProp,
     setBattleNotes: setBattleNotesProp,
 }: IUseCombatStateParams, party: IPartyState): ICombatState {
@@ -48,11 +59,33 @@ export default function useCombatState({
         computePlayerHpDelta,
         computePlayerManaDelta,
         showActionToast,
+        effectiveStat,
         partyXpModalOpen,
         partyLevelModalOpen,
         setMinimizedPlayers,
         minimizedPlayers,
     } = party;
+
+const getPlayerRuleOptions = (player: IPlayer) => ({
+    subclass: getPlayerSubclass(player),
+    getEffectiveStat: effectiveStat,
+});
+
+const calculateEnemyMaxHP = (enemy: IEnemy) =>
+    resolveEnemyResources(enemy, logicBlocks).hpMax;
+
+const ruleEngineCombat = useRuleEngineCombat({
+    players: data,
+    enemies,
+    logicBlocks,
+    calculateMaxHP,
+    calculateMaxMana,
+    calculateEnemyMaxHP,
+    updatePlayers: updateData,
+    setEnemies,
+    showActionToast,
+});
+
 const [inlineDeltaEdit, setInlineDeltaEdit] = useState(null); // { type: 'player'|'enemy', id, field: 'hp'|'mana' }
 const [inlineDeltaValue, setInlineDeltaValue] = useState('');
 
@@ -204,7 +237,13 @@ const executePlayerAttack = () => {
         }
 
         const originalHp = enemy.hp;
-        const hpResult = computeEnemyHpDelta(enemy, totalDamageApplied);
+        const hpBase = computeEnemyHpDelta(enemy, totalDamageApplied);
+        const hpResult = totalDamageApplied > 0
+            ? mergeEnemyWithRules(enemy, hpBase, logicBlocks, 'on_damage', {
+                damage: totalDamageApplied,
+                amount: totalDamageApplied,
+            })
+            : hpBase;
         updatedEnemies[enemyIndex] = { ...enemy, ...hpResult };
 
         results.push({
@@ -395,6 +434,19 @@ const executeAttack = () => {
         const newHpTemp = damageResult.hpTemp;
         const newUlt = damageResult.ultCurrent;
 
+        const rulePatch = totalDamageApplied > 0
+            ? mergePlayerWithRules(
+                player,
+                { hpCurrent: newHp, hpTemp: newHpTemp, ultCurrent: newUlt },
+                logicBlocks,
+                'on_damage',
+                {
+                    ...getPlayerRuleOptions(player),
+                    variables: { damage: totalDamageApplied, amount: totalDamageApplied },
+                },
+            )
+            : { hpCurrent: newHp, hpTemp: newHpTemp, ultCurrent: newUlt };
+
         const resolvedEffect = (resultType === 'save_failed' || resultType === 'hit' || resultType === 'crit') ? extraEffect : null;
 
         let newCc = [...(player.cc || [])];
@@ -422,9 +474,7 @@ const executeAttack = () => {
 
         updatedPlayers[playerIndex] = {
             ...player,
-            hpCurrent: newHp,
-            hpTemp: newHpTemp,
-            ultCurrent: newUlt,
+            ...rulePatch,
             cc: newCc
         };
 
@@ -730,7 +780,9 @@ const selectMonster = (enemyId, monster) => {
                 buffs: monster.buffs || [],
                 buffStates: {},
                 spentBuffs: {},
-                attacks: monster.attacks || [],
+                attacks: monster.attacks && monster.attacks.length > 0 
+                    ? monster.attacks 
+                    : (monster.abilities ? parseAbilities(monster.abilities) : []),
                 classType: monster.classType || 'Enemy',
                 editing: false,
                 limitBreakUsed: false
@@ -792,6 +844,13 @@ const computeEnemyHpDelta = (enemy, amount, asTempHp = false) => {
     return { hp, hpTemp, limitBreakUsed };
 };
 
+const computeEnemyHpDeltaWithRules = (enemy: IEnemy, amount: number, asTempHp = false) => {
+    const base = computeEnemyHpDelta(enemy, amount, asTempHp);
+    const trigger = hpChangeTrigger(amount);
+    if (!trigger || asTempHp || amount === 0 || !logicBlocks?.length) return base;
+    return mergeEnemyWithRules(enemy, base, logicBlocks, trigger, hpChangeVariables(amount));
+};
+
 const startInlineDelta = (type, id, field) => {
     setInlineDeltaEdit({ type, id, field });
     setInlineDeltaValue('');
@@ -819,7 +878,7 @@ const commitInlineDelta = () => {
         } else {
             setEnemies(prev => prev.map(e => {
                 if (e.id !== id) return e;
-                return { ...e, ...computeEnemyHpDelta(e, amount) };
+                return { ...e, ...computeEnemyHpDeltaWithRules(e, amount) };
             }));
         }
     } else if (field === 'mana' && type === 'player') {
@@ -849,7 +908,7 @@ const applyBulkHpToTargets = (isHeal) => {
         } else if (type === 'enemy') {
             const idx = nextEnemies.findIndex(e => e.id === id);
             if (idx !== -1) {
-                nextEnemies[idx] = { ...nextEnemies[idx], ...computeEnemyHpDelta(nextEnemies[idx], delta, effectiveTempHp) };
+                nextEnemies[idx] = { ...nextEnemies[idx], ...computeEnemyHpDeltaWithRules(nextEnemies[idx], delta, effectiveTempHp) };
             }
         }
     });
@@ -1080,14 +1139,16 @@ const triggerTurnEffects = () => {
     // 1. Process Players
     data.forEach(player => {
         if (!player.inParty) return;
-        const buffs = getPlayerBuffsWithConfig(player, equipment);
-        let hpCurrent = player.hpCurrent;
-        let hpMax = calculateMaxHP(player);
-        let manaCurrent = player.manaCurrent;
-        let manaMax = calculateMaxMana(player);
-        let tempHp = player.hpTemp || 0;
-        const spentBuffs = { ...(player.spentBuffs || {}) };
-        let hasChanges = false;
+        const turnStart = applyPlayerRuleTrigger(player, logicBlocks, 'on_turn_start', getPlayerRuleOptions(player));
+        const working = { ...player, ...turnStart };
+        const buffs = getPlayerBuffsWithConfig(working, equipment);
+        let hpCurrent = working.hpCurrent;
+        let hpMax = calculateMaxHP(working);
+        let manaCurrent = working.manaCurrent;
+        let manaMax = calculateMaxMana(working);
+        let tempHp = working.hpTemp || 0;
+        const spentBuffs = { ...(working.spentBuffs || {}) };
+        let hasChanges = Object.keys(turnStart).length > 0;
 
         buffs.forEach(buff => {
             const config = buff.config;
@@ -1140,18 +1201,26 @@ const triggerTurnEffects = () => {
         });
 
         if (hasChanges) {
-            changedPlayers[player.id] = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+            const endPatch = applyPlayerRuleTrigger(
+                { ...working, hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs },
+                logicBlocks,
+                'on_turn_end',
+                getPlayerRuleOptions(working),
+            );
+            changedPlayers[player.id] = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs, ...endPatch };
         }
     });
 
     // 2. Process Enemies
     enemies.forEach(enemy => {
-        const buffs = getEnemyBuffsList(enemy);
-        let hpCurrent = enemy.hp;
-        let hpMax = enemy.hpMax;
-        let tempHp = enemy.hpTemp || 0;
-        const spentBuffs = { ...(enemy.spentBuffs || {}) };
-        let hasChanges = false;
+        const turnStart = applyEnemyRuleTrigger(enemy, logicBlocks, 'on_turn_start');
+        const working = { ...enemy, ...turnStart };
+        const buffs = getEnemyBuffsList(working);
+        let hpCurrent = working.hp ?? enemy.hp;
+        let hpMax = calculateEnemyMaxHP(working);
+        let tempHp = working.hpTemp || 0;
+        const spentBuffs = { ...(working.spentBuffs || {}) };
+        let hasChanges = Object.keys(turnStart).length > 0;
 
         buffs.forEach(buff => {
             const config = buff.config;
@@ -1194,7 +1263,12 @@ const triggerTurnEffects = () => {
         });
 
         if (hasChanges) {
-            changedEnemies[enemy.id] = { hp: hpCurrent, hpTemp: tempHp, spentBuffs };
+            const endPatch = applyEnemyRuleTrigger(
+                { ...working, hp: hpCurrent, hpTemp: tempHp, spentBuffs },
+                logicBlocks,
+                'on_turn_end',
+            );
+            changedEnemies[enemy.id] = { hp: hpCurrent, hpTemp: tempHp, spentBuffs, ...endPatch };
         }
     });
 
@@ -1272,7 +1346,9 @@ const triggerTurnEffects = () => {
 
             let msg = '';
             let hpCurrent = entity.hpCurrent !== undefined ? entity.hpCurrent : entity.hp;
-            let hpMax = entity.hpCurrent !== undefined ? calculateMaxHP(entity) : entity.hpMax;
+            let hpMax = entity.hpCurrent !== undefined
+                ? calculateMaxHP(entity)
+                : calculateEnemyMaxHP(entity);
             let manaCurrent = entity.manaCurrent !== undefined ? entity.manaCurrent : 0;
             let manaMax = entity.hpCurrent !== undefined ? calculateMaxMana(entity) : 0;
             let tempHp = entity.hpTemp || 0;
@@ -1311,19 +1387,35 @@ const triggerTurnEffects = () => {
             }
 
             if (isPlayer) {
-                updatePlayer(entity.id, {
-                    hpCurrent,
-                    manaCurrent,
-                    hpTemp: tempHp,
-                    spentBuffs
-                });
+                const basePatch = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+                let finalPatch: Partial<IPlayer> = basePatch;
+                if (config.turnType === 'damageHP') {
+                    finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_damage', {
+                        ...getPlayerRuleOptions(entity),
+                        variables: { damage: amt, amount: amt },
+                    });
+                } else if (config.turnType === 'healHP') {
+                    finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_heal', {
+                        ...getPlayerRuleOptions(entity),
+                        variables: { healed: amt, amount: amt },
+                    });
+                }
+                updatePlayer(entity.id, finalPatch);
             } else {
-                setEnemies(prev => prev.map(e => e.id === entity.id ? {
-                    ...e,
-                    hp: hpCurrent,
-                    hpTemp: tempHp,
-                    spentBuffs
-                } : e));
+                const basePatch = { hp: hpCurrent, hpTemp: tempHp, spentBuffs };
+                let finalPatch = basePatch;
+                if (config.turnType === 'damageHP') {
+                    finalPatch = mergeEnemyWithRules(entity, basePatch, logicBlocks, 'on_damage', {
+                        damage: amt,
+                        amount: amt,
+                    });
+                } else if (config.turnType === 'healHP') {
+                    finalPatch = mergeEnemyWithRules(entity, basePatch, logicBlocks, 'on_heal', {
+                        healed: amt,
+                        amount: amt,
+                    });
+                }
+                setEnemies(prev => prev.map(e => e.id === entity.id ? { ...e, ...finalPatch } : e));
             }
             return;
         }
@@ -1448,6 +1540,7 @@ const triggerTurnEffects = () => {
         selectMonster,
         createAndSelectMonster,
         computeEnemyHpDelta,
+        calculateEnemyMaxHP,
         startInlineDelta,
         cancelInlineDelta,
         commitInlineDelta,
@@ -1465,5 +1558,13 @@ const triggerTurnEffects = () => {
         buffInputEnemyId,
         setBuffInputEnemyId,
         defaultMonsters: defaultMonsters as IMonster[],
+        encounterRules: ruleEngineCombat.encounterRules,
+        turnOrder: ruleEngineCombat.turnOrder,
+        currentTurnIndex: ruleEngineCombat.currentTurnIndex,
+        currentTurnActor: ruleEngineCombat.currentTurnActor,
+        applyQuickDamage: ruleEngineCombat.applyQuickDamage,
+        applyQuickHeal: ruleEngineCombat.applyQuickHeal,
+        getModifiersFor: ruleEngineCombat.getModifiersFor,
+        advanceEncounterTurn: ruleEngineCombat.advanceEncounterTurn,
     } satisfies ICombatState;
 }

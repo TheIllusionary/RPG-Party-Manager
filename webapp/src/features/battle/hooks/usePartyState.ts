@@ -16,8 +16,27 @@ import {
     MANA_TO_HP_MANA_COST,
     MANA_TO_HP_GAIN,
 } from '../../../shared/utils/combatUtils';
+import { resolvePlayerResources } from '../../../shared/utils/campaignRulesResolver';
+import { repairPlayerHpFields } from '../../../shared/utils/migrationUtils';
+import { isManaCastingEnabled, isSpellFatigueActive, isSpellSlotsCastingActive } from '../../../shared/utils/castingSystem';
+import {
+  adjustSpellSlot,
+  buildSpellSlotsForLevel,
+  castSpellWithSlot,
+  getPlayerSpellSlots,
+  playerQualifiesForSpellSlots,
+  restoreSpellSlotsToMax,
+} from '../../../shared/utils/spellSlotUtils';
+import { getCasterProgression, getClassAbilityProfile } from '../../../shared/schema/classAbilityMap';
+import {
+  hpChangeTrigger,
+  hpChangeVariables,
+  mergePlayerWithRules,
+} from '../../../shared/utils/campaignRulesRuntime';
+import { getActiveTraits, aggregateStats } from '../utils/traitUtils';
 import type { IPartyState, IUsePartyStateParams } from '../../../types/battle';
 import type { IInventoryItem, IPlayer, StatAbbr } from '../../../types';
+import type { LogicBlock } from '../../../types/domain';
 import type {
   ICastSpellResult,
   IHpManaConversionResult,
@@ -33,7 +52,11 @@ export default function usePartyState({
     buffsDatabase,
     config,
     battleMode,
+    logicBlocks,
     setBattleNotes = () => {},
+    compendiumClasses,
+    compendiumSubclasses,
+    compendiumRaces,
 }: IUsePartyStateParams): IPartyState {
 const focusAndSelectRef = useCallback((el) => {
     if (el) {
@@ -49,6 +72,20 @@ const [editingId, setEditingId] = useState(null);
 const [inlineCastPlayerId, setInlineCastPlayerId] = useState(null);
 const [actionToast, setActionToast] = useState('');
 const prevBattleModeRef = useRef(battleMode);
+const hpRepairDoneRef = useRef(false);
+
+useEffect(() => {
+    if (hpRepairDoneRef.current || !Array.isArray(data) || data.length === 0) return;
+    let changed = false;
+    const repaired = data.map((p) => {
+        const fix = repairPlayerHpFields(p);
+        if (!fix) return p;
+        changed = true;
+        return { ...p, ...fix };
+    });
+    hpRepairDoneRef.current = true;
+    if (changed) updateData(repaired);
+}, [data, updateData]);
 
 const showActionToast = (msg) => {
     setActionToast(msg);
@@ -74,10 +111,31 @@ const [expandedPlayers, setExpandedPlayers] = useState({});
 
 const getPlayerSubclass = (player) => {
     if (!player?.subclassId) return null;
-    return subclasses.find(s => s.id === player.subclassId) || null;
+    return compendiumSubclasses?.find(s => s.entityKey === player.subclassId) || subclasses?.find(s => s.id === player.subclassId) || null;
+};
+
+const getOptionalPlayerSubclass = (player) => {
+    if (!player?.optionalSubclassId) return null;
+    return compendiumSubclasses?.find(s => s.entityKey === player.optionalSubclassId) || subclasses?.find(s => s.id === player.optionalSubclassId) || null;
 };
 
 const playerUsesVampire = (player) => isVampirePlayer(player, getPlayerSubclass(player));
+
+const castingUsesMana = isManaCastingEnabled(logicBlocks);
+const castingUsesSpellSlots = isSpellSlotsCastingActive(logicBlocks);
+const spellFatigueEnabled = isSpellFatigueActive(logicBlocks);
+
+const getPlayerSpellSlotsFor = (player: IPlayer) =>
+    getPlayerSpellSlots(player, getLevelInfo(player.xp ?? 0).level);
+
+const adjustPlayerSpellSlot = (playerId: string, slotLevel: number, delta: number) => {
+    const player = data.find((p) => p.id === playerId);
+    if (!player) return;
+    const level = getLevelInfo(player.xp ?? 0).level;
+    updatePlayer(playerId, {
+        spellSlots: adjustSpellSlot(player, slotLevel, delta, level),
+    });
+};
 
 const [minimizedPlayers, setMinimizedPlayers] = useState(() => {
     const initial = {};
@@ -90,18 +148,6 @@ const [minimizedPlayers, setMinimizedPlayers] = useState(() => {
     return initial;
 });
 const isPlayerMinimized = (id) => minimizedPlayers[id] === true;
-
-const computePlayerHpDelta = (player, amount, asTempHp = false) => {
-    const maxHp = calculateMaxHP(player);
-    if (asTempHp && amount !== 0) return applyTempHpToPlayer(player, amount);
-    if (amount > 0) return applyDamageToPlayer(player, amount, maxHp);
-    if (amount < 0) return applyHealToPlayer(player, amount, maxHp);
-    return {
-        hpCurrent: player.hpCurrent,
-        hpTemp: player.hpTemp || 0,
-        ultCurrent: player.ultCurrent ?? 0,
-    };
-};
 
 const computePlayerManaDelta = (player, amount) => {
     const maxMana = calculateMaxMana(player);
@@ -116,7 +162,27 @@ const handleCastSpell = (playerId, spellLevel) => {
 
     const maxHp = calculateMaxHP(player);
     const subclass = getPlayerSubclass(player);
-    const result = castSpellOnPlayer(player, spellLevel, maxHp, subclass) as ICastSpellResult;
+
+    if (!playerUsesVampire(player) && castingUsesSpellSlots) {
+        const level = getLevelInfo(player.xp ?? 0).level;
+        const result = castSpellWithSlot(player, spellLevel, level);
+        if (result.ok === false) {
+            showActionToast(`❌ ${result.error}`);
+            return;
+        }
+        updatePlayer(playerId, mergePlayerWithRules(player, {
+            spellSlots: result.spellSlots,
+        }, logicBlocks, 'on_spell_cast', {
+            ...getPlayerRuleOptions(player),
+            variables: { spellLevel },
+        }));
+        showActionToast(`✦ Lvl ${spellLevel} (−1 slot ${result.slotLevel})`);
+        setInlineCastPlayerId(null);
+        return;
+    }
+
+    const playerForCast = spellFatigueEnabled ? player : { ...player, recentSpells: [] };
+    const result = castSpellOnPlayer(playerForCast, spellLevel, maxHp, subclass) as ICastSpellResult;
     if (result.ok === false) {
         showActionToast(`❌ ${result.error}`);
         return;
@@ -126,12 +192,16 @@ const handleCastSpell = (playerId, spellLevel) => {
         hpCurrent: result.hpCurrent,
         hpTemp: result.hpTemp,
         ultCurrent: result.ultCurrent,
-        recentSpells: result.recentSpells,
+        recentSpells: spellFatigueEnabled ? result.recentSpells : (player.recentSpells ?? []),
     };
     if (result.manaCurrent !== undefined) {
         updates.manaCurrent = result.manaCurrent;
     }
-    updatePlayer(playerId, updates);
+    const withRules = mergePlayerWithRules(player, updates, logicBlocks, 'on_spell_cast', {
+        ...getPlayerRuleOptions(player),
+        variables: { spellLevel },
+    });
+    updatePlayer(playerId, withRules);
     showActionToast(`✦ Lvl ${spellLevel} (−${result.costPaid} ${result.costResource.toUpperCase()})`);
     setInlineCastPlayerId(null);
 };
@@ -210,6 +280,75 @@ const effectiveStat = (player, stat) => {
     return (player[stat] || 10) + getEquipmentBonus(player.id, stat);
 };
 
+const getDefaultManaModifier = (player: IPlayer): number => {
+    const profile = getClassAbilityProfile(player.classType);
+    if (!profile?.spellcasting) return 0;
+    const score = effectiveStat(player, profile.spellcasting);
+    return calculateModifier(score);
+};
+
+const calculateMaxHP = (player: IPlayer) => {
+    let hpMax = resolvePlayerResources(player, logicBlocks, {
+        subclass: getPlayerSubclass(player),
+        getEffectiveStat: effectiveStat,
+    }).hpMax;
+    
+    if (compendiumClasses && compendiumRaces) {
+        const traits = getActiveTraits(player, compendiumClasses, compendiumSubclasses || [], compendiumRaces);
+        const stats = aggregateStats(traits);
+        hpMax += (stats.hpMaxBonus || 0);
+    }
+    return hpMax;
+};
+
+const calculateEffectiveAC = (player: IPlayer) => {
+    let ac = player.ac || 10;
+    ac += getEquipmentBonus(player.id, 'ac');
+    if (compendiumClasses && compendiumRaces) {
+        const traits = getActiveTraits(player, compendiumClasses, compendiumSubclasses || [], compendiumRaces);
+        const stats = aggregateStats(traits);
+        ac += (stats.acBonus || 0);
+    }
+    return ac;
+};
+
+const calculateMaxMana = (player: IPlayer) =>
+    resolvePlayerResources(player, logicBlocks, {
+        subclass: getPlayerSubclass(player),
+        getEffectiveStat: effectiveStat,
+    }).manaMax;
+
+const getPlayerRuleOptions = (player: IPlayer) => ({
+    subclass: getPlayerSubclass(player),
+    getEffectiveStat: effectiveStat,
+});
+
+const computePlayerHpDelta = (player, amount, asTempHp = false) => {
+    const maxHp = calculateMaxHP(player);
+    let base: Partial<IPlayer>;
+    if (asTempHp && amount !== 0) {
+        base = applyTempHpToPlayer(player, amount);
+    } else if (amount > 0) {
+        base = applyDamageToPlayer(player, amount, maxHp);
+    } else if (amount < 0) {
+        base = applyHealToPlayer(player, amount, maxHp);
+    } else {
+        return {
+            hpCurrent: player.hpCurrent,
+            hpTemp: player.hpTemp || 0,
+            ultCurrent: player.ultCurrent ?? 0,
+        };
+    }
+
+    const trigger = hpChangeTrigger(amount);
+    if (!trigger || !logicBlocks?.length) return base;
+
+    return mergePlayerWithRules(player, base, logicBlocks, trigger, {
+        ...getPlayerRuleOptions(player),
+        variables: hpChangeVariables(amount),
+    });
+};
+
 const [partyXpModalOpen, setPartyXpModalOpen] = useState(false);
 const [partyXpAmount, setPartyXpAmount] = useState('');
 const [partyLevelModalOpen, setPartyLevelModalOpen] = useState(false);
@@ -240,16 +379,6 @@ const addPlayer = () => {
         buffs: []
     };
     updateData([...data, newPlayer]);
-};
-
-const calculateMaxHP = (player) => {
-    const level = getLevelInfo(player.xp).level;
-    const conMod = calculateModifier(effectiveStat(player, 'con'));
-    const baseHp = Math.max(1, (player.hpBase || 10) + (conMod * level));
-    if (playerUsesVampire(player)) {
-        return baseHp + calculateMaxMana(player);
-    }
-    return baseHp;
 };
 
 const getSlotLabel = (slotId) => {
@@ -391,7 +520,20 @@ const handleToggleBuff = (entity, buff) => {
             spentBuffs[name] = true;
         }
 
-        updatePlayer(entity.id, { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs });
+        const basePatch = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+        let finalPatch: Partial<IPlayer> = basePatch;
+        if (config.turnType === 'damageHP') {
+            finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_damage', {
+                ...getPlayerRuleOptions(entity),
+                variables: { damage: amt, amount: amt },
+            });
+        } else if (config.turnType === 'healHP') {
+            finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_heal', {
+                ...getPlayerRuleOptions(entity),
+                variables: { healed: amt, amount: amt },
+            });
+        }
+        updatePlayer(entity.id, finalPatch);
         return;
     }
 
@@ -416,14 +558,20 @@ const handleToggleBuff = (entity, buff) => {
     updatePlayer(entity.id, { buffStates, spentBuffs });
 };
 
-const getPlayerSpriteInfo = (player) => {
+const getPlayerSpriteInfo = (player: IPlayer) => {
     const cls = (player.classType || '').trim().toLowerCase();
     const validClasses = [
         'artificer', 'barbarian', 'bard', 'cleric', 'druid',
         'fighter', 'monk', 'paladin', 'ranger', 'rogue',
         'sorcerer', 'warlock', 'wizard'
     ];
-    const spriteName = validClasses.includes(cls) ? cls : 'default';
+    let spriteName = 'default';
+    for (const vc of validClasses) {
+        if (cls.includes(vc)) {
+            spriteName = vc;
+            break;
+        }
+    }
 
     const maxHp = calculateMaxHP(player);
     const maxMana = calculateMaxMana(player);
@@ -545,31 +693,26 @@ const toggleSaveProficiency = (id, stat) => {
     updatePlayer(id, 'saves', { ...currentSaves, [stat]: !currentSaves[stat] });
 };
 
-const calculateMaxMana = (player) => {
-    const level = getLevelInfo(player.xp).level;
-    const baseCasterPoints = level * 6 + 2;
-    const intScore = player.int || 10;
-    const wisScore = player.wis || 10;
-    const chaScore = player.cha || 10;
-    const intMultiplier = Math.max(0, (intScore - 10) / 10);
-    const wisMultiplier = Math.max(0, (wisScore - 10) / 20);
-    const chaMultiplier = Math.max(0, (chaScore - 10) / 20);
-    const totalBonusMult = 1 + intMultiplier + wisMultiplier + chaMultiplier;
-    const calculated = Math.floor(baseCasterPoints * totalBonusMult);
-    return Math.max(0, calculated + (player.manaModifier || 0));
-};
-
 const applyLevelToPlayer = (player, newLevel) => {
     const clamped = Math.max(1, Math.min(20, Math.floor(Number(newLevel)) || 1));
     const xp = getXpForLevel(clamped);
     const withXp = { ...player, xp };
     const maxHp = calculateMaxHP(withXp);
     const maxMana = calculateMaxMana(withXp);
-    return {
+    const patch: Partial<IPlayer> = {
         xp,
         hpCurrent: Math.min(player.hpCurrent ?? maxHp, maxHp),
         manaCurrent: Math.min(player.manaCurrent ?? maxMana, maxMana),
     };
+    if (castingUsesSpellSlots) {
+        const progression = getCasterProgression(withXp.classType);
+        if (progression) {
+            patch.spellSlots = buildSpellSlotsForLevel(clamped, progression, player.spellSlots, true);
+        } else {
+            patch.spellSlots = {};
+        }
+    }
+    return patch;
 };
 
 const setLevel = (playerId, newLevel) => {
@@ -641,14 +784,18 @@ const shortRest = () => {
 const longRest = () => {
     const updated = data.map(p => {
         if (!p.inParty) return p;
-        return {
-            ...p,
+        const level = getLevelInfo(p.xp ?? 0).level;
+        const restPatch: Partial<IPlayer> = {
             hpCurrent: calculateMaxHP(p),
-            manaCurrent: calculateMaxMana(p),
+            manaCurrent: castingUsesMana ? calculateMaxMana(p) : 0,
             ultCurrent: Math.max(0, Math.round((p.ultCurrent || 0) * 0.5)),
             spentBuffs: {},
             recentSpells: [],
         };
+        if (castingUsesSpellSlots && playerQualifiesForSpellSlots(p)) {
+            restPatch.spellSlots = restoreSpellSlotsToMax(p, level);
+        }
+        return { ...p, ...restPatch };
     });
     updateData(updated);
 };
@@ -753,6 +900,7 @@ const [xpInputValue, setXpInputValue] = useState('');
         xpInputValue,
         setXpInputValue,
         getPlayerSubclass,
+        getOptionalPlayerSubclass,
         playerUsesVampire,
         computePlayerHpDelta,
         computePlayerManaDelta,
@@ -763,7 +911,9 @@ const [xpInputValue, setXpInputValue] = useState('');
         effectiveStat,
         addPlayer,
         calculateMaxHP,
+        calculateEffectiveAC,
         calculateMaxMana,
+        getDefaultManaModifier,
         getSlotLabel,
         getPlayerBuffs,
         handleRemoveBuffFromTop,
@@ -794,5 +944,11 @@ const [xpInputValue, setXpInputValue] = useState('');
         dndSkills: DND_SKILLS as readonly IDndSkill[],
         statsList: STATS_LIST as readonly StatAbbr[],
         ALL_CC_EFFECTS,
+        castingUsesMana,
+        castingUsesSpellSlots,
+        spellFatigueEnabled,
+        playerQualifiesForSpellSlots,
+        getPlayerSpellSlots: getPlayerSpellSlotsFor,
+        adjustPlayerSpellSlot,
     } satisfies IPartyState;
 }

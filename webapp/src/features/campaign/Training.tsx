@@ -241,7 +241,7 @@ function PlayerTrainingCard({ player, entries, onUpdate }: IPlayerTrainingCardPr
       </div>
 
       <button type="button" className="btn training-add-btn" onClick={handleAdd}>
-        + Add Training
+        Add Training
       </button>
     </div>
   );

@@ -10,6 +10,8 @@ export type AppTab =
   | 'training'
   | 'chaos'
   | 'subclasses'
+  | 'rules'
+  | 'compendium'
   | 'bestiary';
 
 export interface IGameAppProps {

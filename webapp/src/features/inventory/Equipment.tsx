@@ -593,7 +593,7 @@ export default function Equipment({
                         <div key={section.id} className="inventory-section glass-panel">
                             <div className="inventory-header">
                                 <h3>{section.label}</h3>
-                                <button className="btn btn-primary" onClick={() => addItem(section.id)}>+ Add Item</button>
+                                <button className="btn btn-primary" onClick={() => addItem(section.id)}>Add Item</button>
                             </div>
 
                             {/* SORT TOOLBAR */}
@@ -953,7 +953,7 @@ export default function Equipment({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(display[key] || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -984,7 +984,7 @@ export default function Equipment({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {ALL_CC_EFFECTS.filter(t => !(display[key] || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1031,7 +1031,7 @@ export default function Equipment({
                                                                                             setQuickBuffDesc('');
                                                                                         }}
                                                                                     >
-                                                                                        + Add Buff
+                                                                                        Add Buff
                                                                                     </button>
                                                                                 ) : (
                                                                                     <div className="buff-dropdown-container glass-panel" style={{ 

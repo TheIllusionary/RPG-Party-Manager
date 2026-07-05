@@ -1,0 +1,294 @@
+/* Scoped layout for DM Dashboard — avoids fighting global .container / glass-panel styles */
+
+.dm-dashboard {
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dm-dashboard *,
+.dm-dashboard *::before,
+.dm-dashboard *::after {
+  box-sizing: border-box;
+}
+
+.dm-dashboard input,
+.dm-dashboard select,
+.dm-dashboard button,
+.dm-dashboard textarea {
+  font: inherit;
+}
+
+.dm-dashboard-section {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(51 65 85);
+  background: rgb(15 23 42 / 0.65);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .dm-dashboard-section {
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+}
+
+.dm-dashboard-section-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(203 213 225);
+  text-align: center;
+}
+
+.dm-dashboard-card {
+  border-radius: 0.5rem;
+  border: 1px solid rgb(71 85 105);
+  background: rgb(15 23 42 / 0.9);
+  padding: 1rem;
+}
+
+.dm-dashboard-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(148 163 184);
+}
+
+.dm-dashboard-input {
+  width: 100%;
+  border-radius: 0.25rem;
+  border: 1px solid rgb(71 85 105);
+  background: rgb(2 6 23);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(241 245 249);
+}
+
+.dm-dashboard-input:focus {
+  outline: 2px solid rgb(99 102 241 / 0.5);
+  border-color: rgb(99 102 241);
+}
+
+.dm-dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.dm-dashboard-intro {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #94a3b8;
+}
+
+.dm-dashboard-alert {
+  margin: 0;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.dm-dashboard-alert--error {
+  border: 1px solid rgba(159, 18, 57, 0.5);
+  background: rgba(76, 5, 25, 0.4);
+  color: #ffe4e6;
+}
+
+.dm-dashboard-alert--warn {
+  border: 1px solid rgba(146, 64, 14, 0.4);
+  background: rgba(69, 26, 3, 0.3);
+  color: #fef3c7;
+}
+
+.dm-dashboard-alert code {
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.dm-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .dm-dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .dm-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dm-dashboard-section--wide {
+  min-height: 36rem;
+}
+
+@media (min-width: 1024px) {
+  .dm-dashboard-section--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.dm-dashboard-btn {
+  border-radius: 0.5rem;
+  padding: 8px 16px;
+  min-height: 2.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  margin: 2px;
+}
+
+.dm-dashboard-btn--muted {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.dm-dashboard-btn--muted:hover {
+  background: #334155;
+}
+
+.dm-dashboard-btn--seed {
+  background: #065f46;
+  color: #ecfdf5;
+}
+
+.dm-dashboard-btn--seed:hover {
+  background: #047857;
+}
+
+.dm-dashboard-btn:hover {
+  opacity: 0.9;
+}
+
+.dm-dashboard-muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.dm-dashboard-actor-list {
+  display: flex;
+  max-height: 72vh;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.dm-dashboard-actor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.dm-dashboard-actor-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dm-dashboard-actor-title {
+  min-width: 12rem;
+  flex: 1;
+}
+
+.dm-dashboard-input--title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dm-dashboard-input--compact {
+  width: auto;
+  min-width: 7rem;
+}
+
+.dm-dashboard-actor-meta {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.dm-dashboard-mono {
+  font-family: ui-monospace, monospace;
+}
+
+.dm-dashboard-field-group-title {
+  margin-bottom: 0.5rem;
+}
+
+.dm-dashboard-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .dm-dashboard-stat-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.dm-dashboard-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .dm-dashboard-resource-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dm-dashboard-visibility-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .dm-dashboard-visibility-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dm-dashboard-dm-notes {
+  margin: 0;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(159, 18, 57, 0.5);
+  background: rgba(76, 5, 25, 0.3);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #fecdd3;
+}
+
+.dm-dashboard-timestamp {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #475569;
+}

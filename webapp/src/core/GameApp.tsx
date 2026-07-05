@@ -7,9 +7,18 @@ import Training from '../features/campaign/Training';
 import Chaos from '../features/campaign/Chaos';
 import EnemyLibrary from '../features/bestiary/EnemyLibrary';
 import SubclassManager from '../features/campaign/SubclassManager';
+import CampaignRulesPanel from '../features/campaign/CampaignRulesPanel';
+import CompendiumView from '../features/compendium/CompendiumView';
 import Notebook from '../features/campaign/Notebook';
 import { mergeCampaignData, toApiPayload } from '../data/defaultData';
-import { getCampaignData, updateCampaignData } from '../services/api';
+import { getCampaignData, updateCampaignData } from '../services/campaignBridge';
+import { getSrdCatalog } from '../services/srdBridge';
+import { mergeSubclassesById } from '../shared/utils/subclassMergeUtils';
+import { useCompendiumClasses } from '../shared/hooks/useCompendiumClasses';
+import { useCompendiumSubclasses } from '../shared/hooks/useCompendiumSubclasses';
+import { useCompendiumRaces } from '../shared/hooks/useCompendiumRaces';
+import AppNavBar from '../shared/components/AppNavBar';
+import RootLayout from '../shared/components/RootLayout';
 import type { IAppData, IEnemy } from '../types';
 import type { IMinimizedMap } from '../types/battle';
 import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppDataFn } from '../types/app';
@@ -17,6 +26,10 @@ import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppD
 const SAVE_DEBOUNCE_MS = 800;
 
 function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
+  const { classes: compendiumClasses } = useCompendiumClasses();
+  const { subclasses: compendiumSubclasses } = useCompendiumSubclasses();
+  const { races: compendiumRaces } = useCompendiumRaces();
+
   const [config, setConfig] = useState<IStoredAppConfig>(() => {
     const saved = localStorage.getItem('partyManagerConfig');
     if (saved) {
@@ -268,110 +281,46 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
 
   if (dataLoading) {
     return (
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Loading campaign...</p>
+      <RootLayout>
+        <div className="centered-placeholder">
+          <div className="glass-panel">
+            <p className="text-secondary">Loading campaign...</p>
+          </div>
         </div>
-      </div>
+      </RootLayout>
     );
   }
 
   if (dataError || !data) {
     return (
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '420px' }}>
-          <p style={{ margin: '0 0 0.5rem', color: 'var(--danger)' }}>Failed to load campaign</p>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{dataError}</p>
-          <p style={{ margin: '1rem 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            <button className="btn" type="button" onClick={onBackToCampaigns} style={{ marginTop: '0.5rem' }}>
+      <RootLayout>
+        <div className="centered-placeholder">
+          <div className="glass-panel">
+            <p className="error-title">Failed to load campaign</p>
+            <p className="text-sm text-secondary">{dataError}</p>
+            <button className="btn btn-spaced" type="button" onClick={onBackToCampaigns}>
               Back to Campaigns
             </button>
-          </p>
+          </div>
         </div>
-      </div>
+      </RootLayout>
     );
   }
 
   return (
-    <>
-      <div
-        className="glass-panel"
-        style={{
-          margin: '0.75rem auto 0',
-          maxWidth: '1200px',
-          padding: '0.6rem 1rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-        }}
-      >
-        <button
-          type="button"
-          className="btn"
-          onClick={onBackToCampaigns}
-          style={{ background: 'transparent', border: 'var(--glass-border)', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-        >
-          ← Campaigns
-        </button>
-        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.95rem' }}>
-          {campaign.name}
-        </span>
-        <span style={{ width: '90px' }} />
-      </div>
-
-      <div className="container">
-        <main>
-          {activeTab === 'players' && (
-            <PlayerManager
-              data={data.players}
-              updateData={(d) => updateData('players', d)}
-              equipment={data.equipment}
-              battleMode={battleMode}
-              setBattleMode={setBattleMode}
-              enemies={enemies}
-              setEnemies={setEnemies}
-              minimizedEnemies={minimizedEnemies}
-              setMinimizedEnemies={setMinimizedEnemies}
-              library={data.library || []}
-              updateLibrary={(l) => updateData('library', l)}
-              buffsDatabase={data.buffsDatabase || []}
-              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
-              subclasses={data.subclasses || []}
-              config={config}
-              configModalOpen={isConfigModalOpen}
-            />
-          )}
-          {activeTab === 'notebook' && (
-            <Notebook
-              notebookData={data.notebook || { pages: [] }}
-              updateNotebookData={(d) => updateData('notebook', d)}
-            />
-          )}
-          {activeTab === 'inventory' && <Equipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
-          {activeTab === 'charequip' && <CharacterEquipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
-          {activeTab === 'training' && <Training players={data.players} trainingData={data.training} updateTrainingData={(d) => updateData('training', d)} />}
-          {activeTab === 'chaos' && <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />}
-          {activeTab === 'subclasses' && (
-            <SubclassManager
-              subclasses={data.subclasses || []}
-              updateSubclasses={(s) => updateData('subclasses', s)}
-            />
-          )}
-          {activeTab === 'bestiary' && (
-            <EnemyLibrary
-              library={data.library || []}
-              updateLibrary={(l) => updateData('library', l)}
-              buffsDatabase={data.buffsDatabase || []}
-              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
-              bestiaryReview={data.bestiaryReview || {}}
-              updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
-            />
-          )}
-        </main>
-      </div>
-
-      <nav className="bottom-nav">
+    <RootLayout
+      padForToolbar
+      header={
+        <AppNavBar
+          title={campaign.name}
+          crumbs={[
+            { label: 'Campanhas', onClick: onBackToCampaigns },
+            { label: campaign.name },
+          ]}
+        />
+      }
+      toolbar={
+        <nav className="bottom-nav">
         {/* 1 — Party */}
         <button className={`nav-item ${activeTab === 'players' ? 'active' : ''}`} onClick={() => switchTab('players')} title="Party Roster">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -435,6 +384,24 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </svg>
         </button>
 
+        {/* Rules */}
+        <button className={`nav-item ${activeTab === 'rules' ? 'active' : ''}`} onClick={() => switchTab('rules')} title="Campaign Rules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+            <path d="M12 6h4M12 10h4M12 14h4" />
+            <path d="M8 6h.01M8 10h.01M8 14h.01" />
+          </svg>
+        </button>
+
+        {/* Compendium */}
+        <button className={`nav-item ${activeTab === 'compendium' ? 'active' : ''}`} onClick={() => switchTab('compendium')} title="Compendium">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <path d="M8 7h8M8 11h6" />
+          </svg>
+        </button>
+
         {/* 6 — Database */}
         <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Database">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -479,7 +446,92 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
         )}
 
         <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
-      </nav>
+        </nav>
+      }
+    >
+      {activeTab === 'players' && (
+        <PlayerManager
+          data={data.players}
+          updateData={(d) => updateData('players', d)}
+          equipment={data.equipment}
+          battleMode={battleMode}
+          setBattleMode={setBattleMode}
+          enemies={enemies}
+          setEnemies={setEnemies}
+          minimizedEnemies={minimizedEnemies}
+          setMinimizedEnemies={setMinimizedEnemies}
+          library={data.library || []}
+          updateLibrary={(l) => updateData('library', l)}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          subclasses={data.subclasses || []}
+          logicBlocks={data.logicBlocks ?? []}
+          config={config}
+          configModalOpen={isConfigModalOpen}
+          compendiumClasses={compendiumClasses}
+          compendiumSubclasses={compendiumSubclasses}
+          compendiumRaces={compendiumRaces}
+        />
+      )}
+      {activeTab === 'notebook' && (
+        <Notebook
+          notebookData={data.notebook || { pages: [] }}
+          updateNotebookData={(d) => updateData('notebook', d)}
+        />
+      )}
+      {activeTab === 'inventory' && (
+        <Equipment
+          data={data.equipment}
+          updateData={(d) => updateData('equipment', d)}
+          players={data.players}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+        />
+      )}
+      {activeTab === 'charequip' && (
+        <CharacterEquipment
+          data={data.equipment}
+          updateData={(d) => updateData('equipment', d)}
+          players={data.players}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+        />
+      )}
+      {activeTab === 'training' && (
+        <Training
+          players={data.players}
+          trainingData={data.training}
+          updateTrainingData={(d) => updateData('training', d)}
+        />
+      )}
+      {activeTab === 'chaos' && (
+        <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />
+      )}
+      {activeTab === 'subclasses' && (
+        <SubclassManager
+          subclasses={data.subclasses || []}
+          updateSubclasses={(s) => updateData('subclasses', s)}
+        />
+      )}
+      {activeTab === 'rules' && (
+        <CampaignRulesPanel
+          logicBlocks={data.logicBlocks ?? []}
+          updateLogicBlocks={(blocks) => updateData('logicBlocks', blocks)}
+        />
+      )}
+      {activeTab === 'compendium' && (
+        <CompendiumView />
+      )}
+      {activeTab === 'bestiary' && (
+        <EnemyLibrary
+          library={data.library || []}
+          updateLibrary={(l) => updateData('library', l)}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          bestiaryReview={data.bestiaryReview || {}}
+          updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
+        />
+      )}
 
       {/* Settings Modal Dialog Overlay */}
       {isConfigModalOpen && (
@@ -595,7 +647,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </div>
         </div>
       )}
-    </>
+    </RootLayout>
   );
 }
 

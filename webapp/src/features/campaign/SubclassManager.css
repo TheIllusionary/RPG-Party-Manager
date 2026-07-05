@@ -1,21 +1,73 @@
 .subclass-manager {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
+  width: 100%;
+}
+
+.subclass-section--flush {
+  margin-top: 0;
+  border: 0;
+  padding-top: 0;
+}
+
+.subclass-trait-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.subclass-empty-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.subclass-empty-editor p {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--text-secondary);
+}
+
+.subclass-editor.stack-lg {
+  gap: 24px;
 }
 
 .subclass-layout {
   display: grid;
-  grid-template-columns: minmax(200px, 260px) 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
   align-items: start;
+  justify-items: center;
+  width: 100%;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .subclass-layout {
+    grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  }
 }
 
 .subclass-list {
-  padding: 0.75rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 1rem;
+  width: 100%;
+  max-width: 20rem;
 }
 
 .subclass-list-item {
@@ -45,14 +97,26 @@
 }
 
 .subclass-editor {
-  padding: 1rem 1.25rem;
+  padding: 1rem;
+  width: 100%;
+  max-width: 48rem;
+}
+
+@media (min-width: 768px) {
+  .subclass-editor {
+    padding: 1.5rem;
+  }
 }
 
 .subclass-editor-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 1rem;
   margin-bottom: 1rem;
+  padding: 0.5rem;
+  text-align: center;
 }
 
 .subclass-form-grid {
@@ -127,9 +191,10 @@
 }
 
 .subclass-trait-item p {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
   color: var(--text-secondary);
+  line-height: 1.625;
 }
 
 .subclass-trait-item .delete-btn {

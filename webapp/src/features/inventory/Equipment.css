@@ -191,7 +191,8 @@
 }
 
 .small-btn {
-    padding: 0.25rem 0.6rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 2.25rem;
     font-size: 0.8rem;
 }
 
@@ -299,4 +300,4 @@
 .reorder-arrow-btn:disabled {
     opacity: 0.15;
     cursor: default;
-}
+}

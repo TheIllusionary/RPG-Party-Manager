@@ -368,7 +368,7 @@ function ChaosTable({ table, onDelete, onDuplicate, onUpdate }: IChaosTableProps
 
       {/* Add Row (edit mode) */}
       {isEditing && (
-        <button className="btn btn-primary add-row-btn" onClick={handleAddRow}>+ Add Row</button>
+        <button className="btn btn-primary add-row-btn" onClick={handleAddRow}>Add Row</button>
       )}
 
       {/* Name editing */}

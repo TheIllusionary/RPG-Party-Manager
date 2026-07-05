@@ -3,13 +3,17 @@ import '../index.css';
 
 import AuthScreen from '../features/auth/AuthScreen';
 import CampaignList from '../features/campaign/CampaignList';
+import DmDashboard from '../features/dashboard/DmDashboard';
 import GameApp from './GameApp';
+import RootLayout from '../shared/components/RootLayout';
 import {
   clearAuthSession,
   fetchMe,
+  getStoredToken,
   getStoredUser,
   setAuthSession,
 } from '../services/api';
+import { syncAuthFromStorage } from '../services/syncBridge';
 import type { IAuthSession } from '../types/auth';
 import type { ICampaign, IUser } from '../types';
 
@@ -17,6 +21,7 @@ function App() {
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState<IUser | null>(() => getStoredUser());
   const [activeCampaign, setActiveCampaign] = useState<ICampaign | null>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +36,7 @@ function App() {
         const profile = await fetchMe();
         if (!cancelled) {
           setUser(profile);
+          syncAuthFromStorage(getStoredToken);
         }
       } catch {
         clearAuthSession();
@@ -61,11 +67,13 @@ function App() {
 
   if (booting) {
     return (
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Loading...</p>
+      <RootLayout>
+        <div className="centered-placeholder">
+          <div className="glass-panel">
+            <p className="text-secondary">Loading...</p>
+          </div>
         </div>
-      </div>
+      </RootLayout>
     );
   }
 
@@ -74,11 +82,16 @@ function App() {
   }
 
   if (!activeCampaign) {
+    if (showDashboard) {
+      return <DmDashboard onBack={() => setShowDashboard(false)} />;
+    }
+
     return (
       <CampaignList
         user={user}
         onSelectCampaign={setActiveCampaign}
         onLogout={handleLogout}
+        onOpenDashboard={() => setShowDashboard(true)}
       />
     );
   }
