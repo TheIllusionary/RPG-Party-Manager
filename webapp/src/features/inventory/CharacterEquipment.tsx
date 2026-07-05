@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './CharacterEquipment.css';
 import type { ICharacterEquipmentProps, IEditingItemsMap } from '../../types/inventory';
-
+import { parseItemText } from '../../shared/utils/itemParser';
+import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
@@ -116,8 +117,38 @@ export default function CharacterEquipment({
     const playerEquip = getPlayerEquipment(equipped, selectedPlayerId);
     const wondrousItems = equipped[selectedPlayerId]?.__wondrous__ || [];
 
+    const { items: compendiumItems } = useCompendiumItems();
     const updateDraftField = (field, value) => {
         setSlotDraft(prev => prev ? { ...prev, [field]: value } : null);
+    };
+
+    const handleSlotNameChange = (val: string) => {
+        updateDraftField('name', val);
+        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        if (compendiumMatch) {
+            const parsed = parseItemText(compendiumMatch.description);
+            setSlotDraft(prev => {
+                if (!prev) return null;
+                const newDraft = { ...prev };
+                if (compendiumMatch.description && !newDraft.description) newDraft.description = compendiumMatch.description;
+                if (compendiumMatch.armorClass) newDraft.acBonus = compendiumMatch.armorClass;
+                if (parsed.acBonus) newDraft.acBonus = parsed.acBonus;
+                
+                const mods = newDraft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.modifiers = { ...mods, ...parsed.modifiers };
+                
+                const setAttrs = newDraft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.setAttributes = { ...setAttrs, ...parsed.attributes };
+                
+                const res = new Set([...(newDraft.resistances || []), ...parsed.resistances]);
+                newDraft.resistances = Array.from(res);
+                
+                const imm = new Set([...(newDraft.immunities || []), ...parsed.immunities]);
+                newDraft.immunities = Array.from(imm);
+                
+                return newDraft;
+            });
+        }
     };
 
     const updateDraftModifier = (stat, value) => {
@@ -310,6 +341,34 @@ export default function CharacterEquipment({
         setEditingWondrous(prev => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }));
     };
 
+    const handleWondrousNameChange = (itemId: string, val: string) => {
+        updateWondrousDraft(itemId, 'name', val);
+        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        if (compendiumMatch) {
+            const parsed = parseItemText(compendiumMatch.description);
+            setEditingWondrous(prev => {
+                const newDraft = { ...prev[itemId] };
+                if (compendiumMatch.description && !newDraft.description) newDraft.description = compendiumMatch.description;
+                if (compendiumMatch.armorClass) newDraft.acBonus = compendiumMatch.armorClass;
+                if (parsed.acBonus) newDraft.acBonus = parsed.acBonus;
+                
+                const mods = newDraft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.modifiers = { ...mods, ...parsed.modifiers };
+                
+                const setAttrs = newDraft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.setAttributes = { ...setAttrs, ...parsed.attributes };
+                
+                const res = new Set([...(newDraft.resistances || []), ...parsed.resistances]);
+                newDraft.resistances = Array.from(res);
+                
+                const imm = new Set([...(newDraft.immunities || []), ...parsed.immunities]);
+                newDraft.immunities = Array.from(imm);
+                
+                return { ...prev, [itemId]: newDraft };
+            });
+        }
+    };
+
     const updateWondrousMod = (itemId, stat, value) => {
         setEditingWondrous(prev => ({
             ...prev,
@@ -495,6 +554,11 @@ export default function CharacterEquipment({
 
     return (
         <div className="char-equip-tab">
+            <datalist id="compendium-items-list">
+                {compendiumItems.map((item, idx) => (
+                    <option key={idx} value={item.name} />
+                ))}
+            </datalist>
             {/* Header + player selector */}
             <div className="char-equip-header">
                 <h2>⚔️ Character Equipment</h2>
@@ -650,8 +714,9 @@ export default function CharacterEquipment({
                                     <input
                                         className="input detail-name-input"
                                         value={openSlotData.name}
-                                        onChange={e => updateDraftField('name', e.target.value)}
+                                        onChange={e => handleSlotNameChange(e.target.value)}
                                         placeholder={`Enter ${openSlotDef.hint}`}
+                                        list="compendium-items-list"
                                     />
                                 </div>
                                 <button className="delete-btn detail-close" onClick={() => { setOpenSlot(null); setSlotDraft(null); }}>×</button>
@@ -1050,8 +1115,9 @@ export default function CharacterEquipment({
                                             <input
                                                 className="input wondrous-name-input"
                                                 value={display.name}
-                                                onChange={e => updateWondrousDraft(item.id, 'name', e.target.value)}
+                                                onChange={e => handleWondrousNameChange(item.id, e.target.value)}
                                                 placeholder="Item Name"
+                                                list="compendium-items-list"
                                             />
                                         ) : (
                                             <span className="wondrous-item-name">{item.name}</span>

@@ -34,6 +34,7 @@ import {
   mergePlayerWithRules,
 } from '../../../shared/utils/campaignRulesRuntime';
 import { getActiveTraits, aggregateStats } from '../utils/traitUtils';
+import { CONDITIONS_DICT, deriveConditions } from '../../../data/conditions';
 import type { IPartyState, IUsePartyStateParams } from '../../../types/battle';
 import type { IInventoryItem, IPlayer, StatAbbr } from '../../../types';
 import type { LogicBlock } from '../../../types/domain';
@@ -277,7 +278,19 @@ const getEquipmentBonus = (playerId, stat) => {
 };
 
 const effectiveStat = (player, stat) => {
-    return (player[stat] || 10) + getEquipmentBonus(player.id, stat);
+    let score = (player[stat] || 10) + getEquipmentBonus(player.id, stat);
+    
+    if (player.cc && player.cc.length > 0) {
+        const allConditions = deriveConditions(player.cc);
+        allConditions.forEach(c => {
+            const def = CONDITIONS_DICT[c];
+            if (def && def.modifiers && def.modifiers.stats && def.modifiers.stats[stat] !== undefined) {
+                score += def.modifiers.stats[stat];
+            }
+        });
+    }
+    
+    return score;
 };
 
 const getDefaultManaModifier = (player: IPlayer): number => {
@@ -309,6 +322,33 @@ const calculateEffectiveAC = (player: IPlayer) => {
         const stats = aggregateStats(traits);
         ac += (stats.acBonus || 0);
     }
+
+    if (Array.isArray(buffsDatabase) && buffsDatabase.length > 0 && player.buffs) {
+        player.buffs.forEach(name => {
+            const config = buffsDatabase.find(x => x.name === name);
+            if (config) {
+                const isToggle = config.type === 'toggle';
+                const isSpent = player.spentBuffs?.[name] === true;
+                const isToggledActive = player.buffStates?.[name] !== false;
+                const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+                
+                if (isActive && config.additionalAC) {
+                    ac += config.additionalAC;
+                }
+            }
+        });
+    }
+
+    if (player.cc && player.cc.length > 0) {
+        const allConditions = deriveConditions(player.cc);
+        allConditions.forEach(c => {
+            const def = CONDITIONS_DICT[c];
+            if (def && def.modifiers && def.modifiers.ac) {
+                ac += def.modifiers.ac;
+            }
+        });
+    }
+
     return ac;
 };
 

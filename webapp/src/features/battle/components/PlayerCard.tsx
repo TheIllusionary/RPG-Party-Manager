@@ -7,6 +7,7 @@ import {
   HP_TO_MANA_GAIN,
   MANA_TO_HP_MANA_COST,
   MANA_TO_HP_GAIN,
+  getSaveModifiers,
 } from '../../../shared/utils/combatUtils';
 import type { IBuff, IEquipment, IPlayer, ISubclass } from '../../../types';
 import type { IPlayerCardProps } from '../../../types/battle';
@@ -425,6 +426,7 @@ export default function PlayerCard({
                                                     <ActorModifierBadges
                                                         entityType="player"
                                                         entityId={player.id}
+                                                        entity={player}
                                                         conditions={player.cc ?? []}
                                                         modifiers={getModifiersFor(player.id)}
                                                         onAddCondition={(_type, id, effect) => addCc(id, effect)}
@@ -934,17 +936,30 @@ export default function PlayerCard({
 
                                             <div className="stats-skills-content">
                                             <div className="compact-proficiencies">
-                                                {statsList.filter(stat => player.saves?.[stat]).map(stat => {
+                                                {statsList.map(stat => {
                                                     const eff = effectiveStat(player, stat);
-                                                    const saveBonus = calculateModifier(eff) + getProficiencyBonus(player);
+                                                    const isProf = player.saves?.[stat];
+                                                    const baseSave = calculateModifier(eff) + (isProf ? getProficiencyBonus(player) : 0);
+                                                    const saveMods = getSaveModifiers(player, '', equipment, buffsDatabase, stat.substring(0, 3).toLowerCase());
+                                                    const finalSave = baseSave + saveMods.saveBonus;
+                                                    
+                                                    let modClass = '';
+                                                    if (saveMods.advantageState === 'advantage') modClass = 'adv-save';
+                                                    if (saveMods.advantageState === 'disadvantage') modClass = 'dis-save';
+                                                    if (saveMods.saveBonus > 0) modClass = 'buffed-save';
+                                                    if (saveMods.saveBonus < 0) modClass = 'debuffed-save';
+
                                                     return (
                                                         <div 
                                                             key={`save-${stat}`} 
-                                                            className="proficiency-chip save-chip" 
+                                                            className={`proficiency-chip save-chip ${isProf ? 'proficient' : ''} ${modClass}`} 
                                                             onClick={() => toggleSaveProficiency(player.id, stat)}
-                                                            title="Click to toggle save proficiency"
+                                                            title={`Click to toggle save proficiency. ${saveMods.saveBonus !== 0 ? `Modifiers applied: ${saveMods.saveBonus > 0 ? '+' : ''}${saveMods.saveBonus}` : ''} ${saveMods.advantageState !== 'normal' ? `(${saveMods.advantageState})` : ''}`}
+                                                            style={{ position: 'relative' }}
                                                         >
-                                                            {stat.toUpperCase()} Save {saveBonus >= 0 ? '+' : ''}{saveBonus}
+                                                            {stat.toUpperCase()} Save {finalSave >= 0 ? '+' : ''}{finalSave}
+                                                            {saveMods.advantageState === 'advantage' && <span className="adv-indicator" title="Advantage on saving throw">A</span>}
+                                                            {saveMods.advantageState === 'disadvantage' && <span className="dis-indicator" title="Disadvantage on saving throw">D</span>}
                                                         </div>
                                                     );
                                                 })}

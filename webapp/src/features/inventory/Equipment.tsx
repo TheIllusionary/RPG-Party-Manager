@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './Equipment.css';
 import type { IEquipmentProps, IEditingItemsMap } from '../../types/inventory';
-
+import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
+import { parseItemText } from '../../shared/utils/itemParser';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
@@ -228,6 +229,34 @@ export default function Equipment({
 
     const updateDraft = (itemId, field, value) => {
         setEditingItems(prev => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }));
+    };
+
+    const handleItemNameChange = (itemId: string, val: string) => {
+        updateDraft(itemId, 'name', val);
+        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        if (compendiumMatch) {
+            const parsed = parseItemText(compendiumMatch.description);
+            setEditingItems(prev => {
+                const newDraft = { ...prev[itemId] };
+                if (compendiumMatch.description && !newDraft.description) newDraft.description = compendiumMatch.description;
+                if (compendiumMatch.armorClass) newDraft.baseAC = compendiumMatch.armorClass;
+                if (parsed.acBonus) newDraft.acBonus = parsed.acBonus;
+                
+                const mods = newDraft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.modifiers = { ...mods, ...parsed.modifiers };
+                
+                const setAttrs = newDraft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.setAttributes = { ...setAttrs, ...parsed.attributes };
+                
+                const res = new Set([...(newDraft.resistances || []), ...parsed.resistances]);
+                newDraft.resistances = Array.from(res);
+                
+                const imm = new Set([...(newDraft.immunities || []), ...parsed.immunities]);
+                newDraft.immunities = Array.from(imm);
+                
+                return { ...prev, [itemId]: newDraft };
+            });
+        }
     };
 
     const saveItem = (sectionId, itemId) => {
@@ -541,8 +570,15 @@ export default function Equipment({
         }
     };
 
+    const { items: compendiumItems } = useCompendiumItems();
+
     return (
         <div className="equipment-tab">
+            <datalist id="compendium-items-list">
+                {compendiumItems.map((item, idx) => (
+                    <option key={idx} value={item.name} />
+                ))}
+            </datalist>
             {/* GOLD MODAL */}
             {goldModal && (
                 <div className="global-modal-overlay" onClick={() => setGoldModal(null)}>
@@ -653,7 +689,8 @@ export default function Equipment({
                                                                     </div>
                                                                 )}
                                                                 <input className="input item-name-input" value={display.name}
-                                                                    onChange={e => updateDraft(item.id, 'name', e.target.value)}
+                                                                    onChange={e => handleItemNameChange(item.id, e.target.value)}
+                                                                    list="compendium-items-list"
                                                                     placeholder="Item Name"
                                                                     style={{ fontWeight: 600, fontSize: '0.95rem', flex: 1 }} />
                                                             </div>

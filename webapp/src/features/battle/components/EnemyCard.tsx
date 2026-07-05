@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DAMAGE_TYPES, ALL_CC_EFFECTS } from '../utils/constants';
-import { calculateEffectiveEnemyAC } from '../../../shared/utils/combatUtils';
+import { calculateEffectiveEnemyAC, getSaveModifiers } from '../../../shared/utils/combatUtils';
 import type { IBuff, IEnemy } from '../../../types';
 import type { IEnemyCardProps } from '../../../types/battle';
 import QuickActionBar from './QuickActionBar';
@@ -465,6 +465,7 @@ export default function EnemyCard({
                                                             <ActorModifierBadges
                                                                 entityType="enemy"
                                                                 entityId={enemy.id}
+                                                                entity={enemy}
                                                                 conditions={enemy.cc ?? []}
                                                                 modifiers={getModifiersFor(enemy.id)}
                                                                 onAddCondition={(_type, id, effect) => addEnemyCc(id, effect)}
@@ -559,7 +560,9 @@ export default function EnemyCard({
                                                             const relatedSkills = dndSkills.filter(s => s.stat === stat);
                                                             const isSaveProficient = enemy.saves?.[stat];
                                                             const profBonus = enemy.proficiency !== undefined ? enemy.proficiency : 2;
-                                                            const saveBonus = mod + (isSaveProficient ? profBonus : 0);
+                                                            const baseSave = mod + (isSaveProficient ? profBonus : 0);
+                                                            const saveMods = getSaveModifiers(enemy, '', null, buffsDatabase, stat.substring(0, 3).toLowerCase());
+                                                            const saveBonus = baseSave + saveMods.saveBonus;
                                                             return (
                                                                 <div key={stat} className="stat-group">
                                                                     <div className="stat-group-header">
@@ -578,11 +581,15 @@ export default function EnemyCard({
                                                                             onChange={e => updateEnemy(enemy.id, stat, parseInt(e.target.value) || 0)}
                                                                         />
                                                                         <span className="stat-mod-badge">{formatModifier(mod)}</span>
-                                                                        <div className="stat-save-display">
+                                                                        <div className="stat-save-display" style={{ position: 'relative' }}>
                                                                             <span className="stat-save-display-label">Save</span>
-                                                                            <span style={{ color: isSaveProficient ? 'var(--primary)' : 'var(--text-primary)' }}>
+                                                                            <span style={{ 
+                                                                                color: saveMods.saveBonus > 0 ? 'var(--success)' : saveMods.saveBonus < 0 ? 'var(--danger)' : isSaveProficient ? 'var(--primary)' : 'var(--text-primary)'
+                                                                            }} title={saveMods.saveBonus !== 0 ? `Modifiers applied: ${saveMods.saveBonus > 0 ? '+' : ''}${saveMods.saveBonus}` : ''}>
                                                                                 {formatModifier(saveBonus)}
                                                                             </span>
+                                                                            {saveMods.advantageState === 'advantage' && <span className="adv-indicator" title="Advantage on saving throw">A</span>}
+                                                                            {saveMods.advantageState === 'disadvantage' && <span className="dis-indicator" title="Disadvantage on saving throw">D</span>}
                                                                         </div>
                                                                     </div>
                                                                     {relatedSkills.length > 0 && (

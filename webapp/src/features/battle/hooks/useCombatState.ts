@@ -14,6 +14,7 @@ import {
     calculateEffectiveAC,
     getSaveModifiers,
     calculateEffectiveEnemyAC,
+    calculateEffectiveEnemyStat,
     getCCModifier,
     applyDamageToPlayer,
 } from '../../../shared/utils/combatUtils';
@@ -180,17 +181,23 @@ const executePlayerAttack = () => {
         let dcVal = 0;
 
         if (autoRollEnabled) {
+            const extraEffect = attack.cc === 'custom' ? attack.ccCustom : (attack.cc || extractExtraEffects(attack.description));
             if (isSave) {
                 saveStat = (attack.save || 'Dexterity').toLowerCase();
                 const statKey = saveStat.substring(0, 3);
                 dcVal = parseInt(attack.dc);
-                const statVal = enemy[statKey] !== undefined ? enemy[statKey] : 10;
+
+                const saveMods = getSaveModifiers(enemy, extraEffect, [], buffsDatabase, statKey);
+                const d20Result = rollWithAdvantageState(saveMods.advantageState);
+                d20 = d20Result.roll;
+                d20Rolls = d20Result.rolls;
+
+                const statVal = calculateEffectiveEnemyStat(enemy, statKey);
                 const statMod = Math.floor((statVal - 10) / 2);
                 const isProf = enemy.saves && enemy.saves[statKey];
                 const profBonus = enemy.proficiency !== undefined ? enemy.proficiency : 2;
-                saveBonus = statMod + (isProf ? profBonus : 0);
-                d20 = Math.floor(Math.random() * 20) + 1;
-                d20Rolls = [d20];
+                saveBonus = statMod + (isProf ? profBonus : 0) + saveMods.saveBonus;
+                
                 totalRoll = d20 + saveBonus;
                 resultType = totalRoll >= dcVal ? 'save_success' : 'save_failed';
             } else {
@@ -219,7 +226,28 @@ const executePlayerAttack = () => {
 
         if (shouldApplyDamage) {
             const isCrit = resultType === 'crit';
-            (attack.damage || []).forEach(comp => {
+            const damageComponents = [...(attack.damage || [])];
+
+            if (player.buffs && Array.isArray(buffsDatabase)) {
+                player.buffs.forEach(name => {
+                    const config = buffsDatabase.find(x => x.name === name);
+                    if (config && config.additionalDamage) {
+                        const isToggle = config.type === 'toggle';
+                        const isSpent = player.spentBuffs?.[name] === true;
+                        const isToggledActive = player.buffStates?.[name] !== false;
+                        const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+                        if (isActive) {
+                            const parts = config.additionalDamage.trim().split(' ');
+                            damageComponents.push({
+                                formula: parts[0],
+                                type: parts.slice(1).join(' ') || 'force'
+                            });
+                        }
+                    }
+                });
+            }
+
+            damageComponents.forEach(comp => {
                 const rolled = rollFormula(comp.formula, isCrit);
                 const mult = getEnemyDamageMultiplier(comp.type, enemy);
                 let finalDmg = Math.floor(rolled.total * mult);
@@ -393,7 +421,26 @@ const executeAttack = () => {
 
         if (shouldApplyDamage) {
             const isCrit = resultType === 'crit';
-            const damageComponents = attack.damage || [];
+            const damageComponents = [...(attack.damage || [])];
+
+            if (enemy.buffs && Array.isArray(buffsDatabase)) {
+                enemy.buffs.forEach(name => {
+                    const config = buffsDatabase.find(x => x.name === name);
+                    if (config && config.additionalDamage) {
+                        const isToggle = config.type === 'toggle';
+                        const isSpent = enemy.spentBuffs?.[name] === true;
+                        const isToggledActive = enemy.buffStates?.[name] !== false;
+                        const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+                        if (isActive) {
+                            const parts = config.additionalDamage.trim().split(' ');
+                            damageComponents.push({
+                                formula: parts[0],
+                                type: parts.slice(1).join(' ') || 'force'
+                            });
+                        }
+                    }
+                });
+            }
 
             damageComponents.forEach(comp => {
                 const rolled = rollFormula(comp.formula, isCrit);

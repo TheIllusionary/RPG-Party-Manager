@@ -45,6 +45,7 @@
     gap: 1rem;
     transition: var(--transition);
     width: 100%;
+    align-items: start;
 }
 
 .roster-grid.app-responsive-grid {
@@ -180,7 +181,6 @@
     flex-direction: column;
     gap: 1rem;
     transition: var(--transition);
-    overflow: hidden;
 }
 
 .battle-mode-roster .integrated-player-card {
@@ -1395,12 +1395,50 @@
 }
 
 .proficiency-chip.save-chip {
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+}
+
+.proficiency-chip.save-chip:hover {
+    background: var(--bg-surface-hover);
+}
+
+.proficiency-chip.save-chip.proficient {
     background: rgba(16, 185, 129, 0.1);
     border-color: rgba(16, 185, 129, 0.2);
 }
 
-.proficiency-chip.save-chip:hover {
+.proficiency-chip.save-chip.proficient:hover {
     background: rgba(16, 185, 129, 0.2);
+}
+
+.proficiency-chip.save-chip.buffed-save {
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.proficiency-chip.save-chip.debuffed-save {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.adv-indicator, .dis-indicator {
+    position: absolute;
+    top: -0.375rem;
+    right: -0.375rem;
+    font-size: 0.6rem;
+    font-weight: bold;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    color: white;
+}
+
+.adv-indicator {
+    background-color: var(--success);
+}
+
+.dis-indicator {
+    background-color: var(--danger);
 }
 
 .stats-skills-features {

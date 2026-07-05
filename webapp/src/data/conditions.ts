@@ -3,6 +3,17 @@ export interface ConditionDefinition {
   name: string;
   description: string;
   implies: string[];
+  modifiers?: {
+    ac?: number;
+    stats?: {
+      str?: number;
+      dex?: number;
+      con?: number;
+      int?: number;
+      wis?: number;
+      cha?: number;
+    };
+  };
 }
 
 export const CONDITIONS_DICT: Record<string, ConditionDefinition> = {
@@ -89,6 +100,7 @@ export const CONDITIONS_DICT: Record<string, ConditionDefinition> = {
     name: 'Slowed',
     description: "A slowed creature's speed is halved, it takes a -2 penalty to AC and Dex saving throws, and it can't use reactions. On its turn, it can use either an action or a bonus action, not both. Regardless of the creature's abilities or magic items, it can't make more than one melee or ranged attack during its turn.",
     implies: [],
+    modifiers: { ac: -2 },
   }
 };
 
