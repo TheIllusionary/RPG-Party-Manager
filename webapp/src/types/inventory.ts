@@ -6,6 +6,8 @@ export interface IEquipmentProps {
   players: IPlayer[];
   buffsDatabase?: IBuff[];
   updateBuffsDatabase?: (buffs: IBuff[]) => void;
+  customItems?: IInventoryItem[];
+  updateCustomItems?: (items: IInventoryItem[]) => void;
 }
 
 export interface ICharacterEquipmentProps extends IEquipmentProps {}

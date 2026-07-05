@@ -229,6 +229,7 @@ export interface IAppData {
   buffsDatabase: IBuff[];
   subclasses: ISubclass[];
   customSubclasses?: ISubclass[];
+  customItems?: IInventoryItem[];
   /** Legacy SRD reference data (spells, equipment). */
   srdCatalog?: import('./srd').ISRDCatalog;
   /** Homebrew logic blocks — toggled per campaign; edited in DM Dashboard. */

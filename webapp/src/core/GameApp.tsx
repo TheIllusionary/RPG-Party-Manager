@@ -19,6 +19,7 @@ import { useCompendiumSubclasses } from '../shared/hooks/useCompendiumSubclasses
 import { useCompendiumRaces } from '../shared/hooks/useCompendiumRaces';
 import AppNavBar from '../shared/components/AppNavBar';
 import RootLayout from '../shared/components/RootLayout';
+import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import type { IAppData, IEnemy } from '../types';
 import type { IMinimizedMap } from '../types/battle';
 import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppDataFn } from '../types/app';
@@ -449,6 +450,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
         </nav>
       }
     >
+      <ErrorBoundary>
       {activeTab === 'players' && (
         <PlayerManager
           data={data.players}
@@ -486,6 +488,8 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           players={data.players}
           buffsDatabase={data.buffsDatabase || []}
           updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          customItems={data.customItems || []}
+          updateCustomItems={(items) => updateData('customItems', items)}
         />
       )}
       {activeTab === 'charequip' && (
@@ -495,6 +499,8 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           players={data.players}
           buffsDatabase={data.buffsDatabase || []}
           updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          customItems={data.customItems || []}
+          updateCustomItems={(items) => updateData('customItems', items)}
         />
       )}
       {activeTab === 'training' && (
@@ -532,6 +538,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
         />
       )}
+      </ErrorBoundary>
 
       {/* Settings Modal Dialog Overlay */}
       {isConfigModalOpen && (

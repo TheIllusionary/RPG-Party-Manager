@@ -3,6 +3,8 @@ import './Equipment.css';
 import type { IEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
 import { parseItemText } from '../../shared/utils/itemParser';
+import { ItemCombobox } from '../../shared/components/ItemCombobox';
+import { Trash2 } from 'lucide-react';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
@@ -68,13 +70,7 @@ const emptyItemExtras = () => ({
     setAttributes: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }
 });
 
-export default function Equipment({
-  data,
-  updateData,
-  players,
-  buffsDatabase = [],
-  updateBuffsDatabase = () => {},
-}: IEquipmentProps) {
+export default function Equipment({ data, updateData, players, buffsDatabase, updateBuffsDatabase, customItems, updateCustomItems }: IEquipmentProps) {
     const isArray = Array.isArray(data);
     const inventories = isArray ? {} : data.inventories || {};
     const playerGold = isArray ? {} : data.playerGold || {};
@@ -83,6 +79,7 @@ export default function Equipment({
     // Gold modal: { playerId, amount }
     const [goldModal, setGoldModal] = useState(null); // { id: playerId }
     const [goldDelta, setGoldDelta] = useState('');
+    const { items: compendiumItems } = useCompendiumItems();
 
     // Searchable/quick-create buffs local states
     const [buffSearchQuery, setBuffSearchQuery] = useState('');
@@ -231,9 +228,13 @@ export default function Equipment({
         setEditingItems(prev => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }));
     };
 
+    const allCompendiumItems = useMemo(() => {
+        return [...compendiumItems, ...(customItems || [])].filter(i => i && i.name);
+    }, [compendiumItems, customItems]);
+
     const handleItemNameChange = (itemId: string, val: string) => {
         updateDraft(itemId, 'name', val);
-        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        const compendiumMatch = allCompendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
         if (compendiumMatch) {
             const parsed = parseItemText(compendiumMatch.description);
             setEditingItems(prev => {
@@ -445,6 +446,12 @@ export default function Equipment({
                 }
             });
         }
+
+        if (draft.name && updateCustomItems && !allCompendiumItems.some(i => i.name.toLowerCase() === draft.name.toLowerCase())) {
+            const newCustomItem = { ...draft, id: crypto.randomUUID() };
+            updateCustomItems([...(customItems || []), newCustomItem]);
+        }
+
         setEditingItems(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
@@ -570,7 +577,6 @@ export default function Equipment({
         }
     };
 
-    const { items: compendiumItems } = useCompendiumItems();
 
     return (
         <div className="equipment-tab">
@@ -688,16 +694,19 @@ export default function Equipment({
                                                                         <button className="reorder-arrow-btn" disabled={true}>▼</button>
                                                                     </div>
                                                                 )}
-                                                                <input className="input item-name-input" value={display.name}
-                                                                    onChange={e => handleItemNameChange(item.id, e.target.value)}
-                                                                    list="compendium-items-list"
+                                                                <ItemCombobox 
+                                                                    items={allCompendiumItems}
+                                                                    value={display.name}
+                                                                    onChange={(val) => handleItemNameChange(item.id, val)}
+                                                                    onSelect={() => {}}
                                                                     placeholder="Item Name"
-                                                                    style={{ fontWeight: 600, fontSize: '0.95rem', flex: 1 }} />
+                                                                    style={{ flex: 1, minWidth: '150px' }}
+                                                                />
                                                             </div>
 
                                                             {/* Row 2: Item Type dropdown, Rarity selector, Quantity, Weight, Save/Cancel, Remove */}
                                                             <div className="item-row-line2" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '150px', flexShrink: 0 }}>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '120px', flex: '1 1 auto' }}>
                                                                     <select
                                                                         className="input item-type-select"
                                                                         style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', width: '100%' }}
@@ -737,8 +746,8 @@ export default function Equipment({
                                                                     </select>
                                                                 </div>
 
-                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                                                    <div className="item-qty-weight" style={{ flexShrink: 0 }}>
+                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 auto', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                                                                    <div className="item-qty-weight" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
                                                                         <label>Qty</label>
                                                                         <input type="number" min="0" className="input item-qty-input"
                                                                             value={display.quantity} disabled={display.isWondrousOnly}
@@ -747,16 +756,16 @@ export default function Equipment({
                                                                                 e.preventDefault();
                                                                                 updateDraft(item.id, 'quantity', Math.max(0, (display.quantity || 0) + Math.sign(e.deltaY) * -1));
                                                                             } : undefined} />
-                                                                        <label>Wt</label>
+                                                                        <label style={{ marginLeft: '0.25rem' }}>Wt</label>
                                                                         <input type="number" min="0" step="0.1" className="input item-weight-input"
                                                                             value={display.weight} disabled={display.isWondrousOnly} placeholder="—"
                                                                             onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
                                                                     </div>
 
-                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
                                                                         <button className="btn btn-success small-btn" onClick={() => saveItem(section.id, item.id)}>Save</button>
                                                                         <button className="btn small-btn" onClick={() => cancelEdit(item.id)}>Cancel</button>
-                                                                        <button className="delete-btn" onClick={() => removeItem(section.id, item.id)}>×</button>
+                                                                        <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -836,7 +845,7 @@ export default function Equipment({
                                                                             })()
                                                                         )}
                                                                         <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
-                                                                        <button className="delete-btn" onClick={() => removeItem(section.id, item.id)}>×</button>
+                                                                        <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
                                                                     </div>
                                                                 </div>
                                                             </div>

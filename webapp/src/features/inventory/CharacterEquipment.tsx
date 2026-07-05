@@ -3,6 +3,8 @@ import './CharacterEquipment.css';
 import type { ICharacterEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 import { parseItemText } from '../../shared/utils/itemParser';
 import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
+import { ItemCombobox } from '../../shared/components/ItemCombobox';
+import { Trash2 } from 'lucide-react';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
@@ -90,13 +92,7 @@ const SLOT_POSITIONS = {
     gloves: { left: '27%', top: '38%', anchor: 'left' },
 };
 
-export default function CharacterEquipment({
-  data,
-  updateData,
-  players,
-  buffsDatabase = [],
-  updateBuffsDatabase = () => {},
-}: ICharacterEquipmentProps) {
+export default function CharacterEquipment({ data, updateData, players, buffsDatabase, updateBuffsDatabase, customItems, updateCustomItems }: ICharacterEquipmentProps) {
     const equipped = data?.equipped || {};
     const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
     const [openSlot, setOpenSlot] = useState(null); // slot id currently expanded
@@ -118,13 +114,17 @@ export default function CharacterEquipment({
     const wondrousItems = equipped[selectedPlayerId]?.__wondrous__ || [];
 
     const { items: compendiumItems } = useCompendiumItems();
+    const allCompendiumItems = useMemo(() => {
+        return [...compendiumItems, ...(customItems || [])].filter(i => i && i.name);
+    }, [compendiumItems, customItems]);
+
     const updateDraftField = (field, value) => {
         setSlotDraft(prev => prev ? { ...prev, [field]: value } : null);
     };
 
     const handleSlotNameChange = (val: string) => {
         updateDraftField('name', val);
-        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        const compendiumMatch = allCompendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
         if (compendiumMatch) {
             const parsed = parseItemText(compendiumMatch.description);
             setSlotDraft(prev => {
@@ -266,6 +266,11 @@ export default function CharacterEquipment({
             inventories: newInventories
         });
         
+        if (slotDraft.name && updateCustomItems && !allCompendiumItems.some(i => i.name.toLowerCase() === slotDraft.name.toLowerCase())) {
+            const newCustomItem = { ...slotDraft, id: crypto.randomUUID() };
+            updateCustomItems([...(customItems || []), newCustomItem]);
+        }
+
         setOpenSlot(null);
         setSlotDraft(null);
     };
@@ -343,7 +348,7 @@ export default function CharacterEquipment({
 
     const handleWondrousNameChange = (itemId: string, val: string) => {
         updateWondrousDraft(itemId, 'name', val);
-        const compendiumMatch = compendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        const compendiumMatch = allCompendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
         if (compendiumMatch) {
             const parsed = parseItemText(compendiumMatch.description);
             setEditingWondrous(prev => {
@@ -439,6 +444,11 @@ export default function CharacterEquipment({
             saveWondrousItems(updated);
         }
         
+        if (draft.name && updateCustomItems && !allCompendiumItems.some(i => i.name.toLowerCase() === draft.name.toLowerCase())) {
+            const newCustomItem = { ...draft, id: crypto.randomUUID() };
+            updateCustomItems([...(customItems || []), newCustomItem]);
+        }
+
         setEditingWondrous(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
@@ -711,12 +721,13 @@ export default function CharacterEquipment({
                                 <span className="detail-slot-icon">{openSlotDef.icon}</span>
                                 <div>
                                     <div className="detail-slot-label">{openSlotDef.label}</div>
-                                    <input
-                                        className="input detail-name-input"
+                                    <ItemCombobox
+                                        className="detail-name-input"
+                                        items={allCompendiumItems}
                                         value={openSlotData.name}
-                                        onChange={e => handleSlotNameChange(e.target.value)}
+                                        onChange={(val) => handleSlotNameChange(val)}
+                                        onSelect={() => {}}
                                         placeholder={`Enter ${openSlotDef.hint}`}
-                                        list="compendium-items-list"
                                     />
                                 </div>
                                 <button className="delete-btn detail-close" onClick={() => { setOpenSlot(null); setSlotDraft(null); }}>×</button>
@@ -1112,12 +1123,13 @@ export default function CharacterEquipment({
                                     <span className="wondrous-item-icon">✨</span>
                                     <div className="wondrous-item-meta">
                                         {isEditing ? (
-                                            <input
-                                                className="input wondrous-name-input"
+                                            <ItemCombobox
+                                                className="wondrous-name-input"
+                                                items={allCompendiumItems}
                                                 value={display.name}
-                                                onChange={e => handleWondrousNameChange(item.id, e.target.value)}
+                                                onChange={(val) => handleWondrousNameChange(item.id, val)}
+                                                onSelect={() => {}}
                                                 placeholder="Item Name"
-                                                list="compendium-items-list"
                                             />
                                         ) : (
                                             <span className="wondrous-item-name">{item.name}</span>

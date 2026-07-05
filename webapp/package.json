@@ -23,7 +23,8 @@
     "build:electron": "npm run electron:build",
     "electron:publish": "npm run build:electron-services && npm run build:api-deps && vite build && electron-builder --win --publish always",
     "publish:electron": "npm run electron:publish",
-    "seed:master-compendium": "tsx src/scripts/seedMasterCompendium.ts"
+    "seed:master-compendium": "tsx src/scripts/seedMasterCompendium.ts",
+    "test": "vitest"
   },
   "dependencies": {
     "@xyflow/react": "^12.11.1",
@@ -37,6 +38,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
@@ -50,10 +54,12 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
     "mongodb": "^6.21.0",
     "tsx": "^4.22.5",
     "typescript": "^6.0.3",
     "vite": "^7.3.1",
+    "vitest": "^4.1.9",
     "wait-on": "^9.0.4"
   },
   "build": {
