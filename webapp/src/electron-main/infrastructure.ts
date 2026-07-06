@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { FileSystemDocumentStore } from '../services/persistence/FileSystemDocumentStore';
 import { PlayerViewService } from '../services/PlayerViewService';
-import { SyncService } from '../services/SyncService';
+import { SyncService } from './SyncServiceElectron';
 import { WebSocketServer } from '../services/WebSocketServer';
 import { SyncQueueService } from './SyncQueueService';
 import { CompendiumSyncManager } from './compendiumSyncManager';
@@ -54,7 +54,7 @@ export function startDesktopInfrastructure(app: App): DesktopInfrastructure {
   const playerViewService = new PlayerViewService(webSocketServer);
 
   const syncService = SyncService.createForElectron(app);
-  void syncService.bootstrap().catch((err) => {
+  void syncService.bootstrap().catch((err: unknown) => {
     console.error('[SyncService] Bootstrap failed:', err);
   });
 

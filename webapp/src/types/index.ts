@@ -67,6 +67,12 @@ export interface IPlayer {
   subclassId?: string | null;
   /** Optional second subclass (e.g. D&D multiclass or bonus archetype). */
   optionalSubclassId?: string | null;
+  /** The selected subrace entity key (e.g. 'phb_race_elf_high-elf'). */
+  subraceId?: string | null;
+  /** ASI choices made by the player (stat abbr → chosen bonus, e.g. { str: 1 }). */
+  asiChoices?: Record<string, number>;
+  /** Skill/tool proficiency choices made at character creation (array of chosen skill names). */
+  proficiencyChoices?: string[];
   resourceTrait?: string;
   recentSpells?: number[];
   /** D&D 5e spell slots — used when mana rule is disabled. Keys "1"–"9". */
@@ -234,6 +240,8 @@ export interface IAppData {
   srdCatalog?: import('./srd').ISRDCatalog;
   /** Homebrew logic blocks — toggled per campaign; edited in DM Dashboard. */
   logicBlocks?: import('./domain').LogicBlock[];
+  /** Array of favorite monster IDs */
+  bestiaryFavorites?: string[];
 }
 
 export interface IAppConfig {

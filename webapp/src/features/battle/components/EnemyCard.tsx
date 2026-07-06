@@ -17,6 +17,7 @@ export default function EnemyCard({
   updateLibrary,
   buffsDatabase,
   compendiumMonsters = [],
+  bestiaryFavorites = [],
 }: IEnemyCardProps) {
   const [ccDropdownOpen, setCcDropdownOpen] = useState(false);
 
@@ -130,6 +131,13 @@ export default function EnemyCard({
                                                                     <div className="enemy-search-dropdown">
                                                                         {[...defaultMonsters, ...compendiumMonsters, ...library]
                                                                             .filter(m => m.name.toLowerCase().includes((enemySearchText || '').toLowerCase()))
+                                                                            .sort((a, b) => {
+                                                                                const aFav = bestiaryFavorites.includes(a.id);
+                                                                                const bFav = bestiaryFavorites.includes(b.id);
+                                                                                if (aFav && !bFav) return -1;
+                                                                                if (!aFav && bFav) return 1;
+                                                                                return 0;
+                                                                            })
                                                                             .slice(0, 10)
                                                                             .map(m => (
                                                                                 <div

@@ -7,6 +7,7 @@ import RootLayout from '../../shared/components/RootLayout';
 import type { ICampaign, ICampaignListItem } from '../../types';
 import type { ICampaignListProps } from '../../types/campaign';
 import type { IAppData } from '../../types';
+import { getLastCampaignId, setLastCampaignId } from '../../services/api';
 
 import './CampaignList.css';
 
@@ -154,8 +155,8 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
 
     try {
       await deleteCampaign(campaign._id);
-      if (localStorage.getItem('partyManagerLastCampaignId') === campaign._id) {
-        localStorage.removeItem('partyManagerLastCampaignId');
+      if (getLastCampaignId() === campaign._id) {
+        setLastCampaignId('');
       }
       setCampaigns((prev) => prev.filter((c) => c._id !== campaign._id));
     } catch (err: unknown) {

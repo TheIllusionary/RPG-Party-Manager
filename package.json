@@ -8,6 +8,7 @@
     "dev:web": "npm run dev --prefix webapp",
     "dev:local": "concurrently -n api,web -c blue,green \"npm run dev --prefix api\" \"npm run dev:local --prefix webapp\"",
     "electron:dev": "npm run electron:dev --prefix webapp",
+    "electron:dev:local": "concurrently -n api,electron -c blue,magenta \"npm run dev --prefix api\" \"npm run electron:dev:local --prefix webapp\"",
     "build:electron": "npm run electron:build --prefix webapp",
     "publish:electron": "npm run electron:publish --prefix webapp",
     "commit:ai": "node scripts/generate-commit.mjs"

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import db from '../../../services/db';
 const defaultMonsters = [] as any[];
 import { generateUniqueId, ALL_CC_EFFECTS } from '../utils/constants';
 import {
@@ -32,6 +33,7 @@ import type { ICombatState, IPartyState, IUseCombatStateParams, IEnemySpriteInfo
 import type { IAttack, IEnemy, IMonster, IPlayer, StatAbbr } from '../../../types';
 
 export default function useCombatState({
+    campaignId,
     enemies,
     setEnemies,
     minimizedEnemies,
@@ -610,14 +612,15 @@ const triggerEnemyLimitBreak = (id) => {
 // (battleMode is passed as a prop from App)
 
 // VTT integration state
-const [isVttOpen, setIsVttOpen] = useState(() => localStorage.getItem('isVttOpen') === 'true');
+const [isVttOpen, setIsVttOpen] = useState(false);
 const [isVttFullscreen, setIsVttFullscreen] = useState(false);
-const [vttRoomUrl, setVttRoomUrl] = useState(() => localStorage.getItem('vttRoomUrl') || 'https://owlbear.rodeo');
-const [vttInputVal, setVttInputVal] = useState(() => localStorage.getItem('vttRoomUrl') || '');
-const [internalBattleNotes, setInternalBattleNotes] = useState(() => localStorage.getItem('battleNotes') || '');
+const [vttRoomUrl, setVttRoomUrl] = useState('https://owlbear.rodeo');
+const [vttInputVal, setVttInputVal] = useState('https://owlbear.rodeo');
+const [internalBattleNotes, setInternalBattleNotes] = useState('');
 const battleNotes = battleNotesProp !== undefined ? battleNotesProp : internalBattleNotes;
 const setBattleNotes = setBattleNotesProp || setInternalBattleNotes;
 const [vttLoading, setVttLoading] = useState(false);
+const [loadingVtt, setLoadingVtt] = useState(true);
 
 const vttPlaceholderRef = useRef(null);
 const hasLoadedVttUrlRef = useRef(false);
@@ -630,18 +633,38 @@ useEffect(() => {
     return () => window.removeEventListener('click', handleOutsideClick);
 }, []);
 
-// Save persistent VTT and notes state to localStorage
+// Load VTT settings from Dexie
 useEffect(() => {
-    localStorage.setItem('isVttOpen', String(isVttOpen));
-}, [isVttOpen]);
+    async function loadVtt() {
+        if (!campaignId) return;
+        setLoadingVtt(true);
+        try {
+            const record = await db.campaignState.get(`campaign_${campaignId}_vtt`);
+            if (record?.data) {
+                setIsVttOpen(record.data.isVttOpen ?? false);
+                setVttRoomUrl(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
+                setVttInputVal(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
+            }
+        } catch (err) {
+            console.error('Failed to load VTT settings:', err);
+        } finally {
+            setLoadingVtt(false);
+        }
+    }
+    loadVtt();
+}, [campaignId]);
 
+// Save VTT settings to Dexie
 useEffect(() => {
-    localStorage.setItem('vttRoomUrl', vttRoomUrl);
-}, [vttRoomUrl]);
-
-useEffect(() => {
-    localStorage.setItem('battleNotes', battleNotes);
-}, [battleNotes]);
+    if (loadingVtt || !campaignId) return;
+    db.campaignState.put({
+        id: `campaign_${campaignId}_vtt`,
+        campaignId: campaignId,
+        type: 'vttSettings',
+        data: { isVttOpen, vttRoomUrl },
+        updatedAt: Date.now()
+    }).catch(err => console.error('Failed to save VTT settings:', err));
+}, [campaignId, isVttOpen, vttRoomUrl, loadingVtt]);
 
 // Toggle battle layout full-width container class on container element
 useEffect(() => {

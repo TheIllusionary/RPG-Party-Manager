@@ -309,8 +309,17 @@ export interface MasterRace {
   source: string;
   size?: string;
   speed?: string;
+  /** Fixed ability score improvements from the base race. */
   ability?: Array<Record<string, number>>;
+  /** Structured ASI choice blocks (e.g. "Choose 1 of: +1 STR, +1 DEX…"). */
+  abilityChoices?: IChoiceObject[];
+  /** Structured skill proficiency choice blocks. */
+  skillChoices?: IChoiceObject[];
+  /** Structured language choice blocks. */
+  languageChoices?: IChoiceObject[];
   traits?: Array<{ name: string; desc: string; stats?: IExtractedStats }>;
+  /** Parsed subraces for this base race. */
+  subraces?: MasterSubrace[];
   search: SanitizedText;
   provenance: CompendiumProvenance;
   sourceFlags: { srd?: boolean; basicRules?: boolean; edition?: string };
@@ -347,4 +356,35 @@ export interface IExtractedStats {
   resistances?: string[];
   immunities?: string[];
   vulnerabilities?: string[];
+}
+
+/**
+ * A structured representation of a 5etools `{"choose": {"from": [...], "count": N}}` block.
+ * Produced by parseChooseObject() and stored on MasterRace / MasterSubrace.
+ */
+export interface IChoiceObject {
+  type: 'ability' | 'skill' | 'tool' | 'language';
+  count: number;
+  /** The concrete list of options the player can pick from. */
+  options: string[];
+}
+
+/** A subrace linked back to its parent MasterRace via parentEntityKey. */
+export interface MasterSubrace {
+  id: string;
+  entityKey: string;
+  /** Matches MasterRace.entityKey of the parent race. */
+  parentEntityKey: string;
+  name: string;
+  source: string;
+  speed?: string;
+  /** Fixed ability score improvements (e.g. +1 INT for High Elf). */
+  ability?: Array<Record<string, number>>;
+  /** Structured ASI choice blocks. */
+  abilityChoices?: IChoiceObject[];
+  /** Structured skill proficiency choice blocks. */
+  skillChoices?: IChoiceObject[];
+  /** Structured language choice blocks. */
+  languageChoices?: IChoiceObject[];
+  traits?: Array<{ name: string; desc: string; stats?: IExtractedStats }>;
 }

@@ -1,4 +1,3 @@
-import { DEFAULT_API_URL } from '../config/cloudDefaults';
 import { clearAuthTokenFromSync, pushAuthTokenToSync } from './syncBridge';
 import type {
   IAuthResponse,
@@ -10,13 +9,68 @@ import type {
   IUpdateCampaignPayload,
 } from '../types/api';
 import type { ICampaign, IUser } from '../types';
+import db from './db';
 
-const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
-const TOKEN_KEY = 'partyManagerAuthToken';
-const USER_KEY = 'partyManagerAuthUser';
+const getApiBase = () => {
+  if (typeof process !== 'undefined' && process.env?.VITE_API_URL) {
+    return process.env.VITE_API_URL;
+  }
+  try {
+    const metaEnv = new Function('return import.meta.env')();
+    if (metaEnv?.VITE_API_URL) {
+      return metaEnv.VITE_API_URL;
+    }
+  } catch {
+    // Ignore
+  }
+  return 'https://rpg-party-manager-api.onrender.com';
+};
+
+const API_BASE = getApiBase();
+
+let memoryToken: string | null = null;
+let memoryUser: IUser | null = null;
+let memoryLastCampaignId: string | null = null;
+
+export async function bootstrapPersistentState(): Promise<void> {
+  try {
+    const [authSession, lastCampaign] = await Promise.all([
+      db.campaignState.get('global_auth_session'),
+      db.campaignState.get('global_last_campaign_id'),
+    ]);
+    if (authSession?.data) {
+      memoryToken = authSession.data.token;
+      memoryUser = authSession.data.user;
+    }
+    if (lastCampaign?.data) {
+      memoryLastCampaignId = lastCampaign.data;
+    }
+  } catch (err) {
+    console.error('[API] Failed to bootstrap persistent state from Dexie:', err);
+  }
+}
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return memoryToken;
+}
+
+export function getStoredUser(): IUser | null {
+  return memoryUser;
+}
+
+export function getLastCampaignId(): string | null {
+  return memoryLastCampaignId;
+}
+
+export function setLastCampaignId(campaignId: string): void {
+  memoryLastCampaignId = campaignId;
+  db.campaignState.put({
+    id: 'global_last_campaign_id',
+    campaignId: 'global',
+    type: 'globalSettings',
+    data: campaignId,
+    updatedAt: Date.now(),
+  }).catch((err) => console.error('[API] Failed to save last campaign ID:', err));
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -24,7 +78,7 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(path: string, options: IRequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: IRequestOptions = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -51,27 +105,42 @@ async function request<T>(path: string, options: IRequestOptions = {}): Promise<
   return res.json() as Promise<T>;
 }
 
-export function getStoredUser(): IUser | null {
-  const raw = localStorage.getItem(USER_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as IUser;
-  } catch {
-    return null;
-  }
+export function getStoredUserSync(): IUser | null {
+  return memoryUser;
+}
+
+export function getStoredUserSyncParsed(): IUser | null {
+  return memoryUser;
+}
+
+export function getStoredUserFromMemory(): IUser | null {
+  return memoryUser;
 }
 
 export function setAuthSession({ token, user }: IAuthResponse): void {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  memoryToken = token;
+  memoryUser = user;
   pushAuthTokenToSync(token);
+  db.campaignState.put({
+    id: 'global_auth_session',
+    campaignId: 'global',
+    type: 'globalSettings',
+    data: { token, user },
+    updatedAt: Date.now(),
+  }).catch((err) => console.error('[API] Failed to save auth session to Dexie:', err));
 }
 
 export function clearAuthSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem('partyManagerLastCampaignId');
+  memoryToken = null;
+  memoryUser = null;
+  memoryLastCampaignId = null;
   clearAuthTokenFromSync();
+  db.campaignState.delete('global_auth_session').catch((err) =>
+    console.error('[API] Failed to delete auth session from Dexie:', err)
+  );
+  db.campaignState.delete('global_last_campaign_id').catch((err) =>
+    console.error('[API] Failed to delete last campaign ID from Dexie:', err)
+  );
 }
 
 export function register(username: string, password: string): Promise<IAuthResponse> {

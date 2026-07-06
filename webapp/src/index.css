@@ -245,6 +245,16 @@ body,
   color: var(--text-muted);
 }
 
+/* Remove arrows from number inputs globally */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;

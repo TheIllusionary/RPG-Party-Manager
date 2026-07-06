@@ -24,7 +24,6 @@
     "src/services/PlayerViewService.ts",
     "src/services/WebSocketServer.ts",
     "src/services/actorPersistence.ts",
-    "src/services/SyncService.ts",
     "src/types/sync.ts",
     "src/electron-main/**/*",
     "src/features/dashboard/constants/**/*"

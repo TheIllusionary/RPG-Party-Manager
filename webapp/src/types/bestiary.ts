@@ -13,6 +13,8 @@ export interface IEnemyLibraryProps {
   updateBuffsDatabase?: (buffs: IBuff[]) => void;
   bestiaryReview?: IBestiaryReview;
   updateBestiaryReview?: (review: IBestiaryReview) => void;
+  bestiaryFavorites?: string[];
+  updateBestiaryFavorites?: (favorites: string[]) => void;
 }
 
 export interface IEncounterCombatant {

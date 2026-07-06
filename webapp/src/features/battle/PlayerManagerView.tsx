@@ -28,6 +28,7 @@ export default function PlayerManagerView({
   compendiumClasses,
   compendiumSubclasses,
   compendiumRaces,
+  bestiaryFavorites = []
 }: IPlayerManagerViewProps) {
   const players = party.data;
   const enemyList = enemies;
@@ -107,6 +108,7 @@ export default function PlayerManagerView({
                   compendiumMonsters={compendiumMonsters}
                   updateLibrary={updateLibrary}
                   buffsDatabase={buffsDatabase}
+                  bestiaryFavorites={bestiaryFavorites}
                 />
               ))}
             </div>

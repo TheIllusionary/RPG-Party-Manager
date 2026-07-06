@@ -18,6 +18,7 @@
     "preview": "vite preview",
     "build:electron-services": "tsc -p tsconfig.electron.json && node scripts/ensure-electron-lib-cjs.mjs",
     "electron:dev": "npm run build:electron-services && concurrently -n vite,electron -c green,magenta \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
+    "electron:dev:local": "npm run build:electron-services && concurrently -n vite,electron -c green,magenta \"npm run dev:local\" \"wait-on tcp:5173 && electron .\"",
     "build:api-deps": "npm install --prefix ../api --omit=dev",
     "electron:build": "npm run build:electron-services && npm run build:api-deps && vite build && electron-builder --win --publish never",
     "build:electron": "npm run electron:build",
@@ -28,6 +29,8 @@
   },
   "dependencies": {
     "@xyflow/react": "^12.11.1",
+    "dexie": "^4.4.4",
+    "dexie-react-hooks": "^4.4.0",
     "electron-updater": "^6.8.3",
     "lucide-react": "^1.23.0",
     "react": "^19.2.0",

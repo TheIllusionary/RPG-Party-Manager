@@ -12,6 +12,7 @@ import {
   getStoredToken,
   getStoredUser,
   setAuthSession,
+  bootstrapPersistentState,
 } from '../services/api';
 import { syncAuthFromStorage } from '../services/syncBridge';
 import type { IAuthSession } from '../types/auth';
@@ -27,10 +28,13 @@ function App() {
     let cancelled = false;
 
     async function restoreSession() {
-      if (!getStoredUser()) {
+      await bootstrapPersistentState();
+      const currentUser = getStoredUser();
+      if (!currentUser) {
         setBooting(false);
         return;
       }
+      setUser(currentUser);
 
       try {
         const profile = await fetchMe();

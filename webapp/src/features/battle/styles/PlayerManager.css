@@ -49,8 +49,12 @@
 }
 
 .roster-grid.app-responsive-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1600px; /* Caps at 4 wide columns */
+    margin: 0 auto; /* Centers the grid block itself */
 }
 
 .battle-mode-roster {
@@ -116,9 +120,9 @@
 
 .player-subtitle {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
@@ -137,7 +141,8 @@
 }
 
 .class-input {
-    width: 120px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .level-input {
@@ -1299,8 +1304,8 @@
     height: 180px;
 }
 
-/* Expand standard index.css container to full width during battle mode */
-.container.battle-mode-layout {
+/* Expand standard layout to full width during battle mode or party roster view */
+.main-content:has(.roster-grid) {
     max-width: 100% !important;
     padding-left: 2rem;
     padding-right: 2rem;
@@ -1316,9 +1321,9 @@
 
 .compact-stats-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 0.5rem;
-    padding: 0.5rem 0;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.25rem 0;
 }
 
 .compact-stat-box {
@@ -1450,6 +1455,11 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.player-info {
+    flex: 1;
+    min-width: 0; /* Prevent overflow */
 }
 
 .player-sprite-container {

@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpen, Package, Sparkles, User } from 'lucide-react';
+import { BookOpen, Package, Sparkles, User, Shield } from 'lucide-react';
 
 import { useCompendiumSpells } from '../../shared/hooks/useCompendiumSpells';
 import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
 import { useCompendiumClasses } from '../../shared/hooks/useCompendiumClasses';
 import { useCompendiumSubclasses } from '../../shared/hooks/useCompendiumSubclasses';
+import { useCompendiumRaces } from '../../shared/hooks/useCompendiumRaces';
 import type { CompendiumTab } from '../../types/compendium';
 import type { ISRDEquipmentItem, ISRDSpell } from '../../types/srd';
+import type { MasterRace } from '../../services/compendium/fiveETools/types';
 import ItemCard from './ItemCard';
 import SpellCard from './SpellCard';
 import ClassDetailView from './ClassDetailView';
+import RaceDetailView from './RaceDetailView';
 import SpellFiltersPanel from './SpellFiltersPanel';
 import UniversalFilterPanel from './UniversalFilterPanel';
 import {
@@ -38,21 +41,25 @@ export default function CompendiumView() {
   const { classes: compendiumClasses, loading: loadingClasses, error: errorClasses, reload: reloadClasses } = useCompendiumClasses();
   const { subclasses: compendiumSubclasses, loading: loadingSubclasses, error: errorSubclasses, reload: reloadSubclasses } = useCompendiumSubclasses();
 
+  const { races: compendiumRaces, loading: loadingRaces, error: errorRaces, reload: reloadRaces } = useCompendiumRaces();
+
   const [activeTab, setActiveTab] = useState<CompendiumTab>('spells');
-  const [searches, setSearches] = useState<Record<string, string>>({ spells: '', items: '', classes: '' });
+  const [searches, setSearches] = useState<Record<string, string>>({ spells: '', items: '', classes: '', races: '' });
   const [spellFilters, setSpellFilters] = useState<SpellFilterState>(DEFAULT_SPELL_FILTERS);
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedRaceId, setSelectedRaceId] = useState<string | null>(null);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [initializedSources, setInitializedSources] = useState(false);
 
   const spells = useMemo(() => sortSpells(compendiumSpells), [compendiumSpells]);
   const items = useMemo(() => sortItems(compendiumItems), [compendiumItems]);
   const classes = useMemo(() => [...compendiumClasses].sort((a, b) => a.name.localeCompare(b.name)), [compendiumClasses]);
+  const races = useMemo(() => [...compendiumRaces].sort((a, b) => a.name.localeCompare(b.name)) as MasterRace[], [compendiumRaces]);
 
-  const loading = loadingSpells || loadingItems || loadingClasses || loadingSubclasses;
-  const error = errorSpells || errorItems || errorClasses || errorSubclasses;
+  const loading = loadingSpells || loadingItems || loadingClasses || loadingSubclasses || loadingRaces;
+  const error = errorSpells || errorItems || errorClasses || errorSubclasses || errorRaces;
 
   useEffect(() => {
     if (!loading) {
@@ -61,8 +68,8 @@ export default function CompendiumView() {
   }, [loading, spells.length, items.length]);
 
   const reload = useCallback(async () => {
-    await Promise.all([reloadSpells(), reloadItems(), reloadClasses(), reloadSubclasses()]);
-  }, [reloadSpells, reloadItems, reloadClasses, reloadSubclasses]);
+    await Promise.all([reloadSpells(), reloadItems(), reloadClasses(), reloadSubclasses(), reloadRaces()]);
+  }, [reloadSpells, reloadItems, reloadClasses, reloadSubclasses, reloadRaces]);
 
   const spellFilterOptions = useMemo(() => buildSpellFilterOptions(spells), [spells]);
 
@@ -71,8 +78,9 @@ export default function CompendiumView() {
     for (const item of items) if (item.source) s.add(item.source);
     for (const spell of spells) if (spell.source) s.add(spell.source);
     for (const cls of classes) if (cls.source) s.add(cls.source);
+    for (const race of races) if (race.source) s.add(race.source);
     return Array.from(s).sort();
-  }, [items, spells, classes]);
+  }, [items, spells, classes, races]);
 
   useEffect(() => {
     if (availableSources.length > 0 && !initializedSources) {
@@ -100,36 +108,36 @@ export default function CompendiumView() {
     return bySource.filter((c) => c.name.toLowerCase().includes(q));
   }, [classes, searches.classes, selectedSources]);
 
+  const filteredRaces = useMemo(() => {
+    const bySource = races.filter((r) => selectedSources.includes(r.source));
+    const q = (searches.races || '').trim().toLowerCase();
+    if (!q) return bySource;
+    return bySource.filter((r) => r.name.toLowerCase().includes(q));
+  }, [races, searches.races, selectedSources]);
+
   useEffect(() => {
     if (activeTab === 'spells') {
-      if (filteredSpells.length === 0) {
-        setSelectedSpellId(null);
-        return;
-      }
-      if (!selectedSpellId || !filteredSpells.some((s) => s.id === selectedSpellId)) {
-        setSelectedSpellId(filteredSpells[0].id);
-      }
+      if (filteredSpells.length === 0) { setSelectedSpellId(null); return; }
+      if (!selectedSpellId || !filteredSpells.some((s) => s.id === selectedSpellId)) setSelectedSpellId(filteredSpells[0].id);
     } else if (activeTab === 'items') {
-      if (filteredItems.length === 0) {
-        setSelectedItemId(null);
-      } else if (!selectedItemId || !filteredItems.some((i) => i.id === selectedItemId)) {
-        setSelectedItemId(filteredItems[0].id);
-      }
+      if (filteredItems.length === 0) { setSelectedItemId(null); }
+      else if (!selectedItemId || !filteredItems.some((i) => i.id === selectedItemId)) setSelectedItemId(filteredItems[0].id);
     } else if (activeTab === 'classes') {
-      if (filteredClasses.length === 0) {
-        setSelectedClassId(null);
-      } else if (!selectedClassId || !filteredClasses.some((c) => c.id === selectedClassId)) {
-        setSelectedClassId(filteredClasses[0].id);
-      }
+      if (filteredClasses.length === 0) { setSelectedClassId(null); }
+      else if (!selectedClassId || !filteredClasses.some((c) => c.id === selectedClassId)) setSelectedClassId(filteredClasses[0].id);
+    } else if (activeTab === 'races') {
+      if (filteredRaces.length === 0) { setSelectedRaceId(null); }
+      else if (!selectedRaceId || !filteredRaces.some((r) => r.id === selectedRaceId)) setSelectedRaceId(filteredRaces[0].id);
     }
-  }, [activeTab, filteredSpells, filteredItems, filteredClasses, selectedSpellId, selectedItemId, selectedClassId]);
+  }, [activeTab, filteredSpells, filteredItems, filteredClasses, filteredRaces, selectedSpellId, selectedItemId, selectedClassId, selectedRaceId]);
 
   const selectedSpell = filteredSpells.find((s) => s.id === selectedSpellId) ?? null;
   const selectedItem = filteredItems.find((i) => i.id === selectedItemId) ?? null;
   const selectedClass = filteredClasses.find((c) => c.id === selectedClassId) ?? null;
+  const selectedRace = filteredRaces.find((r) => r.id === selectedRaceId) ?? null;
 
-  const listCount = activeTab === 'spells' ? filteredSpells.length : (activeTab === 'items' ? filteredItems.length : filteredClasses.length);
-  const totalCount = activeTab === 'spells' ? spells.length : (activeTab === 'items' ? items.length : classes.length);
+  const listCount = activeTab === 'spells' ? filteredSpells.length : activeTab === 'items' ? filteredItems.length : activeTab === 'races' ? filteredRaces.length : filteredClasses.length;
+  const totalCount = activeTab === 'spells' ? spells.length : activeTab === 'items' ? items.length : activeTab === 'races' ? races.length : classes.length;
 
   return (
     <div className="compendium-view">
@@ -171,6 +179,15 @@ export default function CompendiumView() {
             <User size={16} aria-hidden />
             Classes
             <span className="compendium-tab__count">{classes.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`compendium-tab ${activeTab === 'races' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('races')}
+          >
+            <Shield size={16} aria-hidden />
+            Races
+            <span className="compendium-tab__count">{races.length}</span>
           </button>
         </nav>
       </header>
@@ -286,6 +303,24 @@ export default function CompendiumView() {
                   </button>
                 </li>
               ))}
+            {!loading &&
+              activeTab === 'races' &&
+              filteredRaces.map((race) => (
+                <li key={race.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={race.id === selectedRaceId}
+                    className={`compendium-list__item ${race.id === selectedRaceId ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedRaceId(race.id)}
+                  >
+                    <span className="compendium-list__item-name">{race.name}</span>
+                    <span className="compendium-list__item-meta">
+                      {race.subraces?.length ? `${race.subraces.length} subraces` : race.source}
+                    </span>
+                  </button>
+                </li>
+              ))}
           </ul>
         </aside>
 
@@ -294,6 +329,9 @@ export default function CompendiumView() {
           {!loading && activeTab === 'items' && selectedItem && <ItemCard item={selectedItem} />}
           {!loading && activeTab === 'classes' && selectedClass && (
             <ClassDetailView masterClass={selectedClass} availableSubclasses={compendiumSubclasses.filter(sc => sc.classId === selectedClass.entityKey)} />
+          )}
+          {!loading && activeTab === 'races' && selectedRace && (
+            <RaceDetailView race={selectedRace} />
           )}
           {!loading && activeTab === 'spells' && !selectedSpell && (
             <div className="compendium-detail-placeholder">
@@ -311,6 +349,12 @@ export default function CompendiumView() {
             <div className="compendium-detail-placeholder">
               <User size={40} strokeWidth={1.2} aria-hidden />
               <p>Select a class from the list.</p>
+            </div>
+          )}
+          {!loading && activeTab === 'races' && !selectedRace && (
+            <div className="compendium-detail-placeholder">
+              <Shield size={40} strokeWidth={1.2} aria-hidden />
+              <p>Select a race from the list.</p>
             </div>
           )}
         </main>

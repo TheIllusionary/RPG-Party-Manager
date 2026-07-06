@@ -138,6 +138,7 @@ export interface IActiveAttackState {
 
 /** Props passed from GameApp into the battle module shell. */
 export interface IPlayerManagerShellProps {
+  campaignId?: string;
   data: IPlayer[];
   updateData: (players: IPlayer[]) => void;
   equipment: IEquipment;
@@ -158,6 +159,7 @@ export interface IPlayerManagerShellProps {
   compendiumClasses?: import('../services/compendium/fiveETools/types').MasterClass[];
   compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
   compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
+  bestiaryFavorites?: string[];
 }
 
 export interface IUsePartyStateParams {
@@ -452,6 +454,7 @@ export interface IEnemyCardProps {
   updateLibrary: (library: ILibrary) => void;
   buffsDatabase: IBuff[];
   compendiumMonsters?: import('.').IMonster[];
+  bestiaryFavorites?: string[];
 }
 
 export interface IPartyXpModalProps {

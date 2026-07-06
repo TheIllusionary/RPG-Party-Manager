@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DAMAGE_TYPES } from '../utils/constants';
 import {
@@ -15,6 +15,9 @@ import QuickActionBar from './QuickActionBar';
 import ActorModifierBadges from './ActorModifierBadges';
 import SpellSlotsBar from './SpellSlotsBar';
 import { getActiveTraits } from '../utils/traitUtils';
+import PendingChoices from './PendingChoices';
+import { applyRaceChoicesToPlayer } from '../../../shared/utils/raceParser';
+import type { MasterRace, MasterSubrace } from '../../../services/compendium/fiveETools/types';
 
 export default function PlayerCard({
   player,
@@ -186,56 +189,139 @@ export default function PlayerCard({
                                                         )}
                                                     </p>
                                                     <div className="player-subtitle">
-                                                        <select
-                                                            className="input inline-input class-input class-dropdown"
-                                                            value={player.subclassId || ''}
-                                                            onChange={e => updatePlayer(player.id, 'subclassId', e.target.value || null)}
-                                                            title="Subclasse principal"
-                                                        >
-                                                            <option value="">Subclasse</option>
-                                                            {(compendiumSubclasses || [])
-                                                                .filter(sub => !player.classType || sub.classId === player.classType)
-                                                                .map((sub, i) => (
-                                                                <option key={`${sub.entityKey}-${i}`} value={sub.entityKey}>{sub.name}{sub.source !== 'PHB' ? ` [${sub.source}]` : ''}</option>
+                                                        <input
+                                                            className="input inline-input class-input"
+                                                            list={`races-list-${player.id}`}
+                                                            placeholder="Race"
+                                                            title="Race"
+                                                            value={compendiumRaces?.find(r => r.entityKey === player.race)?.name || player.race || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const match = compendiumRaces?.find(r => r.name === val);
+                                                                updatePlayer(player.id, 'race', match ? match.entityKey : val);
+                                                            }}
+                                                        />
+                                                        <datalist id={`races-list-${player.id}`}>
+                                                            {(compendiumRaces || []).slice().sort((a,b) => a.name.localeCompare(b.name)).map(race => (
+                                                                <option key={race.id} value={race.name} />
                                                             ))}
-                                                        </select>
-                                                        <select
-                                                            className="input inline-input class-input class-dropdown"
-                                                            value={player.optionalSubclassId || ''}
-                                                            onChange={e => updatePlayer(player.id, 'optionalSubclassId', e.target.value || null)}
-                                                            title="Subclasse opcional (segunda)"
-                                                        >
-                                                            <option value="">+ Opcional</option>
+                                                        </datalist>
+
+                                                        {/* Subrace Dropdown — shown when the selected race has subraces */}
+                                                        {((): React.ReactNode => {
+                                                          const selectedRace = (compendiumRaces ?? []).find(r => r.entityKey === player.race) as MasterRace | undefined;
+                                                          if (!selectedRace?.subraces?.length) return null;
+                                                          return (
+                                                            <select
+                                                              className="input inline-input class-input"
+                                                              value={player.subraceId || ''}
+                                                              title="Subrace"
+                                                              onChange={e => {
+                                                                const val = e.target.value || null;
+                                                                updatePlayer(player.id, 'subraceId' as keyof IPlayer, val);
+                                                              }}
+                                                            >
+                                                              <option value="">— Subrace —</option>
+                                                              {selectedRace.subraces.map(sr => (
+                                                                <option key={sr.entityKey} value={sr.entityKey}>{sr.name}</option>
+                                                              ))}
+                                                            </select>
+                                                          );
+                                                        })()}
+
+                                                        {/* PendingChoices — shown when race/subrace has unresolved choices */}
+                                                        {((): React.ReactNode => {
+                                                          const selectedRace = (compendiumRaces ?? []).find(r => r.entityKey === player.race) as MasterRace | undefined;
+                                                          const selectedSubrace = selectedRace?.subraces?.find(sr => sr.entityKey === player.subraceId);
+                                                          const allChoices = [
+                                                            ...(selectedRace?.abilityChoices ?? []),
+                                                            ...(selectedRace?.skillChoices ?? []),
+                                                            ...(selectedRace?.languageChoices ?? []),
+                                                            ...(selectedSubrace?.abilityChoices ?? []),
+                                                            ...(selectedSubrace?.skillChoices ?? []),
+                                                            ...(selectedSubrace?.languageChoices ?? []),
+                                                          ];
+                                                          if (allChoices.length === 0) return null;
+                                                          const currentSelections = [
+                                                            ...(player.proficiencyChoices ?? []),
+                                                            ...Object.keys(player.asiChoices ?? {}),
+                                                          ];
+                                                          return (
+                                                            <PendingChoices
+                                                              choices={allChoices}
+                                                              currentSelections={currentSelections}
+                                                              onCommit={selections => {
+                                                                const skillOptions = new Set(allChoices.filter(c => c.type === 'skill').flatMap(c => c.options));
+                                                                const profChoices = selections.filter(s => skillOptions.has(s));
+                                                                const asiChoices: Record<string, number> = {};
+                                                                selections.filter(s => !skillOptions.has(s)).forEach(stat => { asiChoices[stat] = 1; });
+                                                                const diff = applyRaceChoicesToPlayer(player, selectedRace ?? null, selectedSubrace ?? null, asiChoices, profChoices);
+                                                                for (const [field, value] of Object.entries(diff)) {
+                                                                  updatePlayer(player.id, field as keyof IPlayer, value);
+                                                                }
+                                                              }}
+                                                            />
+                                                          );
+                                                        })()}
+
+                                                        <input
+                                                            className="input inline-input class-input"
+                                                            list={`classes-list-${player.id}`}
+                                                            placeholder="Class"
+                                                            title="Class"
+                                                            value={compendiumClasses?.find(c => c.entityKey === player.classType)?.name || (player.classType === 'Default' ? '' : player.classType) || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const match = compendiumClasses?.find(c => c.name === val);
+                                                                updatePlayer(player.id, 'classType', match ? match.entityKey : (val || 'Default'));
+                                                            }}
+                                                        />
+                                                        <datalist id={`classes-list-${player.id}`}>
+                                                            <option value="Default" />
+                                                            {(compendiumClasses || []).slice().sort((a,b) => a.name.localeCompare(b.name)).map(cls => (
+                                                                <option key={cls.id} value={cls.name} />
+                                                            ))}
+                                                        </datalist>
+
+                                                        <input
+                                                            className="input inline-input class-input"
+                                                            list={`subclasses-list-${player.id}`}
+                                                            placeholder="Subclass"
+                                                            title="Subclass"
+                                                            value={compendiumSubclasses?.find(s => s.entityKey === player.subclassId)?.name || player.subclassId || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const match = compendiumSubclasses?.find(s => s.name === val);
+                                                                updatePlayer(player.id, 'subclassId', match ? match.entityKey : (val || null));
+                                                            }}
+                                                        />
+                                                        <datalist id={`subclasses-list-${player.id}`}>
+                                                            {(compendiumSubclasses || [])
+                                                                .filter(sub => !player.classType || player.classType === 'Default' || sub.classId === player.classType)
+                                                                .map((sub, i) => (
+                                                                <option key={`${sub.entityKey}-${i}`} value={sub.name} />
+                                                            ))}
+                                                        </datalist>
+
+                                                        <input
+                                                            className="input inline-input class-input"
+                                                            list={`optional-subclasses-list-${player.id}`}
+                                                            placeholder="+ Optional"
+                                                            title="+ Optional Subclass"
+                                                            value={compendiumSubclasses?.find(s => s.entityKey === player.optionalSubclassId)?.name || player.optionalSubclassId || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const match = compendiumSubclasses?.find(s => s.name === val);
+                                                                updatePlayer(player.id, 'optionalSubclassId', match ? match.entityKey : (val || null));
+                                                            }}
+                                                        />
+                                                        <datalist id={`optional-subclasses-list-${player.id}`}>
                                                             {(compendiumSubclasses || [])
                                                                 .filter(sub => sub.entityKey !== player.subclassId)
                                                                 .map((sub, i) => (
-                                                                <option key={`${sub.entityKey}-${i}`} value={sub.entityKey}>{sub.name}</option>
+                                                                <option key={`${sub.entityKey}-${i}`} value={sub.name} />
                                                             ))}
-                                                        </select>
-                                                        <select
-                                                            className="input inline-input class-input class-dropdown"
-                                                            value={player.classType || 'Default'}
-                                                            onChange={e => updatePlayer(player.id, 'classType', e.target.value)}
-                                                        >
-                                                            <option value="Default">Default</option>
-                                                            {(compendiumClasses || [])
-                                                                .slice().sort((a,b) => a.name.localeCompare(b.name))
-                                                                .map(cls => (
-                                                                <option key={cls.id} value={cls.entityKey}>{cls.name}{cls.source !== 'PHB' ? ` [${cls.source}]` : ''}</option>
-                                                            ))}
-                                                        </select>
-                                                        <select
-                                                            className="input inline-input class-input class-dropdown"
-                                                            value={player.race || ''}
-                                                            onChange={e => updatePlayer(player.id, 'race', e.target.value)}
-                                                        >
-                                                            <option value="">Race</option>
-                                                            {(compendiumRaces || [])
-                                                                .slice().sort((a,b) => a.name.localeCompare(b.name))
-                                                                .map(race => (
-                                                                <option key={race.id} value={race.entityKey}>{race.name}{race.source !== 'PHB' ? ` [${race.source}]` : ''}</option>
-                                                            ))}
-                                                        </select>
+                                                        </datalist>
 
                                                     </div>
                                                 </div>

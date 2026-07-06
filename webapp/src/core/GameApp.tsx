@@ -10,8 +10,10 @@ import SubclassManager from '../features/campaign/SubclassManager';
 import CampaignRulesPanel from '../features/campaign/CampaignRulesPanel';
 import CompendiumView from '../features/compendium/CompendiumView';
 import Notebook from '../features/campaign/Notebook';
-import { mergeCampaignData, toApiPayload } from '../data/defaultData';
-import { getCampaignData, updateCampaignData } from '../services/campaignBridge';
+import { mergeCampaignData } from '../data/defaultData';
+import { useLiveQuery } from 'dexie-react-hooks';
+import db from '../services/db';
+import { SyncService } from '../services/syncService';
 import { getSrdCatalog } from '../services/srdBridge';
 import { mergeSubclassesById } from '../shared/utils/subclassMergeUtils';
 import { useCompendiumClasses } from '../shared/hooks/useCompendiumClasses';
@@ -23,6 +25,7 @@ import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import type { IAppData, IEnemy } from '../types';
 import type { IMinimizedMap } from '../types/battle';
 import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppDataFn } from '../types/app';
+import { setLastCampaignId } from '../services/api';
 
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -31,168 +34,146 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
   const { subclasses: compendiumSubclasses } = useCompendiumSubclasses();
   const { races: compendiumRaces } = useCompendiumRaces();
 
-  const [config, setConfig] = useState<IStoredAppConfig>(() => {
-    const saved = localStorage.getItem('partyManagerConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          theme: parsed.theme || 'dark',
-          fullscreenOnStartup: parsed.fullscreenOnStartup ?? false,
-          startupView: parsed.startupView || 'party-minimized',
-          uiScale: parsed.uiScale || '100%',
-          defaultRollMode: parsed.defaultRollMode || 'manual',
-        };
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return {
-      theme: 'dark',
-      fullscreenOnStartup: false,
-      startupView: 'party-minimized',
-      uiScale: '100%',
-      defaultRollMode: 'manual',
-    };
+  const [config, setConfig] = useState<IStoredAppConfig>({
+    theme: 'dark',
+    fullscreenOnStartup: false,
+    startupView: 'party-minimized',
+    uiScale: '100%',
+    defaultRollMode: 'manual',
   });
 
-  const [activeTab, setActiveTab] = useState<AppTab>(() => {
-    const savedConfig = localStorage.getItem('partyManagerConfig');
-    let startupView = 'party-minimized';
-    if (savedConfig) {
-      try {
-        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
-      } catch {
-        /* ignore */
-      }
-    }
-    if (startupView === 'last') {
-      return (localStorage.getItem('partyManagerLastTab') as AppTab) || 'players';
-    }
-    return 'players';
-  });
-
+  const [activeTab, setActiveTab] = useState<AppTab>('players');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [battleMode, setBattleMode] = useState(false);
+  const [enemies, setEnemies] = useState<IEnemy[]>([]);
+  const [minimizedEnemies, setMinimizedEnemies] = useState<IMinimizedMap>({});
 
-  const [battleMode, setBattleMode] = useState(() => {
-    const savedConfig = localStorage.getItem('partyManagerConfig');
-    let startupView = 'party-minimized';
-    if (savedConfig) {
-      try {
-        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
-      } catch (e) {}
-    }
-    if (startupView === 'last') {
-      return localStorage.getItem('partyManagerBattleMode') === 'true';
-    }
-    return false;
-  });
-  const [enemies, setEnemies] = useState<IEnemy[]>(() => {
-    const saved = localStorage.getItem('partyManagerEnemies');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [minimizedEnemies, setMinimizedEnemies] = useState<IMinimizedMap>(() => {
-    const saved = localStorage.getItem('partyManagerMinimizedEnemies');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const switchTab = (tab: AppTab) => {
-    setActiveTab(tab);
-    localStorage.setItem('partyManagerLastTab', tab);
-    window.scrollTo(0, 0);
-  };
   const [saveMessage, setSaveMessage] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
 
   const [campaignId, setCampaignId] = useState(campaign._id);
-  const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
-  const [data, setData] = useState<IAppData | null>(null);
+  const syncServiceRef = useRef(new SyncService());
+  const [syncing, setSyncing] = useState(false);
 
-  const skipSaveRef = useRef(true);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const campaignIdRef = useRef<string | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
+  // Load configuration and campaign-specific state from Dexie
   useEffect(() => {
-    campaignIdRef.current = campaignId;
-  }, [campaignId]);
-
-  // Load selected campaign data from MongoDB
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCampaign() {
+    async function loadSettings() {
+      setLoadingSettings(true);
       try {
-        setDataLoading(true);
-        setDataError(null);
-        setCampaignId(campaign._id);
+        const [configRecord, settingsRecord] = await Promise.all([
+          db.campaignState.get('global_app_config'),
+          db.campaignState.get(`campaign_${campaign._id}_settings`),
+        ]);
 
-        localStorage.setItem('partyManagerLastCampaignId', campaign._id);
-
-        const remoteData = await getCampaignData(campaign._id);
-        if (cancelled) return;
-
-        skipSaveRef.current = true;
-        setData(mergeCampaignData(remoteData));
-      } catch (err) {
-        console.error('Failed to load campaign:', err);
-        if (!cancelled) {
-          setDataError(err instanceof Error ? err.message : 'Failed to connect to API');
+        if (configRecord?.data) {
+          setConfig(configRecord.data);
         }
+
+        if (settingsRecord?.data) {
+          const sd = settingsRecord.data;
+          if (sd.activeTab) setActiveTab(sd.activeTab);
+          if (sd.battleMode !== undefined) setBattleMode(sd.battleMode);
+          if (sd.enemies) setEnemies(sd.enemies);
+          if (sd.minimizedEnemies) setMinimizedEnemies(sd.minimizedEnemies);
+        }
+      } catch (err) {
+        console.error('Failed to load campaign settings from Dexie:', err);
       } finally {
-        if (!cancelled) setDataLoading(false);
+        setLoadingSettings(false);
       }
     }
 
-    loadCampaign();
-    return () => { cancelled = true; };
+    loadSettings();
   }, [campaign._id]);
 
-  // Debounced auto-save to MongoDB (replaces localStorage for partyManagerData)
-  const persistCampaignData = useCallback(async (payload: IAppData) => {
-    const id = campaignIdRef.current;
-    if (!id) return;
-    await updateCampaignData(id, toApiPayload(payload));
-  }, []);
+  // Save global configuration when modified
+  useEffect(() => {
+    if (loadingSettings) return;
+    db.campaignState.put({
+      id: 'global_app_config',
+      campaignId: 'global',
+      type: 'config',
+      data: config,
+      updatedAt: Date.now(),
+    }).catch((err) => console.error('Failed to save global app config:', err));
+  }, [config, loadingSettings]);
+
+  // Save campaign-specific settings when updated
+  useEffect(() => {
+    if (loadingSettings) return;
+    db.campaignState.put({
+      id: `campaign_${campaignId}_settings`,
+      campaignId: campaignId,
+      type: 'config',
+      data: {
+        activeTab,
+        battleMode,
+        enemies,
+        minimizedEnemies,
+      },
+      updatedAt: Date.now(),
+    }).catch((err) => console.error('Failed to save campaign settings:', err));
+  }, [campaignId, activeTab, battleMode, enemies, minimizedEnemies, loadingSettings]);
+
+  const switchTab = (tab: AppTab) => {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  };
 
   useEffect(() => {
-    if (!campaignId || !data) return;
+    setCampaignId(campaign._id);
+    setLastCampaignId(campaign._id);
+  }, [campaign._id]);
 
-    if (skipSaveRef.current) {
-      skipSaveRef.current = false;
-      return;
-    }
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-
-    saveTimerRef.current = setTimeout(() => {
-      persistCampaignData(data).catch((err) => {
-        console.error('Auto-save failed:', err);
-        setSaveMessage('❌ Save failed');
-        setTimeout(() => setSaveMessage(''), 2500);
-      });
-    }, SAVE_DEBOUNCE_MS);
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  // Periodic Background Sync
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    const runSync = async () => {
+      setSyncing(true);
+      try {
+        await syncServiceRef.current.sync();
+      } catch (e) {
+        console.error('Background sync failed', e);
+      } finally {
+        setSyncing(false);
+      }
     };
-  }, [data, campaignId, persistCampaignData]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerBattleMode', String(battleMode));
-  }, [battleMode]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerEnemies', JSON.stringify(enemies));
-  }, [enemies]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerMinimizedEnemies', JSON.stringify(minimizedEnemies));
-  }, [minimizedEnemies]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerConfig', JSON.stringify(config));
     
+    runSync(); // Immediate hydration/sync on mount
+    interval = setInterval(runSync, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [campaignId]);
+
+  const dbPlayers = useLiveQuery(() => db.players.where({ campaignId }).and(p => !p.isDeleted).toArray(), [campaignId]);
+  const dbLibrary = useLiveQuery(() => db.library.where({ campaignId }).and(m => !m.isDeleted).toArray(), [campaignId]);
+  const dbBuffs = useLiveQuery(() => db.buffs.where({ campaignId }).and(b => !b.isDeleted).toArray(), [campaignId]);
+  const dbSubclasses = useLiveQuery(() => db.subclasses.where({ campaignId }).and(s => !s.isDeleted).toArray(), [campaignId]);
+  const dbItems = useLiveQuery(() => db.items.where({ campaignId }).and(i => !i.isDeleted).toArray(), [campaignId]);
+  const dbCampaignState = useLiveQuery(() => db.campaignState.where({ campaignId }).and(s => !s.isDeleted).toArray(), [campaignId]);
+
+  const dataLoading = dbPlayers === undefined || dbLibrary === undefined || dbCampaignState === undefined;
+
+  const data: IAppData | null = dataLoading ? null : mergeCampaignData({
+    players: dbPlayers || [],
+    library: dbLibrary || [],
+    buffsDatabase: dbBuffs || [],
+    subclasses: dbSubclasses?.filter(s => !s.id.startsWith('custom_')) || [],
+    customSubclasses: dbSubclasses?.filter(s => s.id.startsWith('custom_')) || [],
+    customItems: dbItems || [],
+    equipment: dbCampaignState?.find(s => s.type === 'equipment')?.data,
+    notebook: dbCampaignState?.find(s => s.type === 'notebook')?.data,
+    training: dbCampaignState?.find(s => s.type === 'training')?.data,
+    chaos: dbCampaignState?.find(s => s.type === 'chaos')?.data,
+    logicBlocks: dbCampaignState?.find(s => s.type === 'logicBlocks')?.data,
+    bestiaryFavorites: dbCampaignState?.find(s => s.type === 'bestiaryFavorites')?.data,
+    bestiaryReview: dbCampaignState?.find(s => s.type === 'bestiaryReview')?.data,
+  });
+
+  useEffect(() => {
     // Apply body theme class
     document.body.classList.remove('theme-bio');
     if (config.theme === 'bio') {
@@ -231,8 +212,64 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
     }));
   };
 
-  const updateData: UpdateAppDataFn = <K extends IAppDataField>(key: K, newData: IAppData[K]) => {
-    setData(prev => (prev ? { ...prev, [key]: newData } : prev));
+  const updateData: UpdateAppDataFn = async <K extends IAppDataField>(key: K, newData: IAppData[K]) => {
+    const cId = campaignId;
+    const timestamp = Date.now();
+    try {
+      if (['players', 'library', 'buffsDatabase', 'subclasses', 'customSubclasses', 'customItems'].includes(key)) {
+        let table: any;
+        if (key === 'players') table = db.players;
+        else if (key === 'library') table = db.library;
+        else if (key === 'buffsDatabase') table = db.buffs;
+        else if (key === 'subclasses' || key === 'customSubclasses') table = db.subclasses;
+        else if (key === 'customItems') table = db.items;
+
+        if (table) {
+          const arr = (newData as any[]) || [];
+          const currentRecords = await table.where({ campaignId: cId }).and((r: any) => !r.isDeleted).toArray();
+          const newRecordsMap = new Map(arr.map(r => [r.id, r]));
+          
+          const toPut = [];
+          for (const item of arr) {
+            toPut.push({ ...item, campaignId: cId, updatedAt: timestamp, isDeleted: false });
+          }
+          for (const curr of currentRecords) {
+            if (key === 'subclasses' && curr.id.startsWith('custom_')) continue;
+            if (key === 'customSubclasses' && !curr.id.startsWith('custom_')) continue;
+
+            if (!newRecordsMap.has(curr.id)) {
+              toPut.push({ ...curr, updatedAt: timestamp, isDeleted: true });
+            }
+          }
+          await table.bulkPut(toPut);
+          return;
+        }
+      }
+
+      // Singletons
+      const typeMapping: Record<string, string> = {
+        equipment: 'equipment',
+        notebook: 'notebook',
+        training: 'training',
+        chaos: 'chaos',
+        logicBlocks: 'logicBlocks',
+        bestiaryFavorites: 'bestiaryFavorites',
+        bestiaryReview: 'bestiaryReview'
+      };
+      const stype = typeMapping[key as string];
+      if (stype) {
+        await db.campaignState.put({
+          id: `${cId}_${stype}`,
+          campaignId: cId,
+          type: stype as any,
+          data: newData,
+          updatedAt: timestamp,
+          isDeleted: false
+        });
+      }
+    } catch (err) {
+      console.error('Dexie update failed', err);
+    }
   };
 
   // ===== EXPORT / IMPORT =====
@@ -261,10 +298,9 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           training: parsed.training || {},
           chaos: parsed.chaos || { customTables: [] },
         });
-        skipSaveRef.current = true;
-        setData(merged);
-        if (campaignId) {
-          await persistCampaignData(merged);
+        
+        for (const [k, v] of Object.entries(merged)) {
+          await updateData(k as IAppDataField, v);
         }
         flashSave('✅ Loaded!');
       } catch {
@@ -453,6 +489,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
       <ErrorBoundary>
       {activeTab === 'players' && (
         <PlayerManager
+          campaignId={campaignId}
           data={data.players}
           updateData={(d) => updateData('players', d)}
           equipment={data.equipment}
@@ -473,6 +510,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           compendiumClasses={compendiumClasses}
           compendiumSubclasses={compendiumSubclasses}
           compendiumRaces={compendiumRaces}
+          bestiaryFavorites={data.bestiaryFavorites || []}
         />
       )}
       {activeTab === 'notebook' && (
@@ -536,6 +574,8 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
           bestiaryReview={data.bestiaryReview || {}}
           updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
+          bestiaryFavorites={data.bestiaryFavorites || []}
+          updateBestiaryFavorites={(favs) => updateData('bestiaryFavorites', favs)}
         />
       )}
       </ErrorBoundary>

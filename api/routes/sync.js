@@ -122,4 +122,86 @@ router.post('/', async (req, res) => {
   }
 });
 
+import SyncRecord from '../models/SyncRecord.js';
+
+// GET /sync/pull?since=... (Dexie Offline-First Pull)
+router.get('/pull', async (req, res) => {
+  try {
+    const since = parseInt(req.query.since || '0', 10);
+    if (isNaN(since)) {
+      return res.status(400).json({ error: 'Invalid since parameter' });
+    }
+
+    const records = await SyncRecord.find({
+      userId: req.user.id,
+      updatedAt: { $gt: since }
+    }).lean();
+
+    const changes = {};
+    for (const rec of records) {
+      if (!changes[rec.tableName]) {
+        changes[rec.tableName] = [];
+      }
+      changes[rec.tableName].push(rec.data);
+    }
+
+    return res.json(changes);
+  } catch (err) {
+    console.error('GET /sync/pull error:', err);
+    return res.status(500).json({ error: 'Failed to pull sync records' });
+  }
+});
+
+// POST /sync/push (Dexie Offline-First Push)
+router.post('/push', async (req, res) => {
+  try {
+    const changes = req.body;
+    if (!changes || typeof changes !== 'object') {
+      return res.status(400).json({ error: 'Invalid payload' });
+    }
+
+    const bulkOps = [];
+
+    for (const [tableName, records] of Object.entries(changes)) {
+      if (!Array.isArray(records)) continue;
+
+      for (const rec of records) {
+        if (!rec.id || !rec.campaignId || !rec.updatedAt) continue;
+
+        bulkOps.push({
+          updateOne: {
+            filter: { 
+              userId: req.user.id, 
+              campaignId: rec.campaignId, 
+              tableName, 
+              id: rec.id 
+            },
+            update: {
+              $set: {
+                userId: req.user.id,
+                campaignId: rec.campaignId,
+                tableName,
+                id: rec.id,
+                updatedAt: rec.updatedAt,
+                isDeleted: !!rec.isDeleted,
+                data: rec
+              }
+            },
+            upsert: true
+          }
+        });
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      await SyncRecord.bulkWrite(bulkOps);
+    }
+
+    return res.json({ success: true, pushed: bulkOps.length });
+  } catch (err) {
+    console.error('POST /sync/push error:', err);
+    return res.status(500).json({ error: 'Failed to push sync records' });
+  }
+});
+
 export default router;
