@@ -1,10 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "./styles/layout.css";
+@import "./styles/design-system.css";
 
 :root {
   /* Color Palette - Premium Dark Mode */
   --bg-base: #0f1115;
   --bg-surface: rgba(255, 255, 255, 0.03);
   --bg-surface-hover: rgba(255, 255, 255, 0.08);
+  --bg-panel: #1a1c23;
+  --bg-modal: #22252e;
   
   --primary: #6366f1; /* Indigo */
   --primary-hover: #4f46e5;
@@ -26,42 +29,34 @@
   --radius-lg: 20px;
   --radius-full: 9999px;
   
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --panel-border: 1px solid #3f3f46;
+  --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.theme-bio {
-  --bg-base: #0e1712; /* Deep forest/sage green base */
-  --bg-surface: rgba(74, 222, 128, 0.03); /* Soft green glass */
-  --bg-surface-hover: rgba(74, 222, 128, 0.08);
+  --bg-base: #0e1712;
+  --bg-surface: #13241b;
+  --bg-surface-hover: #1a3325;
   
-  --primary: #4ade80; /* Cute Mint Leaf Green */
+  --primary: #4ade80;
   --primary-hover: #22c55e;
-  --primary-glow: rgba(74, 222, 128, 0.25);
+  --primary-glow: #1f8a42;
   
-  --secondary: #34d399; /* Emerald Greenery */
+  --secondary: #34d399;
   
   --text-primary: #f8fafc;
-  --text-secondary: #a3b8aa; /* soft sage tinted text */
-  --text-muted: #53755f; /* Mossy text */
+  --text-secondary: #a3b8aa;
+  --text-muted: #53755f;
   
-  --danger: #f43f5e; /* Rose-red danger */
+  --danger: #f43f5e;
   --success: #34d399;
   --warning: #f59e0b;
   
-  --glass-border: 1px solid rgba(74, 222, 128, 0.15);
-  --glass-shadow: 0 8px 32px 0 rgba(11, 29, 17, 0.65);
+  --panel-border: 1px solid #1f3b2c;
+  --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
   
-  background-color: #0e1712;
-  background-image: url('/bio_background.png'),
-                    radial-gradient(circle at 50% 0%, rgba(74, 222, 128, 0.12), transparent 50%),
-                    radial-gradient(circle at 100% 100%, rgba(52, 211, 153, 0.12), transparent 50%),
-                    radial-gradient(circle at 0% 100%, rgba(167, 243, 208, 0.08), transparent 45%);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-color: var(--bg-base);
 }
 
 /* --- Bio Theme Specific Decorative Adjustments --- */
@@ -125,27 +120,29 @@ body.theme-bio .integrated-player-card:hover {
 }
 
 body {
+  margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   background-color: var(--bg-base);
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  /* subtle radial gradient background for depth */
-  background-image: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15), transparent 50%),
-                    radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.05), transparent 40%);
-  background-attachment: fixed;
 }
 
-/* Glassmorphism Panel Utility */
+/* Solid Panel Utility (Replacing Glassmorphism) */
 .glass-panel {
-  background: var(--bg-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color, #3f3f46);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   border-radius: var(--radius-md);
   padding: 1.5rem;
+}
+
+.glass-panel > .btn,
+.glass-panel > button,
+.app-section > .btn,
+.app-section > button {
+  margin-block: 0.125rem;
 }
 
 /* Typography */
@@ -160,9 +157,17 @@ p {
 }
 
 /* Base App Layout */
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+}
+
 #root {
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-height: 100vh;
   padding-bottom: 80px; /* Space for bottom nav */
 }
@@ -173,7 +178,8 @@ p {
   color: var(--text-primary);
   border: var(--glass-border);
   border-radius: var(--radius-sm);
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -220,11 +226,14 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
+  min-height: 2.75rem;
   color: var(--text-primary);
   font-size: 0.95rem;
+  line-height: 1.5;
   outline: none;
   transition: var(--transition);
   width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
@@ -234,6 +243,16 @@ p {
 
 .input::placeholder {
   color: var(--text-muted);
+}
+
+/* Remove arrows from number inputs globally */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
 }
 
 /* Scrollbars */
@@ -262,8 +281,10 @@ p {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.25rem;
   background: rgba(15, 17, 21, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -277,8 +298,12 @@ p {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  width: 48px;
-  height: 48px;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0.5rem;
+  margin: 0.125rem;
   border-radius: 50%;
   display: flex;
   align-items: center;

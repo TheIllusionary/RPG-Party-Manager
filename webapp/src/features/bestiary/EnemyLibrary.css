@@ -412,3 +412,133 @@
     font-size: 0.75rem;
     color: var(--text-muted);
 }
+
+/* Stats & Skills Tab */
+.stats-skills-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.stat-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stat-name {
+    font-weight: 700;
+    min-width: 2.5rem;
+    color: var(--primary);
+}
+
+.stat-score-input {
+    width: 3.5rem;
+    padding: 0.25rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-radius: 4px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.stat-mod-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.stat-save-display {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-save-display-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.stat-group-skills {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-left: 2rem;
+}
+
+.skill-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.skill-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.skill-row.proficient .skill-name {
+    color: var(--primary);
+}
+
+.skill-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.skill-checkbox.proficient {
+    border-color: var(--primary);
+}
+
+.check-mark {
+    font-size: 10px;
+    color: var(--primary);
+}
+
+.skill-mod {
+    font-weight: 600;
+    width: 1.5rem;
+    text-align: right;
+}
+
+.skill-name {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}

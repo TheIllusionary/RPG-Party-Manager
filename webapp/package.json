@@ -11,38 +11,58 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
-    "dev": "vite",
+    "dev": "cross-env VITE_API_URL=https://rpg-party-manager-api.onrender.com vite",
     "dev:local": "cross-env VITE_API_URL=/api vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"npm run dev:local\" \"wait-on tcp:5173 && electron .\"",
+    "build:electron-services": "tsc -p tsconfig.electron.json && node scripts/ensure-electron-lib-cjs.mjs",
+    "electron:dev": "npm run build:electron-services && concurrently -n vite,electron -c green,magenta \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
+    "electron:dev:local": "npm run build:electron-services && concurrently -n vite,electron -c green,magenta \"npm run dev:local\" \"wait-on tcp:5173 && electron .\"",
     "build:api-deps": "npm install --prefix ../api --omit=dev",
-    "electron:build": "npm run build:api-deps && vite build && electron-builder --win --publish never",
+    "electron:build": "npm run build:electron-services && npm run build:api-deps && vite build && electron-builder --win --publish never",
     "build:electron": "npm run electron:build",
-    "electron:publish": "npm run build:api-deps && vite build && electron-builder --win --publish always",
-    "publish:electron": "npm run electron:publish"
+    "electron:publish": "npm run build:electron-services && npm run build:api-deps && vite build && electron-builder --win --publish always",
+    "publish:electron": "npm run electron:publish",
+    "seed:master-compendium": "tsx src/scripts/seedMasterCompendium.ts",
+    "test": "vitest"
   },
   "dependencies": {
+    "@xyflow/react": "^12.11.1",
+    "dexie": "^4.4.4",
+    "dexie-react-hooks": "^4.4.0",
     "electron-updater": "^6.8.3",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
+    "dotenv": "^16.6.1",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
+    "mongodb": "^6.21.0",
+    "tsx": "^4.22.5",
     "typescript": "^6.0.3",
     "vite": "^7.3.1",
+    "vitest": "^4.1.9",
     "wait-on": "^9.0.4"
   },
   "build": {
@@ -56,6 +76,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "electron/lib/**/*",
       "package.json"
     ],
     "extraResources": [

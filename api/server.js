@@ -5,6 +5,7 @@ import { applyCloudDefaults } from './config/applyDefaults.js';
 import { connectDB } from './config/db.js';
 import authRouter from './routes/auth.js';
 import campaignsRouter from './routes/campaigns.js';
+import syncRouter from './routes/sync.js';
 
 dotenv.config({ override: true });
 applyCloudDefaults();
@@ -55,6 +56,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/campaigns', campaignsRouter);
+app.use('/sync', syncRouter);
 
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);

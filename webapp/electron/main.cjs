@@ -3,6 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const { fork } = require('child_process');
 const { autoUpdater } = require('electron-updater');
+const {
+    startDesktopInfrastructure,
+    stopDesktopInfrastructure,
+} = require('./bootstrap/infrastructure.cjs');
+const { registerDashboardIpc } = require('./bootstrap/dashboardIpc.cjs');
+const { registerSyncIpc } = require('./bootstrap/syncIpc.cjs');
+const { registerSrdIpc } = require('./bootstrap/srdIpc.cjs');
+const { registerCompendiumIpc } = require('./bootstrap/compendiumIpc.cjs');
+const { registerCampaignIpc } = require('./bootstrap/campaignIpc.cjs');
 
 let mainWindow = null;
 let vttView = null;
@@ -225,7 +234,18 @@ app.whenReady().then(() => {
         }
     );
 
+    try {
+        startDesktopInfrastructure(app);
+    } catch (err) {
+        console.error('[Infrastructure] Failed to start document store / Player View WebSocket:', err);
+    }
+
     createWindow();
+    registerDashboardIpc(() => mainWindow);
+    registerSyncIpc();
+    registerSrdIpc();
+    registerCompendiumIpc();
+    registerCampaignIpc();
     setupAutoUpdater();
 
     app.on('activate', () => {
@@ -237,6 +257,9 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
     stopApiServer();
+    stopDesktopInfrastructure().catch((err) => {
+        console.error('[Infrastructure] Shutdown error:', err);
+    });
 });
 
 app.on('window-all-closed', () => {

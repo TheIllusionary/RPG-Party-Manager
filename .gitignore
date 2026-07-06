@@ -5,6 +5,7 @@ api/.env
 webapp/node_modules/
 webapp/dist/
 webapp/dist-electron/
+webapp/electron/lib/
 dist/
 dist-electron/
 

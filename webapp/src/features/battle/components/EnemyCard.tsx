@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DAMAGE_TYPES, ALL_CC_EFFECTS } from '../utils/constants';
-import { calculateEffectiveEnemyAC } from '../../../shared/utils/combatUtils';
+import { calculateEffectiveEnemyAC, getSaveModifiers } from '../../../shared/utils/combatUtils';
 import type { IBuff, IEnemy } from '../../../types';
 import type { IEnemyCardProps } from '../../../types/battle';
+import QuickActionBar from './QuickActionBar';
+import ActorModifierBadges from './ActorModifierBadges';
 
 export default function EnemyCard({
   enemy,
@@ -13,6 +16,8 @@ export default function EnemyCard({
   library,
   updateLibrary,
   buffsDatabase,
+  compendiumMonsters = [],
+  bestiaryFavorites = [],
 }: IEnemyCardProps) {
   const [ccDropdownOpen, setCcDropdownOpen] = useState(false);
 
@@ -69,10 +74,16 @@ export default function EnemyCard({
     setEnemySearchText,
     buffInputEnemyId,
     setBuffInputEnemyId,
-    defaultMonsters
+    defaultMonsters,
+    setMinimizedEnemies,
+    calculateEnemyMaxHP,
+    applyQuickDamage,
+    applyQuickHeal,
+    getModifiersFor,
   } = combat;
 
   const { spriteName, spriteState } = getEnemySpriteInfo(enemy);
+  const ruleHpMax = calculateEnemyMaxHP(enemy);
 
   return (
     <div className={`glass-panel integrated-player-card enemy-card ${enemy.hp <= 0 ? 'ko-state' : ''} ${minimizedEnemies[enemy.id] ? 'minimized-card' : ''} ${isTargetSelected('enemy', enemy.id) ? 'target-selected' : ''}`}>
@@ -118,8 +129,15 @@ export default function EnemyCard({
                                                                         autoFocus
                                                                     />
                                                                     <div className="enemy-search-dropdown">
-                                                                        {[...defaultMonsters, ...library]
+                                                                        {[...defaultMonsters, ...compendiumMonsters, ...library]
                                                                             .filter(m => m.name.toLowerCase().includes((enemySearchText || '').toLowerCase()))
+                                                                            .sort((a, b) => {
+                                                                                const aFav = bestiaryFavorites.includes(a.id);
+                                                                                const bFav = bestiaryFavorites.includes(b.id);
+                                                                                if (aFav && !bFav) return -1;
+                                                                                if (!aFav && bFav) return 1;
+                                                                                return 0;
+                                                                            })
                                                                             .slice(0, 10)
                                                                             .map(m => (
                                                                                 <div
@@ -338,6 +356,24 @@ export default function EnemyCard({
                                                 </div>
 
                                                 <div className="card-top-right">
+                                                    <button
+                                                        type="button"
+                                                        className="app-icon-btn"
+                                                        title={minimizedEnemies[enemy.id] ? 'Expandir card' : 'Recolher card'}
+                                                        aria-label={minimizedEnemies[enemy.id] ? 'Expandir card' : 'Recolher card'}
+                                                        onClick={() =>
+                                                            setMinimizedEnemies((prev) => ({
+                                                                ...prev,
+                                                                [enemy.id]: !prev[enemy.id],
+                                                            }))
+                                                        }
+                                                    >
+                                                        {minimizedEnemies[enemy.id] ? (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        )}
+                                                    </button>
                                                     <div
                                                         className={`armor-class-badge enemy-ac-badge ${enemyEditField?.id === enemy.id && enemyEditField?.field === 'ac' ? 'editing' : ''}`}
                                                         title="Click to edit AC"
@@ -376,7 +412,7 @@ export default function EnemyCard({
                                             <div className="stats-grid">
                                                 <div className={`stat-block ${enemy.hp <= 0 ? 'ko-state' : ''}`}>
                                                     <div className="stat-label">
-                                                        <span>{enemy.hp <= -0.5 * enemy.hpMax ? 'OVERKILL' : (enemy.hp <= 0 ? 'DEFEATED' : 'HP')}</span>
+                                                        <span>{enemy.hp <= -0.5 * ruleHpMax ? 'OVERKILL' : (enemy.hp <= 0 ? 'DEFEATED' : 'HP')}</span>
                                                         <span className="stat-value-row">
                                                             {inlineDeltaEdit?.type === 'enemy' && inlineDeltaEdit?.id === enemy.id && inlineDeltaEdit?.field === 'hp' ? (
                                                                 <input
@@ -416,21 +452,40 @@ export default function EnemyCard({
                                                                     className="enemy-hpmax-clickable"
                                                                     title="Click to edit Max HP"
                                                                     onClick={() => startEnemyEdit(enemy, 'hpMax')}
-                                                                >{enemy.hpMax} <span className="edit-pencil">✏️</span></span>
+                                                                >{ruleHpMax} <span className="edit-pencil">✏️</span></span>
                                                             )}
                                                         </span>
                                                     </div>
                                                     <div className="stat-bar-bg">
                                                         <div className="stat-bar-fill" style={{
-                                                            width: `${Math.max(0, (enemy.hp / enemy.hpMax) * 100)}%`,
-                                                            background: enemy.hp <= 0 ? '#dc2626' : calculateColor(enemy.hp, enemy.hpMax)
+                                                            width: `${Math.max(0, (enemy.hp / ruleHpMax) * 100)}%`,
+                                                            background: enemy.hp <= 0 ? '#dc2626' : calculateColor(enemy.hp, ruleHpMax)
                                                         }} />
                                                     </div>
+                                                    {battleMode && (
+                                                        <>
+                                                            <QuickActionBar
+                                                                entityType="enemy"
+                                                                entityId={enemy.id}
+                                                                onDamage={applyQuickDamage}
+                                                                onHeal={applyQuickHeal}
+                                                            />
+                                                            <ActorModifierBadges
+                                                                entityType="enemy"
+                                                                entityId={enemy.id}
+                                                                entity={enemy}
+                                                                conditions={enemy.cc ?? []}
+                                                                modifiers={getModifiersFor(enemy.id)}
+                                                                onAddCondition={(_type, id, effect) => addEnemyCc(id, effect)}
+                                                                onRemoveCondition={(_type, id, effect) => removeEnemyCc(id, effect)}
+                                                            />
+                                                        </>
+                                                    )}
                                                 </div>
 
                                                 {/* Ultimate Bar */}
                                                 {enemy.classType === 'Boss' && (() => {
-                                                    const bossHpStart = enemy.bossHpStart || enemy.hpMax;
+                                                    const bossHpStart = enemy.bossHpStart || ruleHpMax;
                                                     const damageTaken = Math.max(0, bossHpStart - enemy.hp);
                                                     const rawUltPercent = enemy.hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
                                                     const isEnemyLimitReady = rawUltPercent >= 100 && !enemy.limitBreakUsed;
@@ -454,7 +509,7 @@ export default function EnemyCard({
                                                 {/* Action Buttons Row */}
                                                 <div className="stat-controls hp-layout">
                                                     {enemy.classType === 'Boss' && (() => {
-                                                        const bossHpStart = enemy.bossHpStart || enemy.hpMax;
+                                                        const bossHpStart = enemy.bossHpStart || ruleHpMax;
                                                         const damageTaken = Math.max(0, bossHpStart - enemy.hp);
                                                         const rawUltPercent = enemy.hp <= 0 ? 0 : Math.min(100, Math.floor((damageTaken / (bossHpStart * 0.7)) * 100));
                                                         const isEnemyLimitReady = rawUltPercent >= 100 && !enemy.limitBreakUsed;
@@ -513,7 +568,9 @@ export default function EnemyCard({
                                                             const relatedSkills = dndSkills.filter(s => s.stat === stat);
                                                             const isSaveProficient = enemy.saves?.[stat];
                                                             const profBonus = enemy.proficiency !== undefined ? enemy.proficiency : 2;
-                                                            const saveBonus = mod + (isSaveProficient ? profBonus : 0);
+                                                            const baseSave = mod + (isSaveProficient ? profBonus : 0);
+                                                            const saveMods = getSaveModifiers(enemy, '', null, buffsDatabase, stat.substring(0, 3).toLowerCase());
+                                                            const saveBonus = baseSave + saveMods.saveBonus;
                                                             return (
                                                                 <div key={stat} className="stat-group">
                                                                     <div className="stat-group-header">
@@ -532,11 +589,15 @@ export default function EnemyCard({
                                                                             onChange={e => updateEnemy(enemy.id, stat, parseInt(e.target.value) || 0)}
                                                                         />
                                                                         <span className="stat-mod-badge">{formatModifier(mod)}</span>
-                                                                        <div className="stat-save-display">
+                                                                        <div className="stat-save-display" style={{ position: 'relative' }}>
                                                                             <span className="stat-save-display-label">Save</span>
-                                                                            <span style={{ color: isSaveProficient ? 'var(--primary)' : 'var(--text-primary)' }}>
+                                                                            <span style={{ 
+                                                                                color: saveMods.saveBonus > 0 ? 'var(--success)' : saveMods.saveBonus < 0 ? 'var(--danger)' : isSaveProficient ? 'var(--primary)' : 'var(--text-primary)'
+                                                                            }} title={saveMods.saveBonus !== 0 ? `Modifiers applied: ${saveMods.saveBonus > 0 ? '+' : ''}${saveMods.saveBonus}` : ''}>
                                                                                 {formatModifier(saveBonus)}
                                                                             </span>
+                                                                            {saveMods.advantageState === 'advantage' && <span className="adv-indicator" title="Advantage on saving throw">A</span>}
+                                                                            {saveMods.advantageState === 'disadvantage' && <span className="dis-indicator" title="Disadvantage on saving throw">D</span>}
                                                                         </div>
                                                                     </div>
                                                                     {relatedSkills.length > 0 && (
@@ -600,7 +661,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.resistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -632,7 +693,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.immunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -664,7 +725,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.vulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -701,7 +762,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {ALL_CC_EFFECTS.filter(t => !(enemy.ccResistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -732,7 +793,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {ALL_CC_EFFECTS.filter(t => !(enemy.ccImmunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -763,7 +824,7 @@ export default function EnemyCard({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {ALL_CC_EFFECTS.filter(t => !(enemy.ccVulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}

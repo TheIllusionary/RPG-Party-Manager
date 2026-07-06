@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import './EnemyLibrary.css';
-import defaultMonstersJson from './default_monsters.json';
 import { parseAbilities, rollFormula, extractExtraEffects } from '../../shared/utils/combatUtils';
 import type { IBestiaryReviewStatus, IEnemyLibraryProps } from '../../types/bestiary';
 import type { IMonster } from '../../types';
+import { useCompendiumMonsters } from '../../shared/hooks/useCompendiumMonsters';
 
-const defaultMonsters = defaultMonstersJson as IMonster[];
+const defaultMonsters = [] as IMonster[];
 
 const CC_OPTIONS = [
     'Blind 🕶️',
@@ -74,15 +74,44 @@ export default function EnemyLibrary({
     buffsDatabase = [], 
     updateBuffsDatabase = () => {}, 
     bestiaryReview = {}, 
-    updateBestiaryReview = () => {} 
+    updateBestiaryReview = () => {},
+    bestiaryFavorites = [],
+    updateBestiaryFavorites = () => {}
 }: IEnemyLibraryProps) {
-    const data = library;
+    const { monsters: compendiumMonsters } = useCompendiumMonsters();
+    const data = [...compendiumMonsters, ...library];
     const updateData = updateLibrary;
 
     const [activeSubTab, setActiveSubTab] = useState('bestiary'); // 'bestiary' | 'buffs' | 'items'
     const [buffSearchTerm, setBuffSearchTerm] = useState('');
     const [editingBuffId, setEditingBuffId] = useState(null);
     const [buffDraft, setBuffDraft] = useState(null);
+    const [creatingMonster, setCreatingMonster] = useState(false);
+    const [creatingNewMonsterId, setCreatingNewMonsterId] = useState<string | null>(null);
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+    React.useEffect(() => {
+        // Self-heal corrupted library
+        const hasDefaults = library.some((e: any) => e.isDefault);
+        const uniqueIds = new Set();
+        let hasDuplicates = false;
+        
+        const cleanedLibrary = library.filter((e: any) => {
+            if (e.isDefault) return false; // strip leaked defaults
+            if (uniqueIds.has(e.id)) {
+                hasDuplicates = true;
+                return false;
+            }
+            uniqueIds.add(e.id);
+            return true;
+        });
+
+        if (hasDefaults || hasDuplicates) {
+            console.warn("Bestiary self-healing: Removed", library.length - cleanedLibrary.length, "corrupted/duplicated monsters from library.");
+            updateLibrary(cleanedLibrary);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const startCreateBuff = () => {
         setBuffDraft({
@@ -391,6 +420,8 @@ export default function EnemyLibrary({
     };
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState<number | 'All'>(50);
     const [expandedEnemyId, setExpandedEnemyId] = useState(null);
     const [expandedOriginalName, setExpandedOriginalName] = useState('');
     const [detailsMonsterId, setDetailsMonsterId] = useState(null);
@@ -437,32 +468,37 @@ export default function EnemyLibrary({
     };
 
     const addEnemy = () => {
-        const newId = Date.now().toString();
-        const newEnemy = {
-            id: newId,
-            name: 'New Monster',
-            classType: 'Enemy',
-            ac: 12,
-            hpMax: 20,
-            str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
-            proficiency: 2,
-            background: 'CR 1',
-            abilities: '',
-            features: '',
-            skills: {},
-            saves: {},
-            resistances: [],
-            immunities: [],
-            vulnerabilities: [],
-            attacks: []
-        };
-        updateData([...data, newEnemy]);
-        setExpandedEnemyId(newId);
-        setExpandedOriginalName('New Monster');
+        if (creatingMonster) return;
+        setCreatingMonster(true);
+        try {
+            const newId = generateUniqueId();
+            const newEnemy = {
+                id: newId,
+                name: 'New Monster',
+                classType: 'Enemy',
+                ac: 12,
+                hpMax: 20,
+                str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
+                proficiency: 2,
+                background: 'CR 1',
+                abilities: '',
+                features: '',
+                isDefault: false
+            };
+            updateData([...library, newEnemy]);
+            setExpandedEnemyId(newId);
+            setExpandedOriginalName(newEnemy.name);
+            setCreatingNewMonsterId(newId);
+            setTimeout(() => {
+                const el = document.getElementById(`monster-row-${newId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setCreatingMonster(false);
+            }, 300);
+        } catch(e) {}
     };
 
     const updateEnemy = (id, field, value) => {
-        updateData(data.map(e => e.id === id ? { ...e, [field]: value } : e));
+        updateData(library.map(e => e.id === id ? { ...e, [field]: value } : e));
     };
 
     const removeEnemy = (id) => {
@@ -471,7 +507,7 @@ export default function EnemyLibrary({
                 setExpandedEnemyId(null);
                 setExpandedOriginalName('');
             }
-            updateData(data.filter(e => e.id !== id));
+            updateData(library.filter(e => e.id !== id));
         }
     };
 
@@ -484,7 +520,7 @@ export default function EnemyLibrary({
             name: copyName,
             isDefault: false
         };
-        updateData([...data, newEnemy]);
+        updateData([...library, newEnemy]);
         setExpandedEnemyId(newId);
         setExpandedOriginalName(copyName);
     };
@@ -500,10 +536,27 @@ export default function EnemyLibrary({
         getSortName(a).localeCompare(getSortName(b))
     );
 
-    const filteredData = sortedData.filter(e => 
-        e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (e.background || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredData = sortedData.filter(e => {
+        const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              (e.background || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesFav = showFavoritesOnly ? bestiaryFavorites.includes(e.id) : true;
+        return matchesSearch && matchesFav;
+    });
+
+    const totalPages = itemsPerPage === 'All' ? 1 : Math.ceil(filteredData.length / (itemsPerPage as number));
+    let paginatedData = itemsPerPage === 'All' 
+        ? filteredData 
+        : filteredData.slice((currentPage - 1) * (itemsPerPage as number), currentPage * (itemsPerPage as number));
+
+    if (creatingNewMonsterId) {
+        const newMonster = data.find(e => e.id === creatingNewMonsterId);
+        if (newMonster && !paginatedData.some(e => e.id === creatingNewMonsterId)) {
+            paginatedData = [newMonster, ...paginatedData];
+            if (itemsPerPage !== 'All') paginatedData.pop();
+        } else if (newMonster) {
+            paginatedData = [newMonster, ...paginatedData.filter(e => e.id !== creatingNewMonsterId)];
+        }
+    }
 
     const statsList = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
     const dndSkills = [
@@ -520,6 +573,70 @@ export default function EnemyLibrary({
 
     const calculateModifier = (score) => Math.floor(((score || 10) - 10) / 2);
     const formatModifier = (mod) => mod >= 0 ? `+${mod}` : `${mod}`;
+
+    const renderPagination = (isTop = false) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: isTop ? 'none' : '1px solid rgba(255,255,255,0.1)', borderBottom: isTop ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
+            <div>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginRight: '1rem' }}>
+                    Showing {itemsPerPage === 'All' ? filteredData.length : Math.min(filteredData.length, (currentPage - 1) * (itemsPerPage as number) + 1)} to {itemsPerPage === 'All' ? filteredData.length : Math.min(filteredData.length, currentPage * (itemsPerPage as number))} of {filteredData.length} entries
+                </span>
+                <select 
+                    className="input" 
+                    style={{ width: 'auto', padding: '0.2rem 0.5rem', display: 'inline-block' }} 
+                    value={itemsPerPage} 
+                    onChange={(e) => {
+                        setItemsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value));
+                        setCurrentPage(1);
+                    }}
+                >
+                    <option value={10}>10 per page</option>
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value="All">All</option>
+                </select>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                    className="btn btn-secondary small-btn" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                >
+                    Previous
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.9rem' }}>
+                    Page 
+                    <input 
+                        type="number" 
+                        className="input" 
+                        style={{ width: '3.5rem', textAlign: 'center', padding: '0.2rem', margin: '0 0.5rem', appearance: 'textfield', MozAppearance: 'textfield' }} 
+                        value={currentPage} 
+                        onChange={(e) => {
+                            let val = parseInt(e.target.value);
+                            if (e.target.value === '') {
+                                // Allow clearing temporarily while typing, but reset if blurred? 
+                                // Best to just rely on integer parsing, but if blank, we can't update to NaN.
+                                // If blank we'll just ignore for the controlled input (it will revert immediately), 
+                                // but if they highlight and replace, they need to be able to type. 
+                            }
+                            if (!isNaN(val)) {
+                                if (val < 1) val = 1;
+                                if (val > (totalPages || 1)) val = totalPages || 1;
+                                setCurrentPage(val);
+                            }
+                        }}
+                    /> 
+                    of {totalPages || 1}
+                </span>
+                <button 
+                    className="btn btn-secondary small-btn" 
+                    disabled={currentPage >= totalPages || totalPages === 1}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="enemy-library-tab">
@@ -639,20 +756,43 @@ export default function EnemyLibrary({
                 <>
                     <div className="library-header">
                         <h2>Bestiary Database</h2>
-                        <button className="btn btn-primary" onClick={addEnemy}>+ Create Monster</button>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={addEnemy}
+                            disabled={creatingMonster}
+                        >
+                            {creatingMonster ? 'Creating…' : 'Create Monster'}
+                        </button>
                     </div>
 
-                    <div className="library-search-bar">
+                    <div className="library-search-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <input 
                     type="text" 
                     className="input search-input" 
                     placeholder="🔍 Search monsters by name or type/CR..." 
                     value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+                    onChange={e => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                    }}
+                    style={{ flex: 1 }}
                 />
+                <button 
+                    type="button" 
+                    className={`btn ${showFavoritesOnly ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => {
+                        setShowFavoritesOnly(!showFavoritesOnly);
+                        setCurrentPage(1);
+                    }}
+                    style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}
+                >
+                    ⭐ Favorites
+                </button>
             </div>
 
             <div className="library-table-container glass-panel">
+                {renderPagination(true)}
                 <table className="library-table">
                     <thead>
                         <tr>
@@ -666,14 +806,28 @@ export default function EnemyLibrary({
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredData.map(enemy => {
+                        {paginatedData.map((enemy: any) => {
                             const isExpanded = expandedEnemyId === enemy.id;
                             const miniSprite = (enemy.classType || '').toLowerCase() === 'boss' ? 'boss' : 'enemy';
                             return (
                                 <React.Fragment key={enemy.id}>
-                                    <tr className={`monster-row ${isExpanded ? 'expanded-row' : ''}`}>
+                                    <tr id={`monster-row-${enemy.id}`} className={`monster-row ${isExpanded ? 'expanded-row' : ''}`}>
                                         <td className="monster-name-cell">
-                                            <div className="monster-name-avatar">
+                                            <div className="monster-name-avatar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <button
+                                                    type="button"
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: bestiaryFavorites.includes(enemy.id) ? '#fbbf24' : 'rgba(255,255,255,0.3)', padding: 0 }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const newFavs = bestiaryFavorites.includes(enemy.id)
+                                                            ? bestiaryFavorites.filter(id => id !== enemy.id)
+                                                            : [...bestiaryFavorites, enemy.id];
+                                                        updateBestiaryFavorites(newFavs);
+                                                    }}
+                                                    title="Toggle Favorite"
+                                                >
+                                                    {bestiaryFavorites.includes(enemy.id) ? '⭐' : '☆'}
+                                                </button>
                                                 <img src={`./sprites/${miniSprite}.png`} alt={enemy.classType} className="monster-mini-sprite" />
                                                 <strong>{enemy.name}</strong>
                                             </div>
@@ -700,46 +854,57 @@ export default function EnemyLibrary({
                                                 <option value="reviewed">Reviewed</option>
                                             </select>
                                         </td>
-                                        <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                                            <button 
-                                                className="btn btn-secondary small-btn" 
-                                                onClick={() => copyEnemy(enemy)}
-                                                style={{ marginRight: '0.5rem' }}
-                                            >
-                                                📋 Copy
-                                            </button>
-                                            <button 
-                                                className="btn btn-secondary small-btn" 
-                                                onClick={() => toggleDetails(enemy.id)}
-                                                style={{ marginRight: '0.5rem' }}
-                                            >
-                                                {detailsMonsterId === enemy.id ? '▲ Collapse' : '👁️ Details'}
-                                            </button>
-                                            {!enemy.isDefault ? (
-                                                <>
-                                                    <button 
-                                                        className="btn btn-secondary small-btn" 
-                                                        onClick={() => {
-                                                            if (isExpanded) {
-                                                                setExpandedEnemyId(null);
-                                                                setExpandedOriginalName('');
-                                                            } else {
-                                                                setExpandedEnemyId(enemy.id);
-                                                                setExpandedOriginalName(enemy.name);
-                                                                setDetailsMonsterId(null); // Close details drawer
-                                                            }
-                                                        }}
-                                                        style={{ marginRight: '0.5rem' }}
-                                                    >
-                                                        {isExpanded ? '▲ Collapse Edit' : '✏️ Edit'}
-                                                    </button>
-                                                    <button className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
-                                                </>
-                                            ) : (
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '1rem', fontStyle: 'italic' }}>
-                                                    🔒 Default
-                                                </span>
-                                            )}
+                                        <td style={{ paddingRight: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                                                <button 
+                                                    className="btn btn-secondary small-btn" 
+                                                    onClick={() => copyEnemy(enemy)}
+                                                >
+                                                    📋 Copy
+                                                </button>
+                                                <button 
+                                                    className="btn btn-secondary small-btn" 
+                                                    onClick={() => toggleDetails(enemy.id)}
+                                                >
+                                                    {detailsMonsterId === enemy.id ? '▲ Collapse' : '👁️ Details'}
+                                                </button>
+                                                {!enemy.isDefault ? (
+                                                    <>
+                                                        <button 
+                                                            className="btn btn-secondary small-btn" 
+                                                            onClick={() => {
+                                                                if (isExpanded) {
+                                                                    if (enemy.id === creatingNewMonsterId) {
+                                                                        setCreatingNewMonsterId(null);
+                                                                        const futureFiltered = filteredData.filter(e => e.id !== creatingNewMonsterId);
+                                                                        const eNode = data.find(d => d.id === creatingNewMonsterId);
+                                                                        if (eNode) {
+                                                                            const all = [...futureFiltered, eNode].sort((a, b) => getSortName(a).localeCompare(getSortName(b)));
+                                                                            const idx = all.findIndex(d => d.id === creatingNewMonsterId);
+                                                                            if (idx !== -1 && itemsPerPage !== 'All') {
+                                                                                setCurrentPage(Math.floor(idx / (itemsPerPage as number)) + 1);
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    setExpandedEnemyId(null);
+                                                                    setExpandedOriginalName('');
+                                                                } else {
+                                                                    setExpandedEnemyId(enemy.id);
+                                                                    setExpandedOriginalName(enemy.name);
+                                                                    setDetailsMonsterId(null); // Close details drawer
+                                                                }
+                                                            }}
+                                                        >
+                                                            {isExpanded ? '▲ Collapse Edit' : '✏️ Edit'}
+                                                        </button>
+                                                        <button className="delete-btn" onClick={() => removeEnemy(enemy.id)}>×</button>
+                                                    </>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                                        🔒 Default
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                     {isExpanded && (
@@ -1043,7 +1208,7 @@ export default function EnemyLibrary({
                                                                             }}
                                                                             style={{ marginTop: '0.4rem', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                                                                         >
-                                                                            + Add Damage Component
+                                                                            Add Damage Component
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -1078,7 +1243,7 @@ export default function EnemyLibrary({
                                                             }}
                                                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                                         >
-                                                            + Add Structured Attack
+                                                            Add Structured Attack
                                                         </button>
                                                     </div>
                                                     
@@ -1186,7 +1351,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.resistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1218,7 +1383,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.immunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1250,7 +1415,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {DAMAGE_TYPES.filter(t => !(enemy.vulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1288,7 +1453,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccResistances || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1320,7 +1485,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccImmunities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1352,7 +1517,7 @@ export default function EnemyLibrary({
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <option value="">+ Add</option>
+                                                                            <option value="">Add</option>
                                                                             {CC_OPTIONS.filter(t => !(enemy.ccVulnerabilities || []).includes(t)).map(t => (
                                                                                 <option key={t} value={t}>{t}</option>
                                                                             ))}
@@ -1397,7 +1562,7 @@ export default function EnemyLibrary({
                                                                     }}
                                                                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', padding: '0.4rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
                                                                 >
-                                                                    <option value="">+ Add Buff/Debuff...</option>
+                                                                    <option value="">Add Buff/Debuff...</option>
                                                                     {buffsDatabase
                                                                         .filter(b => !(enemy.buffs || []).includes(b.name))
                                                                         .map(b => (
@@ -1675,6 +1840,8 @@ export default function EnemyLibrary({
                         <p>No monsters found matching your search.</p>
                     </div>
                 )}
+                
+                {renderPagination(false)}
             </div>
             </>
             )}

@@ -65,8 +65,18 @@ export interface IPlayer {
   buffStates?: Record<string, boolean>;
   spentBuffs?: Record<string, boolean>;
   subclassId?: string | null;
+  /** Optional second subclass (e.g. D&D multiclass or bonus archetype). */
+  optionalSubclassId?: string | null;
+  /** The selected subrace entity key (e.g. 'phb_race_elf_high-elf'). */
+  subraceId?: string | null;
+  /** ASI choices made by the player (stat abbr → chosen bonus, e.g. { str: 1 }). */
+  asiChoices?: Record<string, number>;
+  /** Skill/tool proficiency choices made at character creation (array of chosen skill names). */
+  proficiencyChoices?: string[];
   resourceTrait?: string;
   recentSpells?: number[];
+  /** D&D 5e spell slots — used when mana rule is disabled. Keys "1"–"9". */
+  spellSlots?: Record<string, { current: number; max: number }>;
   editing?: boolean;
 }
 
@@ -188,6 +198,8 @@ export interface ISubclass {
   vulnerabilities?: string[];
   passiveTraits?: IPassiveTrait[];
   abilities?: IAttack[];
+  source?: 'custom' | string;
+  apiIndex?: string;
 }
 
 export interface IMonster extends IEnemy {
@@ -202,7 +214,14 @@ export type { IApiErrorBody, IAuthResponse, ICampaignListItem, ICampaignDataDto 
 export type { IAuthScreenProps, IAuthSession } from './auth';
 export type { IEquipmentProps, ICharacterEquipmentProps } from './inventory';
 export type { IEnemyLibraryProps, IEncounterBuilderProps } from './bestiary';
-export type { IGameAppProps, AppTab, UpdateAppDataFn, IStoredAppConfig } from './app';
+export type {
+  ISRDCatalog,
+  ISRDSpell,
+  ISRDEquipmentItem,
+  ISRDPersistBatch,
+  SRDImportProgress,
+  SRDImportPhase,
+} from './srd';
 
 export interface IAppData {
   players: IPlayer[];
@@ -216,6 +235,13 @@ export interface IAppData {
   buffsDatabase: IBuff[];
   subclasses: ISubclass[];
   customSubclasses?: ISubclass[];
+  customItems?: IInventoryItem[];
+  /** Legacy SRD reference data (spells, equipment). */
+  srdCatalog?: import('./srd').ISRDCatalog;
+  /** Homebrew logic blocks — toggled per campaign; edited in DM Dashboard. */
+  logicBlocks?: import('./domain').LogicBlock[];
+  /** Array of favorite monster IDs */
+  bestiaryFavorites?: string[];
 }
 
 export interface IAppConfig {
@@ -237,6 +263,61 @@ export interface IUser {
   id: string;
   username: string;
 }
+
+export type {
+  JsonPrimitive,
+  JsonValue,
+  JsonObject,
+  JsonArray,
+  DocumentId,
+  IsoTimestamp,
+  SchemaVersion,
+  HomebrewRules,
+  CustomAttributes,
+  DocumentMeta,
+  Actor,
+  ActorKind,
+  ActorVisibility,
+  VisibilityLevel,
+  ActorResourcePool,
+  ActorSpellSlots,
+  ActorResources,
+  ActorEquipment,
+  ActorEquipmentItem,
+  LogicBlock,
+  LogicTrigger,
+  LogicCompareOp,
+  LogicEffectOp,
+  RuleArithmeticOp,
+  RuleExpression,
+  LogicCondition,
+  LogicValueRef,
+  LogicEffect,
+  EncounterState,
+  EncounterCombatantRef,
+  CampaignState,
+} from './domain';
+
+export type {
+  PlayerViewDTO,
+  PlayerViewActorDTO,
+  PlayerViewHpDTO,
+  PlayerViewResourceDTO,
+  PlayerViewSpellSlotsDTO,
+  PlayerViewSnapshotDTO,
+  PlayerViewServerMessage,
+  PlayerViewClientMessage,
+} from './player-view';
+
+export type {
+  SyncTimestamp,
+  ISyncCampaignDocument,
+  ISyncLocalMeta,
+  ISyncPushPayload,
+  ISyncPullResponse,
+  ISyncConflictResponse,
+  ISyncGameData,
+} from './sync';
 
 export type { ILibrary } from './battle';
 export type {

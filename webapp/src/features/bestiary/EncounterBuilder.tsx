@@ -108,7 +108,7 @@ export default function EncounterBuilder({ data, updateData, library }: IEncount
                         onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)}
                     />
 
-                    <button type="button" className="btn btn-primary" onClick={addEnemies}>+ Add</button>
+                    <button type="button" className="btn btn-primary" onClick={addEnemies}>Add</button>
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import defaultMonsters from '../../bestiary/default_monsters.json';
+import db from '../../../services/db';
+const defaultMonsters = [] as any[];
 import { generateUniqueId, ALL_CC_EFFECTS } from '../utils/constants';
 import {
     parseAbilities,
@@ -14,13 +15,25 @@ import {
     calculateEffectiveAC,
     getSaveModifiers,
     calculateEffectiveEnemyAC,
+    calculateEffectiveEnemyStat,
     getCCModifier,
     applyDamageToPlayer,
 } from '../../../shared/utils/combatUtils';
+import {
+  applyEnemyRuleTrigger,
+  applyPlayerRuleTrigger,
+  hpChangeTrigger,
+  hpChangeVariables,
+  mergeEnemyWithRules,
+  mergePlayerWithRules,
+  resolveEnemyResources,
+} from '../../../shared/utils/campaignRulesRuntime';
+import { useRuleEngineCombat } from './useRuleEngineCombat';
 import type { ICombatState, IPartyState, IUseCombatStateParams, IEnemySpriteInfo } from '../../../types/battle';
 import type { IAttack, IEnemy, IMonster, IPlayer, StatAbbr } from '../../../types';
 
 export default function useCombatState({
+    campaignId,
     enemies,
     setEnemies,
     minimizedEnemies,
@@ -33,6 +46,7 @@ export default function useCombatState({
     config,
     configModalOpen,
     equipment,
+    logicBlocks,
     battleNotes: battleNotesProp,
     setBattleNotes: setBattleNotesProp,
 }: IUseCombatStateParams, party: IPartyState): ICombatState {
@@ -48,11 +62,33 @@ export default function useCombatState({
         computePlayerHpDelta,
         computePlayerManaDelta,
         showActionToast,
+        effectiveStat,
         partyXpModalOpen,
         partyLevelModalOpen,
         setMinimizedPlayers,
         minimizedPlayers,
     } = party;
+
+const getPlayerRuleOptions = (player: IPlayer) => ({
+    subclass: getPlayerSubclass(player),
+    getEffectiveStat: effectiveStat,
+});
+
+const calculateEnemyMaxHP = (enemy: IEnemy) =>
+    resolveEnemyResources(enemy, logicBlocks).hpMax;
+
+const ruleEngineCombat = useRuleEngineCombat({
+    players: data,
+    enemies,
+    logicBlocks,
+    calculateMaxHP,
+    calculateMaxMana,
+    calculateEnemyMaxHP,
+    updatePlayers: updateData,
+    setEnemies,
+    showActionToast,
+});
+
 const [inlineDeltaEdit, setInlineDeltaEdit] = useState(null); // { type: 'player'|'enemy', id, field: 'hp'|'mana' }
 const [inlineDeltaValue, setInlineDeltaValue] = useState('');
 
@@ -147,17 +183,23 @@ const executePlayerAttack = () => {
         let dcVal = 0;
 
         if (autoRollEnabled) {
+            const extraEffect = attack.cc === 'custom' ? attack.ccCustom : (attack.cc || extractExtraEffects(attack.description));
             if (isSave) {
                 saveStat = (attack.save || 'Dexterity').toLowerCase();
                 const statKey = saveStat.substring(0, 3);
                 dcVal = parseInt(attack.dc);
-                const statVal = enemy[statKey] !== undefined ? enemy[statKey] : 10;
+
+                const saveMods = getSaveModifiers(enemy, extraEffect, [], buffsDatabase, statKey);
+                const d20Result = rollWithAdvantageState(saveMods.advantageState);
+                d20 = d20Result.roll;
+                d20Rolls = d20Result.rolls;
+
+                const statVal = calculateEffectiveEnemyStat(enemy, statKey);
                 const statMod = Math.floor((statVal - 10) / 2);
                 const isProf = enemy.saves && enemy.saves[statKey];
                 const profBonus = enemy.proficiency !== undefined ? enemy.proficiency : 2;
-                saveBonus = statMod + (isProf ? profBonus : 0);
-                d20 = Math.floor(Math.random() * 20) + 1;
-                d20Rolls = [d20];
+                saveBonus = statMod + (isProf ? profBonus : 0) + saveMods.saveBonus;
+                
                 totalRoll = d20 + saveBonus;
                 resultType = totalRoll >= dcVal ? 'save_success' : 'save_failed';
             } else {
@@ -186,7 +228,28 @@ const executePlayerAttack = () => {
 
         if (shouldApplyDamage) {
             const isCrit = resultType === 'crit';
-            (attack.damage || []).forEach(comp => {
+            const damageComponents = [...(attack.damage || [])];
+
+            if (player.buffs && Array.isArray(buffsDatabase)) {
+                player.buffs.forEach(name => {
+                    const config = buffsDatabase.find(x => x.name === name);
+                    if (config && config.additionalDamage) {
+                        const isToggle = config.type === 'toggle';
+                        const isSpent = player.spentBuffs?.[name] === true;
+                        const isToggledActive = player.buffStates?.[name] !== false;
+                        const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+                        if (isActive) {
+                            const parts = config.additionalDamage.trim().split(' ');
+                            damageComponents.push({
+                                formula: parts[0],
+                                type: parts.slice(1).join(' ') || 'force'
+                            });
+                        }
+                    }
+                });
+            }
+
+            damageComponents.forEach(comp => {
                 const rolled = rollFormula(comp.formula, isCrit);
                 const mult = getEnemyDamageMultiplier(comp.type, enemy);
                 let finalDmg = Math.floor(rolled.total * mult);
@@ -204,7 +267,13 @@ const executePlayerAttack = () => {
         }
 
         const originalHp = enemy.hp;
-        const hpResult = computeEnemyHpDelta(enemy, totalDamageApplied);
+        const hpBase = computeEnemyHpDelta(enemy, totalDamageApplied);
+        const hpResult = totalDamageApplied > 0
+            ? mergeEnemyWithRules(enemy, hpBase, logicBlocks, 'on_damage', {
+                damage: totalDamageApplied,
+                amount: totalDamageApplied,
+            })
+            : hpBase;
         updatedEnemies[enemyIndex] = { ...enemy, ...hpResult };
 
         results.push({
@@ -354,7 +423,26 @@ const executeAttack = () => {
 
         if (shouldApplyDamage) {
             const isCrit = resultType === 'crit';
-            const damageComponents = attack.damage || [];
+            const damageComponents = [...(attack.damage || [])];
+
+            if (enemy.buffs && Array.isArray(buffsDatabase)) {
+                enemy.buffs.forEach(name => {
+                    const config = buffsDatabase.find(x => x.name === name);
+                    if (config && config.additionalDamage) {
+                        const isToggle = config.type === 'toggle';
+                        const isSpent = enemy.spentBuffs?.[name] === true;
+                        const isToggledActive = enemy.buffStates?.[name] !== false;
+                        const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
+                        if (isActive) {
+                            const parts = config.additionalDamage.trim().split(' ');
+                            damageComponents.push({
+                                formula: parts[0],
+                                type: parts.slice(1).join(' ') || 'force'
+                            });
+                        }
+                    }
+                });
+            }
 
             damageComponents.forEach(comp => {
                 const rolled = rollFormula(comp.formula, isCrit);
@@ -395,6 +483,19 @@ const executeAttack = () => {
         const newHpTemp = damageResult.hpTemp;
         const newUlt = damageResult.ultCurrent;
 
+        const rulePatch = totalDamageApplied > 0
+            ? mergePlayerWithRules(
+                player,
+                { hpCurrent: newHp, hpTemp: newHpTemp, ultCurrent: newUlt },
+                logicBlocks,
+                'on_damage',
+                {
+                    ...getPlayerRuleOptions(player),
+                    variables: { damage: totalDamageApplied, amount: totalDamageApplied },
+                },
+            )
+            : { hpCurrent: newHp, hpTemp: newHpTemp, ultCurrent: newUlt };
+
         const resolvedEffect = (resultType === 'save_failed' || resultType === 'hit' || resultType === 'crit') ? extraEffect : null;
 
         let newCc = [...(player.cc || [])];
@@ -422,9 +523,7 @@ const executeAttack = () => {
 
         updatedPlayers[playerIndex] = {
             ...player,
-            hpCurrent: newHp,
-            hpTemp: newHpTemp,
-            ultCurrent: newUlt,
+            ...rulePatch,
             cc: newCc
         };
 
@@ -513,14 +612,15 @@ const triggerEnemyLimitBreak = (id) => {
 // (battleMode is passed as a prop from App)
 
 // VTT integration state
-const [isVttOpen, setIsVttOpen] = useState(() => localStorage.getItem('isVttOpen') === 'true');
+const [isVttOpen, setIsVttOpen] = useState(false);
 const [isVttFullscreen, setIsVttFullscreen] = useState(false);
-const [vttRoomUrl, setVttRoomUrl] = useState(() => localStorage.getItem('vttRoomUrl') || 'https://owlbear.rodeo');
-const [vttInputVal, setVttInputVal] = useState(() => localStorage.getItem('vttRoomUrl') || '');
-const [internalBattleNotes, setInternalBattleNotes] = useState(() => localStorage.getItem('battleNotes') || '');
+const [vttRoomUrl, setVttRoomUrl] = useState('https://owlbear.rodeo');
+const [vttInputVal, setVttInputVal] = useState('https://owlbear.rodeo');
+const [internalBattleNotes, setInternalBattleNotes] = useState('');
 const battleNotes = battleNotesProp !== undefined ? battleNotesProp : internalBattleNotes;
 const setBattleNotes = setBattleNotesProp || setInternalBattleNotes;
 const [vttLoading, setVttLoading] = useState(false);
+const [loadingVtt, setLoadingVtt] = useState(true);
 
 const vttPlaceholderRef = useRef(null);
 const hasLoadedVttUrlRef = useRef(false);
@@ -533,18 +633,38 @@ useEffect(() => {
     return () => window.removeEventListener('click', handleOutsideClick);
 }, []);
 
-// Save persistent VTT and notes state to localStorage
+// Load VTT settings from Dexie
 useEffect(() => {
-    localStorage.setItem('isVttOpen', String(isVttOpen));
-}, [isVttOpen]);
+    async function loadVtt() {
+        if (!campaignId) return;
+        setLoadingVtt(true);
+        try {
+            const record = await db.campaignState.get(`campaign_${campaignId}_vtt`);
+            if (record?.data) {
+                setIsVttOpen(record.data.isVttOpen ?? false);
+                setVttRoomUrl(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
+                setVttInputVal(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
+            }
+        } catch (err) {
+            console.error('Failed to load VTT settings:', err);
+        } finally {
+            setLoadingVtt(false);
+        }
+    }
+    loadVtt();
+}, [campaignId]);
 
+// Save VTT settings to Dexie
 useEffect(() => {
-    localStorage.setItem('vttRoomUrl', vttRoomUrl);
-}, [vttRoomUrl]);
-
-useEffect(() => {
-    localStorage.setItem('battleNotes', battleNotes);
-}, [battleNotes]);
+    if (loadingVtt || !campaignId) return;
+    db.campaignState.put({
+        id: `campaign_${campaignId}_vtt`,
+        campaignId: campaignId,
+        type: 'vttSettings',
+        data: { isVttOpen, vttRoomUrl },
+        updatedAt: Date.now()
+    }).catch(err => console.error('Failed to save VTT settings:', err));
+}, [campaignId, isVttOpen, vttRoomUrl, loadingVtt]);
 
 // Toggle battle layout full-width container class on container element
 useEffect(() => {
@@ -730,7 +850,9 @@ const selectMonster = (enemyId, monster) => {
                 buffs: monster.buffs || [],
                 buffStates: {},
                 spentBuffs: {},
-                attacks: monster.attacks || [],
+                attacks: monster.attacks && monster.attacks.length > 0 
+                    ? monster.attacks 
+                    : (monster.abilities ? parseAbilities(monster.abilities) : []),
                 classType: monster.classType || 'Enemy',
                 editing: false,
                 limitBreakUsed: false
@@ -792,6 +914,13 @@ const computeEnemyHpDelta = (enemy, amount, asTempHp = false) => {
     return { hp, hpTemp, limitBreakUsed };
 };
 
+const computeEnemyHpDeltaWithRules = (enemy: IEnemy, amount: number, asTempHp = false) => {
+    const base = computeEnemyHpDelta(enemy, amount, asTempHp);
+    const trigger = hpChangeTrigger(amount);
+    if (!trigger || asTempHp || amount === 0 || !logicBlocks?.length) return base;
+    return mergeEnemyWithRules(enemy, base, logicBlocks, trigger, hpChangeVariables(amount));
+};
+
 const startInlineDelta = (type, id, field) => {
     setInlineDeltaEdit({ type, id, field });
     setInlineDeltaValue('');
@@ -819,7 +948,7 @@ const commitInlineDelta = () => {
         } else {
             setEnemies(prev => prev.map(e => {
                 if (e.id !== id) return e;
-                return { ...e, ...computeEnemyHpDelta(e, amount) };
+                return { ...e, ...computeEnemyHpDeltaWithRules(e, amount) };
             }));
         }
     } else if (field === 'mana' && type === 'player') {
@@ -849,7 +978,7 @@ const applyBulkHpToTargets = (isHeal) => {
         } else if (type === 'enemy') {
             const idx = nextEnemies.findIndex(e => e.id === id);
             if (idx !== -1) {
-                nextEnemies[idx] = { ...nextEnemies[idx], ...computeEnemyHpDelta(nextEnemies[idx], delta, effectiveTempHp) };
+                nextEnemies[idx] = { ...nextEnemies[idx], ...computeEnemyHpDeltaWithRules(nextEnemies[idx], delta, effectiveTempHp) };
             }
         }
     });
@@ -1080,14 +1209,16 @@ const triggerTurnEffects = () => {
     // 1. Process Players
     data.forEach(player => {
         if (!player.inParty) return;
-        const buffs = getPlayerBuffsWithConfig(player, equipment);
-        let hpCurrent = player.hpCurrent;
-        let hpMax = calculateMaxHP(player);
-        let manaCurrent = player.manaCurrent;
-        let manaMax = calculateMaxMana(player);
-        let tempHp = player.hpTemp || 0;
-        const spentBuffs = { ...(player.spentBuffs || {}) };
-        let hasChanges = false;
+        const turnStart = applyPlayerRuleTrigger(player, logicBlocks, 'on_turn_start', getPlayerRuleOptions(player));
+        const working = { ...player, ...turnStart };
+        const buffs = getPlayerBuffsWithConfig(working, equipment);
+        let hpCurrent = working.hpCurrent;
+        let hpMax = calculateMaxHP(working);
+        let manaCurrent = working.manaCurrent;
+        let manaMax = calculateMaxMana(working);
+        let tempHp = working.hpTemp || 0;
+        const spentBuffs = { ...(working.spentBuffs || {}) };
+        let hasChanges = Object.keys(turnStart).length > 0;
 
         buffs.forEach(buff => {
             const config = buff.config;
@@ -1140,18 +1271,26 @@ const triggerTurnEffects = () => {
         });
 
         if (hasChanges) {
-            changedPlayers[player.id] = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+            const endPatch = applyPlayerRuleTrigger(
+                { ...working, hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs },
+                logicBlocks,
+                'on_turn_end',
+                getPlayerRuleOptions(working),
+            );
+            changedPlayers[player.id] = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs, ...endPatch };
         }
     });
 
     // 2. Process Enemies
     enemies.forEach(enemy => {
-        const buffs = getEnemyBuffsList(enemy);
-        let hpCurrent = enemy.hp;
-        let hpMax = enemy.hpMax;
-        let tempHp = enemy.hpTemp || 0;
-        const spentBuffs = { ...(enemy.spentBuffs || {}) };
-        let hasChanges = false;
+        const turnStart = applyEnemyRuleTrigger(enemy, logicBlocks, 'on_turn_start');
+        const working = { ...enemy, ...turnStart };
+        const buffs = getEnemyBuffsList(working);
+        let hpCurrent = working.hp ?? enemy.hp;
+        let hpMax = calculateEnemyMaxHP(working);
+        let tempHp = working.hpTemp || 0;
+        const spentBuffs = { ...(working.spentBuffs || {}) };
+        let hasChanges = Object.keys(turnStart).length > 0;
 
         buffs.forEach(buff => {
             const config = buff.config;
@@ -1194,7 +1333,12 @@ const triggerTurnEffects = () => {
         });
 
         if (hasChanges) {
-            changedEnemies[enemy.id] = { hp: hpCurrent, hpTemp: tempHp, spentBuffs };
+            const endPatch = applyEnemyRuleTrigger(
+                { ...working, hp: hpCurrent, hpTemp: tempHp, spentBuffs },
+                logicBlocks,
+                'on_turn_end',
+            );
+            changedEnemies[enemy.id] = { hp: hpCurrent, hpTemp: tempHp, spentBuffs, ...endPatch };
         }
     });
 
@@ -1272,7 +1416,9 @@ const triggerTurnEffects = () => {
 
             let msg = '';
             let hpCurrent = entity.hpCurrent !== undefined ? entity.hpCurrent : entity.hp;
-            let hpMax = entity.hpCurrent !== undefined ? calculateMaxHP(entity) : entity.hpMax;
+            let hpMax = entity.hpCurrent !== undefined
+                ? calculateMaxHP(entity)
+                : calculateEnemyMaxHP(entity);
             let manaCurrent = entity.manaCurrent !== undefined ? entity.manaCurrent : 0;
             let manaMax = entity.hpCurrent !== undefined ? calculateMaxMana(entity) : 0;
             let tempHp = entity.hpTemp || 0;
@@ -1311,19 +1457,35 @@ const triggerTurnEffects = () => {
             }
 
             if (isPlayer) {
-                updatePlayer(entity.id, {
-                    hpCurrent,
-                    manaCurrent,
-                    hpTemp: tempHp,
-                    spentBuffs
-                });
+                const basePatch = { hpCurrent, manaCurrent, hpTemp: tempHp, spentBuffs };
+                let finalPatch: Partial<IPlayer> = basePatch;
+                if (config.turnType === 'damageHP') {
+                    finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_damage', {
+                        ...getPlayerRuleOptions(entity),
+                        variables: { damage: amt, amount: amt },
+                    });
+                } else if (config.turnType === 'healHP') {
+                    finalPatch = mergePlayerWithRules(entity, basePatch, logicBlocks, 'on_heal', {
+                        ...getPlayerRuleOptions(entity),
+                        variables: { healed: amt, amount: amt },
+                    });
+                }
+                updatePlayer(entity.id, finalPatch);
             } else {
-                setEnemies(prev => prev.map(e => e.id === entity.id ? {
-                    ...e,
-                    hp: hpCurrent,
-                    hpTemp: tempHp,
-                    spentBuffs
-                } : e));
+                const basePatch = { hp: hpCurrent, hpTemp: tempHp, spentBuffs };
+                let finalPatch = basePatch;
+                if (config.turnType === 'damageHP') {
+                    finalPatch = mergeEnemyWithRules(entity, basePatch, logicBlocks, 'on_damage', {
+                        damage: amt,
+                        amount: amt,
+                    });
+                } else if (config.turnType === 'healHP') {
+                    finalPatch = mergeEnemyWithRules(entity, basePatch, logicBlocks, 'on_heal', {
+                        healed: amt,
+                        amount: amt,
+                    });
+                }
+                setEnemies(prev => prev.map(e => e.id === entity.id ? { ...e, ...finalPatch } : e));
             }
             return;
         }
@@ -1448,6 +1610,7 @@ const triggerTurnEffects = () => {
         selectMonster,
         createAndSelectMonster,
         computeEnemyHpDelta,
+        calculateEnemyMaxHP,
         startInlineDelta,
         cancelInlineDelta,
         commitInlineDelta,
@@ -1465,5 +1628,13 @@ const triggerTurnEffects = () => {
         buffInputEnemyId,
         setBuffInputEnemyId,
         defaultMonsters: defaultMonsters as IMonster[],
+        encounterRules: ruleEngineCombat.encounterRules,
+        turnOrder: ruleEngineCombat.turnOrder,
+        currentTurnIndex: ruleEngineCombat.currentTurnIndex,
+        currentTurnActor: ruleEngineCombat.currentTurnActor,
+        applyQuickDamage: ruleEngineCombat.applyQuickDamage,
+        applyQuickHeal: ruleEngineCombat.applyQuickHeal,
+        getModifiersFor: ruleEngineCombat.getModifiersFor,
+        advanceEncounterTurn: ruleEngineCombat.advanceEncounterTurn,
     } satisfies ICombatState;
 }

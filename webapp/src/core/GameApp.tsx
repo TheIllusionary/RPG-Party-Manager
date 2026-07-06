@@ -7,178 +7,173 @@ import Training from '../features/campaign/Training';
 import Chaos from '../features/campaign/Chaos';
 import EnemyLibrary from '../features/bestiary/EnemyLibrary';
 import SubclassManager from '../features/campaign/SubclassManager';
+import CampaignRulesPanel from '../features/campaign/CampaignRulesPanel';
+import CompendiumView from '../features/compendium/CompendiumView';
 import Notebook from '../features/campaign/Notebook';
-import { mergeCampaignData, toApiPayload } from '../data/defaultData';
-import { getCampaignData, updateCampaignData } from '../services/api';
+import { mergeCampaignData } from '../data/defaultData';
+import { useLiveQuery } from 'dexie-react-hooks';
+import db from '../services/db';
+import { SyncService } from '../services/syncService';
+import { getSrdCatalog } from '../services/srdBridge';
+import { mergeSubclassesById } from '../shared/utils/subclassMergeUtils';
+import { useCompendiumClasses } from '../shared/hooks/useCompendiumClasses';
+import { useCompendiumSubclasses } from '../shared/hooks/useCompendiumSubclasses';
+import { useCompendiumRaces } from '../shared/hooks/useCompendiumRaces';
+import AppNavBar from '../shared/components/AppNavBar';
+import RootLayout from '../shared/components/RootLayout';
+import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import type { IAppData, IEnemy } from '../types';
 import type { IMinimizedMap } from '../types/battle';
 import type { AppTab, IAppDataField, IGameAppProps, IStoredAppConfig, UpdateAppDataFn } from '../types/app';
+import { setLastCampaignId } from '../services/api';
 
 const SAVE_DEBOUNCE_MS = 800;
 
 function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
-  const [config, setConfig] = useState<IStoredAppConfig>(() => {
-    const saved = localStorage.getItem('partyManagerConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          theme: parsed.theme || 'dark',
-          fullscreenOnStartup: parsed.fullscreenOnStartup ?? false,
-          startupView: parsed.startupView || 'party-minimized',
-          uiScale: parsed.uiScale || '100%',
-          defaultRollMode: parsed.defaultRollMode || 'manual',
-        };
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return {
-      theme: 'dark',
-      fullscreenOnStartup: false,
-      startupView: 'party-minimized',
-      uiScale: '100%',
-      defaultRollMode: 'manual',
-    };
+  const { classes: compendiumClasses } = useCompendiumClasses();
+  const { subclasses: compendiumSubclasses } = useCompendiumSubclasses();
+  const { races: compendiumRaces } = useCompendiumRaces();
+
+  const [config, setConfig] = useState<IStoredAppConfig>({
+    theme: 'dark',
+    fullscreenOnStartup: false,
+    startupView: 'party-minimized',
+    uiScale: '100%',
+    defaultRollMode: 'manual',
   });
 
-  const [activeTab, setActiveTab] = useState<AppTab>(() => {
-    const savedConfig = localStorage.getItem('partyManagerConfig');
-    let startupView = 'party-minimized';
-    if (savedConfig) {
-      try {
-        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
-      } catch {
-        /* ignore */
-      }
-    }
-    if (startupView === 'last') {
-      return (localStorage.getItem('partyManagerLastTab') as AppTab) || 'players';
-    }
-    return 'players';
-  });
-
+  const [activeTab, setActiveTab] = useState<AppTab>('players');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [battleMode, setBattleMode] = useState(false);
+  const [enemies, setEnemies] = useState<IEnemy[]>([]);
+  const [minimizedEnemies, setMinimizedEnemies] = useState<IMinimizedMap>({});
 
-  const [battleMode, setBattleMode] = useState(() => {
-    const savedConfig = localStorage.getItem('partyManagerConfig');
-    let startupView = 'party-minimized';
-    if (savedConfig) {
-      try {
-        startupView = JSON.parse(savedConfig).startupView || 'party-minimized';
-      } catch (e) {}
-    }
-    if (startupView === 'last') {
-      return localStorage.getItem('partyManagerBattleMode') === 'true';
-    }
-    return false;
-  });
-  const [enemies, setEnemies] = useState<IEnemy[]>(() => {
-    const saved = localStorage.getItem('partyManagerEnemies');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [minimizedEnemies, setMinimizedEnemies] = useState<IMinimizedMap>(() => {
-    const saved = localStorage.getItem('partyManagerMinimizedEnemies');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const switchTab = (tab: AppTab) => {
-    setActiveTab(tab);
-    localStorage.setItem('partyManagerLastTab', tab);
-    window.scrollTo(0, 0);
-  };
   const [saveMessage, setSaveMessage] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
 
   const [campaignId, setCampaignId] = useState(campaign._id);
-  const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
-  const [data, setData] = useState<IAppData | null>(null);
+  const syncServiceRef = useRef(new SyncService());
+  const [syncing, setSyncing] = useState(false);
 
-  const skipSaveRef = useRef(true);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const campaignIdRef = useRef<string | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
+  // Load configuration and campaign-specific state from Dexie
   useEffect(() => {
-    campaignIdRef.current = campaignId;
-  }, [campaignId]);
-
-  // Load selected campaign data from MongoDB
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCampaign() {
+    async function loadSettings() {
+      setLoadingSettings(true);
       try {
-        setDataLoading(true);
-        setDataError(null);
-        setCampaignId(campaign._id);
+        const [configRecord, settingsRecord] = await Promise.all([
+          db.campaignState.get('global_app_config'),
+          db.campaignState.get(`campaign_${campaign._id}_settings`),
+        ]);
 
-        localStorage.setItem('partyManagerLastCampaignId', campaign._id);
-
-        const remoteData = await getCampaignData(campaign._id);
-        if (cancelled) return;
-
-        skipSaveRef.current = true;
-        setData(mergeCampaignData(remoteData));
-      } catch (err) {
-        console.error('Failed to load campaign:', err);
-        if (!cancelled) {
-          setDataError(err instanceof Error ? err.message : 'Failed to connect to API');
+        if (configRecord?.data) {
+          setConfig(configRecord.data);
         }
+
+        if (settingsRecord?.data) {
+          const sd = settingsRecord.data;
+          if (sd.activeTab) setActiveTab(sd.activeTab);
+          if (sd.battleMode !== undefined) setBattleMode(sd.battleMode);
+          if (sd.enemies) setEnemies(sd.enemies);
+          if (sd.minimizedEnemies) setMinimizedEnemies(sd.minimizedEnemies);
+        }
+      } catch (err) {
+        console.error('Failed to load campaign settings from Dexie:', err);
       } finally {
-        if (!cancelled) setDataLoading(false);
+        setLoadingSettings(false);
       }
     }
 
-    loadCampaign();
-    return () => { cancelled = true; };
+    loadSettings();
   }, [campaign._id]);
 
-  // Debounced auto-save to MongoDB (replaces localStorage for partyManagerData)
-  const persistCampaignData = useCallback(async (payload: IAppData) => {
-    const id = campaignIdRef.current;
-    if (!id) return;
-    await updateCampaignData(id, toApiPayload(payload));
-  }, []);
+  // Save global configuration when modified
+  useEffect(() => {
+    if (loadingSettings) return;
+    db.campaignState.put({
+      id: 'global_app_config',
+      campaignId: 'global',
+      type: 'config',
+      data: config,
+      updatedAt: Date.now(),
+    }).catch((err) => console.error('Failed to save global app config:', err));
+  }, [config, loadingSettings]);
+
+  // Save campaign-specific settings when updated
+  useEffect(() => {
+    if (loadingSettings) return;
+    db.campaignState.put({
+      id: `campaign_${campaignId}_settings`,
+      campaignId: campaignId,
+      type: 'config',
+      data: {
+        activeTab,
+        battleMode,
+        enemies,
+        minimizedEnemies,
+      },
+      updatedAt: Date.now(),
+    }).catch((err) => console.error('Failed to save campaign settings:', err));
+  }, [campaignId, activeTab, battleMode, enemies, minimizedEnemies, loadingSettings]);
+
+  const switchTab = (tab: AppTab) => {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  };
 
   useEffect(() => {
-    if (!campaignId || !data) return;
+    setCampaignId(campaign._id);
+    setLastCampaignId(campaign._id);
+  }, [campaign._id]);
 
-    if (skipSaveRef.current) {
-      skipSaveRef.current = false;
-      return;
-    }
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-
-    saveTimerRef.current = setTimeout(() => {
-      persistCampaignData(data).catch((err) => {
-        console.error('Auto-save failed:', err);
-        setSaveMessage('❌ Save failed');
-        setTimeout(() => setSaveMessage(''), 2500);
-      });
-    }, SAVE_DEBOUNCE_MS);
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  // Periodic Background Sync
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    const runSync = async () => {
+      setSyncing(true);
+      try {
+        await syncServiceRef.current.sync();
+      } catch (e) {
+        console.error('Background sync failed', e);
+      } finally {
+        setSyncing(false);
+      }
     };
-  }, [data, campaignId, persistCampaignData]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerBattleMode', String(battleMode));
-  }, [battleMode]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerEnemies', JSON.stringify(enemies));
-  }, [enemies]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerMinimizedEnemies', JSON.stringify(minimizedEnemies));
-  }, [minimizedEnemies]);
-
-  useEffect(() => {
-    localStorage.setItem('partyManagerConfig', JSON.stringify(config));
     
+    runSync(); // Immediate hydration/sync on mount
+    interval = setInterval(runSync, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [campaignId]);
+
+  const dbPlayers = useLiveQuery(() => db.players.where({ campaignId }).and(p => !p.isDeleted).toArray(), [campaignId]);
+  const dbLibrary = useLiveQuery(() => db.library.where({ campaignId }).and(m => !m.isDeleted).toArray(), [campaignId]);
+  const dbBuffs = useLiveQuery(() => db.buffs.where({ campaignId }).and(b => !b.isDeleted).toArray(), [campaignId]);
+  const dbSubclasses = useLiveQuery(() => db.subclasses.where({ campaignId }).and(s => !s.isDeleted).toArray(), [campaignId]);
+  const dbItems = useLiveQuery(() => db.items.where({ campaignId }).and(i => !i.isDeleted).toArray(), [campaignId]);
+  const dbCampaignState = useLiveQuery(() => db.campaignState.where({ campaignId }).and(s => !s.isDeleted).toArray(), [campaignId]);
+
+  const dataLoading = dbPlayers === undefined || dbLibrary === undefined || dbCampaignState === undefined;
+
+  const data: IAppData | null = dataLoading ? null : mergeCampaignData({
+    players: dbPlayers || [],
+    library: dbLibrary || [],
+    buffsDatabase: dbBuffs || [],
+    subclasses: dbSubclasses?.filter(s => !s.id.startsWith('custom_')) || [],
+    customSubclasses: dbSubclasses?.filter(s => s.id.startsWith('custom_')) || [],
+    customItems: dbItems || [],
+    equipment: dbCampaignState?.find(s => s.type === 'equipment')?.data,
+    notebook: dbCampaignState?.find(s => s.type === 'notebook')?.data,
+    training: dbCampaignState?.find(s => s.type === 'training')?.data,
+    chaos: dbCampaignState?.find(s => s.type === 'chaos')?.data,
+    logicBlocks: dbCampaignState?.find(s => s.type === 'logicBlocks')?.data,
+    bestiaryFavorites: dbCampaignState?.find(s => s.type === 'bestiaryFavorites')?.data,
+    bestiaryReview: dbCampaignState?.find(s => s.type === 'bestiaryReview')?.data,
+  });
+
+  useEffect(() => {
     // Apply body theme class
     document.body.classList.remove('theme-bio');
     if (config.theme === 'bio') {
@@ -217,8 +212,64 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
     }));
   };
 
-  const updateData: UpdateAppDataFn = <K extends IAppDataField>(key: K, newData: IAppData[K]) => {
-    setData(prev => (prev ? { ...prev, [key]: newData } : prev));
+  const updateData: UpdateAppDataFn = async <K extends IAppDataField>(key: K, newData: IAppData[K]) => {
+    const cId = campaignId;
+    const timestamp = Date.now();
+    try {
+      if (['players', 'library', 'buffsDatabase', 'subclasses', 'customSubclasses', 'customItems'].includes(key)) {
+        let table: any;
+        if (key === 'players') table = db.players;
+        else if (key === 'library') table = db.library;
+        else if (key === 'buffsDatabase') table = db.buffs;
+        else if (key === 'subclasses' || key === 'customSubclasses') table = db.subclasses;
+        else if (key === 'customItems') table = db.items;
+
+        if (table) {
+          const arr = (newData as any[]) || [];
+          const currentRecords = await table.where({ campaignId: cId }).and((r: any) => !r.isDeleted).toArray();
+          const newRecordsMap = new Map(arr.map(r => [r.id, r]));
+          
+          const toPut = [];
+          for (const item of arr) {
+            toPut.push({ ...item, campaignId: cId, updatedAt: timestamp, isDeleted: false });
+          }
+          for (const curr of currentRecords) {
+            if (key === 'subclasses' && curr.id.startsWith('custom_')) continue;
+            if (key === 'customSubclasses' && !curr.id.startsWith('custom_')) continue;
+
+            if (!newRecordsMap.has(curr.id)) {
+              toPut.push({ ...curr, updatedAt: timestamp, isDeleted: true });
+            }
+          }
+          await table.bulkPut(toPut);
+          return;
+        }
+      }
+
+      // Singletons
+      const typeMapping: Record<string, string> = {
+        equipment: 'equipment',
+        notebook: 'notebook',
+        training: 'training',
+        chaos: 'chaos',
+        logicBlocks: 'logicBlocks',
+        bestiaryFavorites: 'bestiaryFavorites',
+        bestiaryReview: 'bestiaryReview'
+      };
+      const stype = typeMapping[key as string];
+      if (stype) {
+        await db.campaignState.put({
+          id: `${cId}_${stype}`,
+          campaignId: cId,
+          type: stype as any,
+          data: newData,
+          updatedAt: timestamp,
+          isDeleted: false
+        });
+      }
+    } catch (err) {
+      console.error('Dexie update failed', err);
+    }
   };
 
   // ===== EXPORT / IMPORT =====
@@ -247,10 +298,9 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           training: parsed.training || {},
           chaos: parsed.chaos || { customTables: [] },
         });
-        skipSaveRef.current = true;
-        setData(merged);
-        if (campaignId) {
-          await persistCampaignData(merged);
+        
+        for (const [k, v] of Object.entries(merged)) {
+          await updateData(k as IAppDataField, v);
         }
         flashSave('✅ Loaded!');
       } catch {
@@ -268,110 +318,46 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
 
   if (dataLoading) {
     return (
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Loading campaign...</p>
+      <RootLayout>
+        <div className="centered-placeholder">
+          <div className="glass-panel">
+            <p className="text-secondary">Loading campaign...</p>
+          </div>
         </div>
-      </div>
+      </RootLayout>
     );
   }
 
   if (dataError || !data) {
     return (
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '420px' }}>
-          <p style={{ margin: '0 0 0.5rem', color: 'var(--danger)' }}>Failed to load campaign</p>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{dataError}</p>
-          <p style={{ margin: '1rem 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            <button className="btn" type="button" onClick={onBackToCampaigns} style={{ marginTop: '0.5rem' }}>
+      <RootLayout>
+        <div className="centered-placeholder">
+          <div className="glass-panel">
+            <p className="error-title">Failed to load campaign</p>
+            <p className="text-sm text-secondary">{dataError}</p>
+            <button className="btn btn-spaced" type="button" onClick={onBackToCampaigns}>
               Back to Campaigns
             </button>
-          </p>
+          </div>
         </div>
-      </div>
+      </RootLayout>
     );
   }
 
   return (
-    <>
-      <div
-        className="glass-panel"
-        style={{
-          margin: '0.75rem auto 0',
-          maxWidth: '1200px',
-          padding: '0.6rem 1rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-        }}
-      >
-        <button
-          type="button"
-          className="btn"
-          onClick={onBackToCampaigns}
-          style={{ background: 'transparent', border: 'var(--glass-border)', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-        >
-          ← Campaigns
-        </button>
-        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.95rem' }}>
-          {campaign.name}
-        </span>
-        <span style={{ width: '90px' }} />
-      </div>
-
-      <div className="container">
-        <main>
-          {activeTab === 'players' && (
-            <PlayerManager
-              data={data.players}
-              updateData={(d) => updateData('players', d)}
-              equipment={data.equipment}
-              battleMode={battleMode}
-              setBattleMode={setBattleMode}
-              enemies={enemies}
-              setEnemies={setEnemies}
-              minimizedEnemies={minimizedEnemies}
-              setMinimizedEnemies={setMinimizedEnemies}
-              library={data.library || []}
-              updateLibrary={(l) => updateData('library', l)}
-              buffsDatabase={data.buffsDatabase || []}
-              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
-              subclasses={data.subclasses || []}
-              config={config}
-              configModalOpen={isConfigModalOpen}
-            />
-          )}
-          {activeTab === 'notebook' && (
-            <Notebook
-              notebookData={data.notebook || { pages: [] }}
-              updateNotebookData={(d) => updateData('notebook', d)}
-            />
-          )}
-          {activeTab === 'inventory' && <Equipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
-          {activeTab === 'charequip' && <CharacterEquipment data={data.equipment} updateData={(d) => updateData('equipment', d)} players={data.players} buffsDatabase={data.buffsDatabase || []} updateBuffsDatabase={(b) => updateData('buffsDatabase', b)} />}
-          {activeTab === 'training' && <Training players={data.players} trainingData={data.training} updateTrainingData={(d) => updateData('training', d)} />}
-          {activeTab === 'chaos' && <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />}
-          {activeTab === 'subclasses' && (
-            <SubclassManager
-              subclasses={data.subclasses || []}
-              updateSubclasses={(s) => updateData('subclasses', s)}
-            />
-          )}
-          {activeTab === 'bestiary' && (
-            <EnemyLibrary
-              library={data.library || []}
-              updateLibrary={(l) => updateData('library', l)}
-              buffsDatabase={data.buffsDatabase || []}
-              updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
-              bestiaryReview={data.bestiaryReview || {}}
-              updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
-            />
-          )}
-        </main>
-      </div>
-
-      <nav className="bottom-nav">
+    <RootLayout
+      padForToolbar
+      header={
+        <AppNavBar
+          title={campaign.name}
+          crumbs={[
+            { label: 'Campanhas', onClick: onBackToCampaigns },
+            { label: campaign.name },
+          ]}
+        />
+      }
+      toolbar={
+        <nav className="bottom-nav">
         {/* 1 — Party */}
         <button className={`nav-item ${activeTab === 'players' ? 'active' : ''}`} onClick={() => switchTab('players')} title="Party Roster">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -435,6 +421,24 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </svg>
         </button>
 
+        {/* Rules */}
+        <button className={`nav-item ${activeTab === 'rules' ? 'active' : ''}`} onClick={() => switchTab('rules')} title="Campaign Rules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+            <path d="M12 6h4M12 10h4M12 14h4" />
+            <path d="M8 6h.01M8 10h.01M8 14h.01" />
+          </svg>
+        </button>
+
+        {/* Compendium */}
+        <button className={`nav-item ${activeTab === 'compendium' ? 'active' : ''}`} onClick={() => switchTab('compendium')} title="Compendium">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <path d="M8 7h8M8 11h6" />
+          </svg>
+        </button>
+
         {/* 6 — Database */}
         <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Database">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -479,7 +483,102 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
         )}
 
         <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
-      </nav>
+        </nav>
+      }
+    >
+      <ErrorBoundary>
+      {activeTab === 'players' && (
+        <PlayerManager
+          campaignId={campaignId}
+          data={data.players}
+          updateData={(d) => updateData('players', d)}
+          equipment={data.equipment}
+          battleMode={battleMode}
+          setBattleMode={setBattleMode}
+          enemies={enemies}
+          setEnemies={setEnemies}
+          minimizedEnemies={minimizedEnemies}
+          setMinimizedEnemies={setMinimizedEnemies}
+          library={data.library || []}
+          updateLibrary={(l) => updateData('library', l)}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          subclasses={data.subclasses || []}
+          logicBlocks={data.logicBlocks ?? []}
+          config={config}
+          configModalOpen={isConfigModalOpen}
+          compendiumClasses={compendiumClasses}
+          compendiumSubclasses={compendiumSubclasses}
+          compendiumRaces={compendiumRaces}
+          bestiaryFavorites={data.bestiaryFavorites || []}
+        />
+      )}
+      {activeTab === 'notebook' && (
+        <Notebook
+          notebookData={data.notebook || { pages: [] }}
+          updateNotebookData={(d) => updateData('notebook', d)}
+        />
+      )}
+      {activeTab === 'inventory' && (
+        <Equipment
+          data={data.equipment}
+          updateData={(d) => updateData('equipment', d)}
+          players={data.players}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          customItems={data.customItems || []}
+          updateCustomItems={(items) => updateData('customItems', items)}
+        />
+      )}
+      {activeTab === 'charequip' && (
+        <CharacterEquipment
+          data={data.equipment}
+          updateData={(d) => updateData('equipment', d)}
+          players={data.players}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          customItems={data.customItems || []}
+          updateCustomItems={(items) => updateData('customItems', items)}
+        />
+      )}
+      {activeTab === 'training' && (
+        <Training
+          players={data.players}
+          trainingData={data.training}
+          updateTrainingData={(d) => updateData('training', d)}
+        />
+      )}
+      {activeTab === 'chaos' && (
+        <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />
+      )}
+      {activeTab === 'subclasses' && (
+        <SubclassManager
+          subclasses={data.subclasses || []}
+          updateSubclasses={(s) => updateData('subclasses', s)}
+        />
+      )}
+      {activeTab === 'rules' && (
+        <CampaignRulesPanel
+          logicBlocks={data.logicBlocks ?? []}
+          updateLogicBlocks={(blocks) => updateData('logicBlocks', blocks)}
+        />
+      )}
+      {activeTab === 'compendium' && (
+        <CompendiumView />
+      )}
+      {activeTab === 'bestiary' && (
+        <EnemyLibrary
+          library={data.library || []}
+          updateLibrary={(l) => updateData('library', l)}
+          buffsDatabase={data.buffsDatabase || []}
+          updateBuffsDatabase={(b) => updateData('buffsDatabase', b)}
+          bestiaryReview={data.bestiaryReview || {}}
+          updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
+          bestiaryFavorites={data.bestiaryFavorites || []}
+          updateBestiaryFavorites={(favs) => updateData('bestiaryFavorites', favs)}
+        />
+      )}
+      </ErrorBoundary>
 
       {/* Settings Modal Dialog Overlay */}
       {isConfigModalOpen && (
@@ -595,7 +694,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </div>
         </div>
       )}
-    </>
+    </RootLayout>
   );
 }
 

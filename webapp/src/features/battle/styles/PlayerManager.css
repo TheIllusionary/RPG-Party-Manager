@@ -1,47 +1,64 @@
 .player-manager {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-}
-
-.manager-header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
+    gap: 1.5rem;
+    width: 100%;
 }
 
 .global-party-header {
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 .header-left {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 0.5rem;
+    width: 100%;
 }
 
-.party-xp-controls {
+.manager-header {
     display: flex;
-    gap: 0.5rem;
+    justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    text-align: center;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .manager-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0.5rem;
 }
 
 .roster-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
     transition: var(--transition);
+    width: 100%;
+    align-items: start;
+}
+
+.roster-grid.app-responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1600px; /* Caps at 4 wide columns */
+    margin: 0 auto; /* Centers the grid block itself */
 }
 
 .battle-mode-roster {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 0.75rem;
 }
 
@@ -103,8 +120,9 @@
 
 .player-subtitle {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
@@ -123,7 +141,8 @@
 }
 
 .class-input {
-    width: 120px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .level-input {
@@ -167,7 +186,6 @@
     flex-direction: column;
     gap: 1rem;
     transition: var(--transition);
-    overflow: hidden;
 }
 
 .battle-mode-roster .integrated-player-card {
@@ -320,7 +338,7 @@
 .stats-grid {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.25rem;
 }
 
 .stat-block {
@@ -528,7 +546,8 @@
 }
 
 .small-btn {
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 2.25rem;
     font-size: 0.8rem;
     flex: 1;
 }
@@ -1285,125 +1304,146 @@
     height: 180px;
 }
 
-/* Expand standard index.css container to full width during battle mode */
-.container.battle-mode-layout {
+/* Expand standard layout to full width during battle mode or party roster view */
+.main-content:has(.roster-grid) {
     max-width: 100% !important;
     padding-left: 2rem;
     padding-right: 2rem;
 }
 
-/* ===== MERGED STATS/SKILLS TAB ===== */
-.stats-skills-tab {
+/* ===== COMPACT STATS & PROFICIENCIES ===== */
+.stats-skills-content {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     padding: 0.5rem 0;
 }
 
-.stat-group {
+.compact-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+.compact-stat-box {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.25rem;
     gap: 0.25rem;
 }
 
-.stat-group-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(99, 102, 241, 0.08);
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--primary);
-}
-
-.stat-group-header .stat-name {
+.compact-stat-box .stat-name {
+    font-size: 0.75rem;
     font-weight: 700;
-    font-size: 0.85rem;
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-primary);
-    min-width: 36px;
 }
 
-.stat-group-header .stat-score-input {
-    width: 48px;
+.compact-stat-box .stat-mod-badge {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.compact-stat-box .stat-score-wrapper .stat-score-input {
+    width: 32px;
     text-align: center;
-    padding: 0.25rem;
-    font-size: 0.95rem;
-    font-weight: 700;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
+    font-size: 0.75rem;
+    background: transparent;
+    border: none;
     color: var(--text-primary);
     outline: none;
+    padding: 0;
+}
+
+.compact-stat-box .stat-score-wrapper .stat-score-input:focus {
+    border-bottom: 1px solid var(--primary);
+}
+
+.compact-stat-box .stat-equip-bonus {
+    font-size: 0.65rem;
+}
+
+.compact-proficiencies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.proficiency-chip {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
     transition: var(--transition);
 }
 
-.stat-group-header .stat-score-input:focus {
+.proficiency-chip:hover {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.proficiency-chip.proficient {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
-.stat-group-header .stat-mod-badge {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--primary);
-    background: rgba(99, 102, 241, 0.15);
-    padding: 0.15rem 0.5rem;
-    border-radius: var(--radius-full);
-    min-width: 36px;
-    text-align: center;
+.proficiency-chip.save-chip {
+    background: var(--bg-surface);
+    border-color: var(--border-color);
 }
 
-.stat-group-header .stat-equip-bonus {
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-left: auto;
+.proficiency-chip.save-chip:hover {
+    background: var(--bg-surface-hover);
 }
 
-.stat-group-skills {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding-left: 0.5rem;
+.proficiency-chip.save-chip.proficient {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
 }
 
-.stat-group-skills .skill-row {
-    padding: 0.35rem 0.5rem;
-    margin: 0;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    gap: 0.5rem;
-    border: 1px solid transparent;
+.proficiency-chip.save-chip.proficient:hover {
+    background: rgba(16, 185, 129, 0.2);
 }
 
-.stat-group-skills .skill-row:hover {
-    background: rgba(255, 255, 255, 0.06);
+.proficiency-chip.save-chip.buffed-save {
+    border-color: var(--success);
+    color: var(--success);
 }
 
-.stat-group-skills .skill-row.proficient {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.2);
+.proficiency-chip.save-chip.debuffed-save {
+    border-color: var(--danger);
+    color: var(--danger);
 }
 
-.stat-group-skills .skill-checkbox {
-    width: 16px;
-    height: 16px;
-    border-width: 1.5px;
+.adv-indicator, .dis-indicator {
+    position: absolute;
+    top: -0.375rem;
+    right: -0.375rem;
+    font-size: 0.6rem;
+    font-weight: bold;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    color: white;
 }
 
-.stat-group-skills .skill-bonus {
-    font-size: 0.85rem;
-    width: 28px;
+.adv-indicator {
+    background-color: var(--success);
 }
 
-.stat-group-skills .skill-name {
-    font-size: 0.85rem;
-}
-
-.stat-group-skills .skill-stat-tag {
-    display: none;
+.dis-indicator {
+    background-color: var(--danger);
 }
 
 .stats-skills-features {
@@ -1415,6 +1455,11 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.player-info {
+    flex: 1;
+    min-width: 0; /* Prevent overflow */
 }
 
 .player-sprite-container {
@@ -1747,12 +1792,12 @@
     top: 100%;
     left: 0;
     right: auto;
-    z-index: 1000;
+    z-index: 100;
     margin-top: 0.25rem;
-    background: #111317;
-    border: var(--glass-border);
+    background-color: var(--bg-surface, #1A1A1A);
+    border: 1px solid var(--border-color, #3f3f46);
     border-radius: var(--radius-sm);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);
     max-height: 250px;
     overflow-y: auto;
     width: 160px;
@@ -1848,9 +1893,9 @@
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.3);
     color: var(--text-primary);
-    padding: 0.2rem 0.5rem;
-    height: 32px;
-    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+    font-size: 0.75rem;
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
@@ -2394,4 +2439,237 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
+}
+
+/* ===== TRAITS ACCORDION ===== */
+.traits-accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.traits-category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.traits-category-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.25rem;
+    margin: 0;
+}
+
+.traits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.trait-details {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.trait-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem;
+    color: var(--text-primary);
+    background: rgba(99, 102, 241, 0.05);
+    transition: var(--transition);
+    user-select: none;
+    list-style: none; /* Hide default arrow in modern browsers */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Custom arrow for summary */
+.trait-summary::-webkit-details-marker {
+    display: none; /* Hide default arrow in WebKit */
+}
+
+.trait-summary::after {
+    content: '▼';
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.trait-details[open] .trait-summary::after {
+    transform: rotate(180deg);
+}
+
+.trait-summary:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+}
+
+.trait-content {
+    padding: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== FORM CONTROL FIXES (4px Scale) ===== */
+
+/* 1. Resistances & Damage Mods */
+.damage-mods-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* 8px */
+}
+
+.damage-mod-row {
+    display: flex;
+    align-items: center; /* Center vertically with select */
+    gap: 0.5rem; /* 8px */
+    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem; /* 8px */
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.damage-mod-type-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 130px;
+}
+
+.damage-mod-pills {
+    display: flex;
+    align-items: center; /* Center pills and select */
+    flex-wrap: wrap;
+    gap: 0.5rem; /* 8px */
+    flex: 1;
+}
+
+.damage-mod-pills .damage-pill {
+    margin: 0; /* Remove sub-margins, rely on flex gap */
+}
+
+select.pill-select-add {
+    min-height: 1.5rem !important; /* 24px */
+    height: 1.5rem !important;     /* 24px */
+    padding: 0 0.5rem !important;  /* 0px top/bot, 8px sides */
+    font-size: 0.75rem !important;
+    border-radius: var(--radius-full) !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+    color: var(--text-secondary) !important;
+    line-height: normal !important;
+    cursor: pointer;
+    width: auto !important;
+}
+
+select.pill-select-add:hover {
+    border-color: var(--primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 2. Combat Stats Inputs */
+.combat-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem; /* 16px */
+    align-items: flex-start;
+    padding: 1rem; /* 16px */
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.combat-stats-row.mini-combat-row {
+    padding: 0.5rem; /* 8px */
+    gap: 0.5rem; /* 8px */
+}
+
+.combat-stat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem; /* 4px */
+    flex: 1;
+    min-width: 100px;
+}
+
+.combat-stat-box label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.combat-input,
+.xp-input {
+    min-height: 2rem !important; /* 32px */
+    height: 2rem !important;     /* 32px */
+    padding: 0.25rem 0.5rem !important; /* 4px 8px */
+    font-size: 0.85rem !important;
+    line-height: normal !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+}
+
+.combat-input:focus,
+.xp-input:focus {
+    border-color: var(--primary) !important;
+}
+
+.combat-input.calculated-stat {
+    background: transparent !important;
+    border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    display: flex;
+    align-items: center;
+}
+
+/* Custom Dropdown Menu for CC / Status Effects */
+.player-cc-add-dropdown {
+    position: relative;
+}
+
+.cc-dropdown-menu {
+    position: absolute;
+    z-index: 50;
+    background: var(--bg-surface, #1e1e24);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    max-height: 12rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem;
+    gap: 0.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+.cc-dropdown-item {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+    font-size: 0.75rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.cc-dropdown-item:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cc-dropdown-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

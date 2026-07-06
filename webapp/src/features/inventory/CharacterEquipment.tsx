@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './CharacterEquipment.css';
 import type { ICharacterEquipmentProps, IEditingItemsMap } from '../../types/inventory';
-
+import { parseItemText } from '../../shared/utils/itemParser';
+import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
+import { ItemCombobox } from '../../shared/components/ItemCombobox';
+import { Trash2 } from 'lucide-react';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
     'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'
@@ -89,13 +92,7 @@ const SLOT_POSITIONS = {
     gloves: { left: '27%', top: '38%', anchor: 'left' },
 };
 
-export default function CharacterEquipment({
-  data,
-  updateData,
-  players,
-  buffsDatabase = [],
-  updateBuffsDatabase = () => {},
-}: ICharacterEquipmentProps) {
+export default function CharacterEquipment({ data, updateData, players, buffsDatabase, updateBuffsDatabase, customItems, updateCustomItems }: ICharacterEquipmentProps) {
     const equipped = data?.equipped || {};
     const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
     const [openSlot, setOpenSlot] = useState(null); // slot id currently expanded
@@ -116,8 +113,42 @@ export default function CharacterEquipment({
     const playerEquip = getPlayerEquipment(equipped, selectedPlayerId);
     const wondrousItems = equipped[selectedPlayerId]?.__wondrous__ || [];
 
+    const { items: compendiumItems } = useCompendiumItems();
+    const allCompendiumItems = useMemo(() => {
+        return [...compendiumItems, ...(customItems || [])].filter(i => i && i.name);
+    }, [compendiumItems, customItems]);
+
     const updateDraftField = (field, value) => {
         setSlotDraft(prev => prev ? { ...prev, [field]: value } : null);
+    };
+
+    const handleSlotNameChange = (val: string) => {
+        updateDraftField('name', val);
+        const compendiumMatch = allCompendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        if (compendiumMatch) {
+            const parsed = parseItemText(compendiumMatch.description);
+            setSlotDraft(prev => {
+                if (!prev) return null;
+                const newDraft = { ...prev };
+                if (compendiumMatch.description && !newDraft.description) newDraft.description = compendiumMatch.description;
+                if (compendiumMatch.armorClass) newDraft.acBonus = compendiumMatch.armorClass;
+                if (parsed.acBonus) newDraft.acBonus = parsed.acBonus;
+                
+                const mods = newDraft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.modifiers = { ...mods, ...parsed.modifiers };
+                
+                const setAttrs = newDraft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.setAttributes = { ...setAttrs, ...parsed.attributes };
+                
+                const res = new Set([...(newDraft.resistances || []), ...parsed.resistances]);
+                newDraft.resistances = Array.from(res);
+                
+                const imm = new Set([...(newDraft.immunities || []), ...parsed.immunities]);
+                newDraft.immunities = Array.from(imm);
+                
+                return newDraft;
+            });
+        }
     };
 
     const updateDraftModifier = (stat, value) => {
@@ -235,6 +266,11 @@ export default function CharacterEquipment({
             inventories: newInventories
         });
         
+        if (slotDraft.name && updateCustomItems && !allCompendiumItems.some(i => i.name.toLowerCase() === slotDraft.name.toLowerCase())) {
+            const newCustomItem = { ...slotDraft, id: crypto.randomUUID() };
+            updateCustomItems([...(customItems || []), newCustomItem]);
+        }
+
         setOpenSlot(null);
         setSlotDraft(null);
     };
@@ -310,6 +346,34 @@ export default function CharacterEquipment({
         setEditingWondrous(prev => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }));
     };
 
+    const handleWondrousNameChange = (itemId: string, val: string) => {
+        updateWondrousDraft(itemId, 'name', val);
+        const compendiumMatch = allCompendiumItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+        if (compendiumMatch) {
+            const parsed = parseItemText(compendiumMatch.description);
+            setEditingWondrous(prev => {
+                const newDraft = { ...prev[itemId] };
+                if (compendiumMatch.description && !newDraft.description) newDraft.description = compendiumMatch.description;
+                if (compendiumMatch.armorClass) newDraft.acBonus = compendiumMatch.armorClass;
+                if (parsed.acBonus) newDraft.acBonus = parsed.acBonus;
+                
+                const mods = newDraft.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.modifiers = { ...mods, ...parsed.modifiers };
+                
+                const setAttrs = newDraft.setAttributes || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                newDraft.setAttributes = { ...setAttrs, ...parsed.attributes };
+                
+                const res = new Set([...(newDraft.resistances || []), ...parsed.resistances]);
+                newDraft.resistances = Array.from(res);
+                
+                const imm = new Set([...(newDraft.immunities || []), ...parsed.immunities]);
+                newDraft.immunities = Array.from(imm);
+                
+                return { ...prev, [itemId]: newDraft };
+            });
+        }
+    };
+
     const updateWondrousMod = (itemId, stat, value) => {
         setEditingWondrous(prev => ({
             ...prev,
@@ -380,6 +444,11 @@ export default function CharacterEquipment({
             saveWondrousItems(updated);
         }
         
+        if (draft.name && updateCustomItems && !allCompendiumItems.some(i => i.name.toLowerCase() === draft.name.toLowerCase())) {
+            const newCustomItem = { ...draft, id: crypto.randomUUID() };
+            updateCustomItems([...(customItems || []), newCustomItem]);
+        }
+
         setEditingWondrous(prev => { const { [itemId]: _, ...rest } = prev; return rest; });
     };
 
@@ -495,6 +564,11 @@ export default function CharacterEquipment({
 
     return (
         <div className="char-equip-tab">
+            <datalist id="compendium-items-list">
+                {compendiumItems.map((item, idx) => (
+                    <option key={idx} value={item.name} />
+                ))}
+            </datalist>
             {/* Header + player selector */}
             <div className="char-equip-header">
                 <h2>⚔️ Character Equipment</h2>
@@ -647,10 +721,12 @@ export default function CharacterEquipment({
                                 <span className="detail-slot-icon">{openSlotDef.icon}</span>
                                 <div>
                                     <div className="detail-slot-label">{openSlotDef.label}</div>
-                                    <input
-                                        className="input detail-name-input"
+                                    <ItemCombobox
+                                        className="detail-name-input"
+                                        items={allCompendiumItems}
                                         value={openSlotData.name}
-                                        onChange={e => updateDraftField('name', e.target.value)}
+                                        onChange={(val) => handleSlotNameChange(val)}
+                                        onSelect={() => {}}
                                         placeholder={`Enter ${openSlotDef.hint}`}
                                     />
                                 </div>
@@ -795,7 +871,7 @@ export default function CharacterEquipment({
                                                         const val = e.target.value;
                                                         if (val && !(openSlotData[key] || []).includes(val)) updateDraftField(key, [...(openSlotData[key] || []), val]);
                                                     }}>
-                                                    <option value="">+ Add</option>
+                                                    <option value="">Add</option>
                                                     {DAMAGE_TYPES.filter(t => !(openSlotData[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
                                             </div>
@@ -821,7 +897,7 @@ export default function CharacterEquipment({
                                                         const val = e.target.value;
                                                         if (val && !(openSlotData[key] || []).includes(val)) updateDraftField(key, [...(openSlotData[key] || []), val]);
                                                     }}>
-                                                    <option value="">+ Add</option>
+                                                    <option value="">Add</option>
                                                     {ALL_CC_EFFECTS.filter(t => !(openSlotData[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
                                             </div>
@@ -867,7 +943,7 @@ export default function CharacterEquipment({
                                                                 setQuickSlotBuffDesc('');
                                                             }}
                                                         >
-                                                            + Add Buff
+                                                            Add Buff
                                                         </button>
                                                     ) : (
                                                         <div className="buff-dropdown-container glass-panel" style={{ 
@@ -1028,7 +1104,7 @@ export default function CharacterEquipment({
                         <h3 className="wondrous-title">✨ Wondrous Items (Custom)</h3>
                         <p className="wondrous-subtitle">Homebrew &amp; magical items that don't fit standard slots</p>
                     </div>
-                    <button className="btn btn-primary" onClick={addWondrousItem}>+ Add Item</button>
+                    <button className="btn btn-primary" onClick={addWondrousItem}>Add Item</button>
                 </div>
 
                 {wondrousItems.length === 0 && (
@@ -1047,10 +1123,12 @@ export default function CharacterEquipment({
                                     <span className="wondrous-item-icon">✨</span>
                                     <div className="wondrous-item-meta">
                                         {isEditing ? (
-                                            <input
-                                                className="input wondrous-name-input"
+                                            <ItemCombobox
+                                                className="wondrous-name-input"
+                                                items={allCompendiumItems}
                                                 value={display.name}
-                                                onChange={e => updateWondrousDraft(item.id, 'name', e.target.value)}
+                                                onChange={(val) => handleWondrousNameChange(item.id, val)}
+                                                onSelect={() => {}}
                                                 placeholder="Item Name"
                                             />
                                         ) : (
@@ -1157,7 +1235,7 @@ export default function CharacterEquipment({
                                                             ))}
                                                             <select className="input" style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }} value=""
                                                                 onChange={e => { const val = e.target.value; if (val && !(display[key] || []).includes(val)) updateWondrousDraft(item.id, key, [...(display[key] || []), val]); }}>
-                                                                <option value="">+ Add</option>
+                                                                <option value="">Add</option>
                                                                 {DAMAGE_TYPES.filter(t => !(display[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                             </select>
                                                         </div>
@@ -1179,7 +1257,7 @@ export default function CharacterEquipment({
                                                             ))}
                                                             <select className="input" style={{ fontSize: '0.68rem', padding: '0.05rem 0.2rem', height: '20px', minWidth: '60px' }} value=""
                                                                 onChange={e => { const val = e.target.value; if (val && !(display[key] || []).includes(val)) updateWondrousDraft(item.id, key, [...(display[key] || []), val]); }}>
-                                                                <option value="">+ Add</option>
+                                                                <option value="">Add</option>
                                                                 {ALL_CC_EFFECTS.filter(t => !(display[key] || []).includes(t)).map(t => <option key={t} value={t}>{t}</option>)}
                                                             </select>
                                                         </div>
@@ -1225,7 +1303,7 @@ export default function CharacterEquipment({
                                                                             setQuickWondrousBuffDesc('');
                                                                         }}
                                                                     >
-                                                                        + Add Buff
+                                                                        Add Buff
                                                                     </button>
                                                                 ) : (
                                                                     <div className="buff-dropdown-container glass-panel" style={{ 

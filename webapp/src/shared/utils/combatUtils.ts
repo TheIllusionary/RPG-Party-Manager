@@ -1,4 +1,5 @@
 // @ts-nocheck — internal OCR parsers; public exports typed via shared/types/combat.ts
+import { CONDITIONS_DICT, deriveConditions } from '../../data/conditions';
 /**
  * Normalizes text to handle typical OCR/copy typos in D&D monster sheets.
  */
@@ -677,12 +678,14 @@ export function getSaveModifiers(player, ccEffect, equipment, buffsDatabase = []
         let isVulnerable = (player.ccVulnerabilities || []).some(v => v.toLowerCase().includes(normalizedCc));
         let isImmune = (player.ccImmunities || []).some(i => i.toLowerCase().includes(normalizedCc));
         
-        const items = getEquippedItemsForPlayer(player.id, equipment);
-        items.forEach(item => {
-            if ((item.ccResistances || []).some(r => r.toLowerCase().includes(normalizedCc))) isResistant = true;
-            if ((item.ccVulnerabilities || []).some(v => v.toLowerCase().includes(normalizedCc))) isVulnerable = true;
-            if ((item.ccImmunities || []).some(i => i.toLowerCase().includes(normalizedCc))) isImmune = true;
-        });
+        if (equipment) {
+            const items = getEquippedItemsForPlayer(player.id, equipment);
+            items.forEach(item => {
+                if ((item.ccResistances || []).some(r => r.toLowerCase().includes(normalizedCc))) isResistant = true;
+                if ((item.ccVulnerabilities || []).some(v => v.toLowerCase().includes(normalizedCc))) isVulnerable = true;
+                if ((item.ccImmunities || []).some(i => i.toLowerCase().includes(normalizedCc))) isImmune = true;
+            });
+        }
         
         if (isResistant) hasAdv = true;
         if (isVulnerable) hasDis = true;
@@ -696,12 +699,14 @@ export function getSaveModifiers(player, ccEffect, equipment, buffsDatabase = []
         if (player.buffs) {
             player.buffs.forEach(b => buffNames.add(b));
         }
-        const items = getEquippedItemsForPlayer(player.id, equipment);
-        items.forEach(item => {
-            if (item.buffs) {
-                item.buffs.forEach(b => buffNames.add(b));
-            }
-        });
+        if (equipment) {
+            const items = getEquippedItemsForPlayer(player.id, equipment);
+            items.forEach(item => {
+                if (item.buffs) {
+                    item.buffs.forEach(b => buffNames.add(b));
+                }
+            });
+        }
         
         buffNames.forEach(name => {
             const config = buffsDatabase.find(x => x.name === name);
@@ -768,10 +773,37 @@ export function calculateEffectiveEnemyAC(enemy, buffsDatabase = []) {
             }
         });
     }
+
+    if (enemy.cc && enemy.cc.length > 0) {
+        const allConditions = deriveConditions(enemy.cc);
+        allConditions.forEach(c => {
+            const def = CONDITIONS_DICT[c];
+            if (def && def.modifiers && def.modifiers.ac) {
+                totalAC += def.modifiers.ac;
+            }
+        });
+    }
+
     return totalAC;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+export function calculateEffectiveEnemyStat(enemy, statKey) {
+    if (!enemy) return 10;
+    let score = enemy[statKey] !== undefined ? enemy[statKey] : 10;
+
+    if (enemy.cc && enemy.cc.length > 0) {
+        const allConditions = deriveConditions(enemy.cc);
+        allConditions.forEach(c => {
+            const def = CONDITIONS_DICT[c];
+            if (def && def.modifiers && def.modifiers.stats && def.modifiers.stats[statKey] !== undefined) {
+                score += def.modifiers.stats[statKey];
+            }
+        });
+    }
+
+    return score;
+}
+
 // SPELL COSTS, FATIGUE & PLAYER RESOURCE RULES
 // Legacy VBA (SpellPlayer1–6): cost = 4 + level^2.1; if level > 5, also + level^2.25
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,258 @@
+/* Vertical Block Builder — formula stack UI */
+
+.vbb-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.vbb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.vbb-card--solid {
+  background: #1e293b;
+}
+
+.vbb-section-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #cbd5e1;
+}
+
+.vbb-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .vbb-meta-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vbb-meta-grid .vbb-field--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.vbb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.vbb-field--emphasis {
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.vbb-control,
+.vbb-field .input {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+}
+
+.vbb-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vbb-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vbb-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+}
+
+@media (min-width: 640px) {
+  .vbb-step {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.vbb-step-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vbb-step-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.vbb-step-label--seed {
+  color: #34d399;
+}
+
+.vbb-step-label--combine {
+  color: #38bdf8;
+}
+
+.vbb-operand-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .vbb-operand-row {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.vbb-operand-kind {
+  width: 100%;
+  max-width: 10rem;
+}
+
+.vbb-operand-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.vbb-combine-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .vbb-combine-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .vbb-op-select {
+    max-width: 12rem;
+  }
+}
+
+.vbb-condition-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+}
+
+.vbb-step--condition {
+  align-items: stretch;
+}
+
+.vbb-condition-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vbb-condition-field-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.vbb-condition-value {
+  width: 100%;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .vbb-condition-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.vbb-empty-hint code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125em;
+  color: #94a3b8;
+}
+
+.vbb-empty-hint {
+  margin: 0;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px dashed #334155;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.vbb-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.vbb-btn-secondary:hover {
+  background: #334155;
+  opacity: 0.9;
+}
+
+.vbb-icon-danger {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(127, 29, 29, 0.5);
+  background: rgba(76, 5, 25, 0.3);
+  color: #fda4af;
+  cursor: pointer;
+}
+
+.vbb-icon-danger:hover {
+  background: rgba(127, 29, 29, 0.4);
+  opacity: 0.9;
+}

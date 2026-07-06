@@ -1,0 +1,36 @@
+.app-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--bg-base) 95%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.app-nav-breadcrumbs {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.app-nav-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav-chevron {
+  opacity: 0.5;
+}
+
+.app-nav-crumb-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.app-nav-crumb-label {
+  padding: 6px 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}

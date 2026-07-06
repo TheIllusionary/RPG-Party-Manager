@@ -68,6 +68,9 @@ jobs:
       - name: Build frontend
         run: npm run build --prefix webapp
 
+      - name: Build Electron services (document store, Player View WS)
+        run: npm run build:electron-services --prefix webapp
+
       - name: Build & publish to public releases repo
         working-directory: webapp
         env:

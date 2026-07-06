@@ -23,6 +23,12 @@ Do not create new top-level folders without updating this file and `README.md`.
 | Concern | Location |
 |---------|----------|
 | Global campaign state | `IAppData` in `webapp/src/types/index.ts` |
+| Document-oriented domain (local) | `webapp/src/types/domain/` — `CampaignState`, `Actor`, `LogicBlock` |
+| Local JSON persistence (Electron) | `webapp/src/services/persistence/` → `userData/documents/` |
+| Player View sanitize + WS | `webapp/src/services/PlayerViewService.ts`, `WebSocketServer.ts` |
+| Offline sync (Electron) | `webapp/src/services/SyncService.ts` → `userData/campaign.json` + `POST/GET /sync` |
+| Homebrew logic engine | `webapp/src/services/homebrew/LogicEngine.ts` |
+| Rule computation (numeric) | `webapp/src/engine/RuleEvaluator.ts` |
 | Defaults & merge | `webapp/src/data/defaultData.ts` |
 | Legacy import normalization | `webapp/src/shared/utils/migrationUtils.ts` |
 | Combat math (D&D rules) | `webapp/src/shared/utils/combatUtils.ts` — **do not change formulas casually** |
@@ -119,3 +125,55 @@ Also update `docs/mudancas-recentes.md` when the change affects user-visible beh
   - **### 🛠️ Technical Details** — architecture, files, data model, verification.
 - For local draft generation, run `npm run commit:ai` → review `docs/LAST_COMMIT_MSG.txt` before committing.
 - Append a line to `docs/CHANGELOG_AI.md` after meaningful merges.
+
+---
+
+## 9. UI Design System (mandatory for all new/changed UI)
+
+Every React component and CSS change must follow these spacing and layout rules. **Before finishing UI work, verify:** (1) nothing is touching another element without `gap`/`padding`, (2) all spacing uses the 4px scale, (3) the layout "breathes".
+
+### Spacing scale
+
+- **Never** use arbitrary pixel values (`margin: 13px`, `padding: 27px`, `gap-[13px]`).
+- **Always** use Tailwind's base-4 scale: `p-4` (16px), `p-8` (32px), `gap-4`, `mt-4`, etc.
+- Prefer **`gap`** on Flexbox/Grid parents over per-item `margin`.
+
+### Touch rule (hierarchy)
+
+- Headers and buttons must **never** touch adjacent content.
+- Apply **`mt-4` or `pt-4`** (min 16px) between a title/header and the next element.
+- Main containers need **minimum `p-4`** so content does not hit window edges.
+
+### Safe layout
+
+- **Mobile-first:** `container mx-auto px-4` on main pages; grids use `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`.
+- No fixed pixel widths on main containers.
+- Vertical lists: **`flex flex-col gap-4`**.
+- Avoid `position: absolute` / `fixed` unless required; check for overlap.
+- Center main content via **`RootLayout`** + `layout.css` (`.app-wrapper`, `.main-content`). **No Tailwind** — use plain CSS / CSS Modules only.
+- Use shared primitives from `webapp/src/styles/design-system.css` and `AppNavBar` for in-app navigation (never rely on browser back).
+
+### Icons & collapse
+
+- Use **`lucide-react`** for expand/collapse and add actions (`ChevronDown`, `ChevronUp`, `Plus`, `Minus`, `Trash2`) — not raw `+` / `−` / `×` text.
+- Collapse controls must work **per item**, not only “all at once”.
+
+### Readable text blocks
+
+- Trait/ability prose: **`max-w-prose`**, **`leading-relaxed`**, **`gap-4`** between paragraphs.
+
+### Interactive feedback
+
+- Buttons: **`px-4 py-2`** (horizontal padding > vertical).
+- All clickable elements: **`hover:opacity-80`** or **`hover:bg-opacity-90`**.
+
+### Copy
+
+- **Do not** prefix add-action buttons with `+` (use `Add Enemy`, not `+ Add Enemy`).
+- **Do not** expose technical dot-paths (`actor.stats.int`) in DM UI — use `shared/schema/SchemaResolver.ts` + `<select>` with friendly labels.
+- Rules editor uses **Vertical Block Builder** (flex stack) — no `react-flow` / graph canvas for DM-facing UI.
+
+### Scoped CSS (when Tailwind is not used)
+
+- Map custom CSS to the 4px scale: `0.25rem` (4px), `0.5rem` (8px), `0.75rem` (12px), `1rem` (16px), `1.25rem` (20px), `1.5rem` (24px), `2rem` (32px).
+- Use `display: flex; flex-direction: column; gap: 1rem` instead of ad-hoc margins.

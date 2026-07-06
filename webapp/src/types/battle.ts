@@ -1,4 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { ActorDamageModifiers } from '../engine/types';
+import type { LogicBlock } from './domain';
 import type {
   IAppConfig,
   IAttack,
@@ -10,6 +12,12 @@ import type {
   ISubclass,
   StatAbbr,
 } from './index';
+
+export interface TurnActorRef {
+  type: 'player' | 'enemy';
+  id: string;
+  name: string;
+}
 
 /** Monster / bestiary collection stored in campaign data. */
 export type ILibrary = IMonster[];
@@ -130,6 +138,7 @@ export interface IActiveAttackState {
 
 /** Props passed from GameApp into the battle module shell. */
 export interface IPlayerManagerShellProps {
+  campaignId?: string;
   data: IPlayer[];
   updateData: (players: IPlayer[]) => void;
   equipment: IEquipment;
@@ -144,8 +153,13 @@ export interface IPlayerManagerShellProps {
   buffsDatabase: IBuff[];
   updateBuffsDatabase: (buffs: IBuff[]) => void;
   subclasses: ISubclass[];
+  logicBlocks?: import('./domain').LogicBlock[];
   config: IAppConfig;
   configModalOpen: boolean;
+  compendiumClasses?: import('../services/compendium/fiveETools/types').MasterClass[];
+  compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
+  compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
+  bestiaryFavorites?: string[];
 }
 
 export interface IUsePartyStateParams {
@@ -153,10 +167,14 @@ export interface IUsePartyStateParams {
   updateData: (players: IPlayer[]) => void;
   equipment: IEquipment;
   subclasses: ISubclass[];
+  logicBlocks?: import('./domain').LogicBlock[];
   buffsDatabase: IBuff[];
   config: IAppConfig;
   battleMode: boolean;
   setBattleNotes?: Dispatch<SetStateAction<string>>;
+  compendiumClasses?: import('../services/compendium/fiveETools/types').MasterClass[];
+  compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
+  compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
 }
 
 export interface IUseCombatStateParams extends IPlayerManagerShellProps {
@@ -233,6 +251,7 @@ export interface IPartyState {
   xpInputValue: string;
   setXpInputValue: Dispatch<SetStateAction<string>>;
   getPlayerSubclass: (player: IPlayer) => ISubclass | null;
+  getOptionalPlayerSubclass?: (player: IPlayer) => ISubclass | null;
   playerUsesVampire: (player: IPlayer) => boolean;
   computePlayerHpDelta: (player: IPlayer, amount: number, asTempHp?: boolean) => IHpManaDeltaResult;
   computePlayerManaDelta: (player: IPlayer, amount: number) => number;
@@ -244,6 +263,7 @@ export interface IPartyState {
   addPlayer: () => void;
   calculateMaxHP: (player: IPlayer) => number;
   calculateMaxMana: (player: IPlayer) => number;
+  getDefaultManaModifier: (player: IPlayer) => number;
   getSlotLabel: (slotId: string) => string;
   getPlayerBuffs: (player: IPlayer, equipment: IEquipment) => IPlayerBuffEntry[];
   handleRemoveBuffFromTop: (player: IPlayer, buff: IPlayerBuffEntry) => void;
@@ -276,6 +296,12 @@ export interface IPartyState {
   dndSkills: readonly IDndSkill[];
   statsList: readonly StatAbbr[];
   ALL_CC_EFFECTS: readonly string[];
+  castingUsesMana: boolean;
+  castingUsesSpellSlots: boolean;
+  spellFatigueEnabled: boolean;
+  playerQualifiesForSpellSlots: (player: IPlayer) => boolean;
+  getPlayerSpellSlots: (player: IPlayer) => Record<string, { current: number; max: number }>;
+  adjustPlayerSpellSlot: (playerId: string, slotLevel: number, delta: number) => void;
 }
 
 /** Combat / VTT / targeting state from `useCombatState`. */
@@ -355,6 +381,7 @@ export interface ICombatState {
   selectMonster: (enemyId: string, monster: IMonster) => void;
   createAndSelectMonster: (enemyId: string, name: string) => void;
   computeEnemyHpDelta: (enemy: IEnemy, amount: number, asTempHp?: boolean) => IEnemyHpDeltaResult;
+  calculateEnemyMaxHP: (enemy: IEnemy) => number;
   startInlineDelta: (type: 'player' | 'enemy', id: string, field: 'hp' | 'mana') => void;
   cancelInlineDelta: () => void;
   commitInlineDelta: () => void;
@@ -372,6 +399,19 @@ export interface ICombatState {
   buffInputEnemyId: string | null;
   setBuffInputEnemyId: Dispatch<SetStateAction<string | null>>;
   defaultMonsters: IMonster[];
+  encounterRules: LogicBlock[];
+  turnOrder: TurnActorRef[];
+  currentTurnIndex: number;
+  currentTurnActor: TurnActorRef | null;
+  applyQuickDamage: (
+    entityType: 'player' | 'enemy',
+    entityId: string,
+    amount: number,
+    damageType: string,
+  ) => void;
+  applyQuickHeal: (entityType: 'player' | 'enemy', entityId: string, amount: number) => void;
+  getModifiersFor: (entityId: string) => ActorDamageModifiers | null;
+  advanceEncounterTurn: () => void;
 }
 
 export interface IPlayerManagerViewProps extends IPlayerManagerShellProps {
@@ -399,6 +439,9 @@ export interface IPlayerCardProps {
   equipment: IEquipment;
   subclasses: ISubclass[];
   buffsDatabase: IBuff[];
+  compendiumClasses?: import('../services/compendium/fiveETools/types').MasterClass[];
+  compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
+  compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
 }
 
 export interface IEnemyCardProps {
@@ -410,6 +453,8 @@ export interface IEnemyCardProps {
   library: ILibrary;
   updateLibrary: (library: ILibrary) => void;
   buffsDatabase: IBuff[];
+  compendiumMonsters?: import('.').IMonster[];
+  bestiaryFavorites?: string[];
 }
 
 export interface IPartyXpModalProps {
