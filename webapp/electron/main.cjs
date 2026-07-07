@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { fork } = require('child_process');
 const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 const {
     startDesktopInfrastructure,
     stopDesktopInfrastructure,
@@ -25,16 +26,18 @@ function setupAutoUpdater() {
         return;
     }
 
+    log.transports.file.level = 'info';
+    updater.logger = log;
+
     updater.autoDownload = true;
     updater.autoInstallOnAppQuit = true;
-    updater.logger = console;
 
     updater.on('checking-for-update', () => {
-        console.log('[AutoUpdate] Checking for updates…');
+        log.info('[AutoUpdate] Checking for updates…');
     });
 
     updater.on('update-available', (info) => {
-        console.log('[AutoUpdate] Update available:', info.version);
+        log.info('[AutoUpdate] Update available:', info.version);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('app-update-status', {
                 status: 'available',
@@ -44,12 +47,12 @@ function setupAutoUpdater() {
     });
 
     updater.on('update-not-available', (info) => {
-        console.log('[AutoUpdate] App is up to date.', info?.version ?? '');
+        log.info('[AutoUpdate] App is up to date.', info?.version ?? '');
     });
 
     updater.on('download-progress', (progress) => {
         const pct = Math.round(progress.percent);
-        console.log(`[AutoUpdate] Downloading… ${pct}%`);
+        log.info(`[AutoUpdate] Downloading… ${pct}%`);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('app-update-status', {
                 status: 'downloading',
@@ -59,7 +62,7 @@ function setupAutoUpdater() {
     });
 
     updater.on('update-downloaded', (info) => {
-        console.log('[AutoUpdate] Update downloaded:', info.version);
+        log.info('[AutoUpdate] Update downloaded:', info.version);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('app-update-status', {
                 status: 'downloaded',
@@ -83,7 +86,7 @@ function setupAutoUpdater() {
     });
 
     updater.on('error', (err) => {
-        console.error('[AutoUpdate] Error:', err);
+        log.error('[AutoUpdate] Error:', err);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('app-update-status', {
                 status: 'error',
@@ -93,7 +96,7 @@ function setupAutoUpdater() {
     });
 
     updater.checkForUpdatesAndNotify().catch((err) => {
-        console.error('[AutoUpdate] checkForUpdates failed:', err);
+        log.error('[AutoUpdate] checkForUpdates failed:', err);
     });
 }
 

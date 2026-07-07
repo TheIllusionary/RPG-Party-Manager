@@ -206,3 +206,14 @@ Format:
 - **Area:** docs | tooling
 - **Summary:** Added `scripts/generate-commit.mjs` and `npm run commit:ai` to draft PR/commit messages from git diff into `docs/LAST_COMMIT_MSG.txt`; updated `.cursorrules` commit/PR rules.
 - **Files:** `scripts/generate-commit.mjs`, `scripts/commit-ai.sh`, `package.json`, `.cursorrules`, `README.md`, `.gitignore`
+
+## 2026-07-06 — Antigravity
+- **Area:** tooling | battle | api
+- **Summary:** Fix PR creation script to dynamically target fork and restore Auto PR functionality, fix PlayerCard combobox interpolation error, and set up electron:dev:local scripts.
+- **Files:** package.json, webapp/package.json, scripts/commit-ai.sh, webapp/src/features/battle/components/PlayerCard.tsx
+
+
+## 2026-07-06 — Agent
+- **Area:** electron | docs
+- **Summary:** Added electron-log for auto-updater events and enforced version bumps in github actions
+- **Files:** webapp/electron/main.cjs, .github/workflows/release.yml
