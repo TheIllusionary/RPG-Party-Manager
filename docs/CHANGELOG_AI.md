@@ -217,3 +217,9 @@ Format:
 - **Area:** electron | docs
 - **Summary:** Added electron-log for auto-updater events and enforced version bumps in github actions
 - **Files:** webapp/electron/main.cjs, .github/workflows/release.yml
+
+## 2026-07-08 - AI Agent
+- **Area:** battle | inventory | compendium | api
+- **Summary:** Implemented Item Classification Schema, PlayerSheet View, SearchableCombobox, and Compendium API Fetching with Dexie Caching.
+- **Files:** webapp/src/types/index.ts, webapp/src/features/PlayerSheet/PlayerSheetView.tsx, webapp/src/services/api.ts, webapp/src/services/compendiumBridge.ts
+

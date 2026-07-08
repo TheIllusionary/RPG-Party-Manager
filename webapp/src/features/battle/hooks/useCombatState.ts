@@ -611,19 +611,9 @@ const triggerEnemyLimitBreak = (id) => {
 
 // (battleMode is passed as a prop from App)
 
-// VTT integration state
-const [isVttOpen, setIsVttOpen] = useState(false);
-const [isVttFullscreen, setIsVttFullscreen] = useState(false);
-const [vttRoomUrl, setVttRoomUrl] = useState('https://owlbear.rodeo');
-const [vttInputVal, setVttInputVal] = useState('https://owlbear.rodeo');
 const [internalBattleNotes, setInternalBattleNotes] = useState('');
 const battleNotes = battleNotesProp !== undefined ? battleNotesProp : internalBattleNotes;
 const setBattleNotes = setBattleNotesProp || setInternalBattleNotes;
-const [vttLoading, setVttLoading] = useState(false);
-const [loadingVtt, setLoadingVtt] = useState(true);
-
-const vttPlaceholderRef = useRef(null);
-const hasLoadedVttUrlRef = useRef(false);
 
 useEffect(() => {
     const handleOutsideClick = () => {
@@ -632,39 +622,6 @@ useEffect(() => {
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
 }, []);
-
-// Load VTT settings from Dexie
-useEffect(() => {
-    async function loadVtt() {
-        if (!campaignId) return;
-        setLoadingVtt(true);
-        try {
-            const record = await db.campaignState.get(`campaign_${campaignId}_vtt`);
-            if (record?.data) {
-                setIsVttOpen(record.data.isVttOpen ?? false);
-                setVttRoomUrl(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
-                setVttInputVal(record.data.vttRoomUrl ?? 'https://owlbear.rodeo');
-            }
-        } catch (err) {
-            console.error('Failed to load VTT settings:', err);
-        } finally {
-            setLoadingVtt(false);
-        }
-    }
-    loadVtt();
-}, [campaignId]);
-
-// Save VTT settings to Dexie
-useEffect(() => {
-    if (loadingVtt || !campaignId) return;
-    db.campaignState.put({
-        id: `campaign_${campaignId}_vtt`,
-        campaignId: campaignId,
-        type: 'vttSettings',
-        data: { isVttOpen, vttRoomUrl },
-        updatedAt: Date.now()
-    }).catch(err => console.error('Failed to save VTT settings:', err));
-}, [campaignId, isVttOpen, vttRoomUrl, loadingVtt]);
 
 // Toggle battle layout full-width container class on container element
 useEffect(() => {
@@ -679,55 +636,6 @@ useEffect(() => {
         container.classList.remove('battle-mode-layout');
     };
 }, [battleMode]);
-
-// Handle incoming load status events from Electron main process
-useEffect(() => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-
-    const handleLoadingStatus = (event, { loading }) => {
-        setVttLoading(loading);
-    };
-
-    ipc.on('vtt-loading-status', handleLoadingStatus);
-    return () => {
-        ipc.off('vtt-loading-status', handleLoadingStatus);
-    };
-}, []);
-
-
-const getVttUrl = (input) => {
-    const trimmed = input.trim();
-    if (!trimmed) return 'https://owlbear.rodeo';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        return trimmed;
-    }
-    if (trimmed.startsWith('room/')) {
-        return `https://owlbear.rodeo/${trimmed}`;
-    }
-    return `https://owlbear.rodeo/room/${trimmed}`;
-};
-
-const handleLoadVtt = () => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-    const targetUrl = getVttUrl(vttInputVal);
-    setVttRoomUrl(targetUrl);
-    setVttInputVal(targetUrl);
-    ipc.send('vtt-load-url', { url: targetUrl });
-};
-
-const handleReloadVtt = () => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-    ipc.send('vtt-reload');
-};
-
-const handleOpenInBrowser = () => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-    ipc.send('vtt-open-browser', { url: vttRoomUrl });
-};
 
 const startEnemyEdit = (enemy, field) => {
     setEnemyEditField({ id: enemy.id, field });
@@ -1006,135 +914,7 @@ useEffect(() => {
     if (!battleMode) clearTargetSelection();
 }, [battleMode]);
 
-useEffect(() => {
-    if (partyXpModalOpen || partyLevelModalOpen || isVttFullscreen) {
-        document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = 'unset';
-    }
-    return () => {
-        document.body.style.overflow = 'unset';
-    };
-}, [partyXpModalOpen, partyLevelModalOpen, isVttFullscreen]);
 
-const isVttActive = battleMode && isVttOpen && !partyXpModalOpen && !partyLevelModalOpen && !activeAttackState && !configModalOpen;
-
-// Auto-exit VTT fullscreen if VTT becomes inactive
-useEffect(() => {
-    if (!isVttActive) {
-        setTimeout(() => {
-            setIsVttFullscreen(false);
-        }, 0);
-    }
-}, [isVttActive]);
-
-// Handle Escape key to exit fullscreen (for main window focus)
-useEffect(() => {
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape' && isVttFullscreen) {
-            setIsVttFullscreen(false);
-        }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-    };
-}, [isVttFullscreen]);
-
-// Handle IPC event from Electron main process to exit fullscreen (when VTT subview is focused)
-useEffect(() => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-
-    const handleExitFullscreen = () => {
-        setIsVttFullscreen(false);
-    };
-
-    ipc.on('vtt-exit-fullscreen', handleExitFullscreen);
-    return () => {
-        ipc.off('vtt-exit-fullscreen', handleExitFullscreen);
-    };
-}, []);
-
-useEffect(() => {
-    const ipc = window.require ? window.require('electron').ipcRenderer : null;
-    if (!ipc) return;
-
-    if (!isVttActive || !vttPlaceholderRef.current) {
-        ipc.send('vtt-toggle-visibility', { visible: false });
-        return;
-    }
-
-    // Make VTT View visible
-    ipc.send('vtt-toggle-visibility', { visible: true });
-
-    // Load saved URL on initial show
-    if (!hasLoadedVttUrlRef.current) {
-        ipc.send('vtt-load-url', { url: vttRoomUrl });
-        hasLoadedVttUrlRef.current = true;
-    }
-
-    // Function to update bounds based on placeholder client rect and prevent covering bottom nav
-    const updateBounds = () => {
-        if (isVttFullscreen) {
-            ipc.send('vtt-update-bounds', {
-                x: 0,
-                y: 0,
-                width: window.innerWidth,
-                height: window.innerHeight
-            });
-            return;
-        }
-
-        if (!vttPlaceholderRef.current) return;
-        const rect = vttPlaceholderRef.current.getBoundingClientRect();
-
-        // Get bottom nav top coordinate if it exists
-        const bottomNav = document.querySelector('.bottom-nav');
-        let bottomLimit = window.innerHeight;
-        if (bottomNav) {
-            const navRect = bottomNav.getBoundingClientRect();
-            bottomLimit = navRect.top;
-        }
-
-        const y = rect.top;
-        const maxAllowedHeight = bottomLimit - y - 10; // 10px safety margin
-        const height = Math.min(rect.height, maxAllowedHeight);
-
-        ipc.send('vtt-update-bounds', {
-            x: rect.left,
-            y: y,
-            width: rect.width,
-            height: height > 0 ? height : 0
-        });
-    };
-
-    // Run initial update
-    updateBounds();
-
-    // Listen for resizing
-    const resizeObserver = new ResizeObserver(() => {
-        updateBounds();
-    });
-    resizeObserver.observe(vttPlaceholderRef.current);
-
-    // Listen to window resizing and page-level scrolling (capturing to cover internal scrolling divs)
-    window.addEventListener('resize', updateBounds);
-    window.addEventListener('scroll', updateBounds, true);
-
-    // Set up periodic interval poll to guarantee bounds tracking during transitions/rendering
-    const intervalId = setInterval(updateBounds, 150);
-
-    return () => {
-        resizeObserver.disconnect();
-        window.removeEventListener('resize', updateBounds);
-        window.removeEventListener('scroll', updateBounds, true);
-        clearInterval(intervalId);
-
-        // Critical: Ensure VTT is hidden when this component unmounts or VTT is deactivated
-        ipc.send('vtt-toggle-visibility', { visible: false });
-    };
-}, [isVttActive, vttRoomUrl, isVttFullscreen]);
 
 const getEnemyBuffsList = (enemy) => {
     return (enemy.buffs || []).map(b => {
@@ -1581,24 +1361,8 @@ const triggerTurnEffects = () => {
         enemySearchText,
         setEnemySearchText,
         triggerEnemyLimitBreak,
-        isVttOpen,
-        setIsVttOpen,
-        isVttFullscreen,
-        setIsVttFullscreen,
-        vttRoomUrl,
-        setVttRoomUrl,
-        vttInputVal,
-        setVttInputVal,
         battleNotes,
         setBattleNotes,
-        vttLoading,
-        setVttLoading,
-        vttPlaceholderRef,
-        isVttActive,
-        getVttUrl,
-        handleLoadVtt,
-        handleReloadVtt,
-        handleOpenInBrowser,
         startEnemyEdit,
         commitEnemyEdit,
         cancelEnemyEdit,

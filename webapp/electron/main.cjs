@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, session, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { fork } = require('child_process');
@@ -15,7 +15,6 @@ const { registerCompendiumIpc } = require('./bootstrap/compendiumIpc.cjs');
 const { registerCampaignIpc } = require('./bootstrap/campaignIpc.cjs');
 
 let mainWindow = null;
-let vttView = null;
 let apiProcess = null;
 
 const updater = autoUpdater;
@@ -271,83 +270,7 @@ app.on('window-all-closed', () => {
     }
 });
 
-ipcMain.on('vtt-toggle-visibility', (event, { visible }) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return;
 
-    if (visible) {
-        if (!vttView) {
-            vttView = new WebContentsView({
-                webPreferences: {
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
-
-            vttView.webContents.on('did-start-loading', () => {
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('vtt-loading-status', { loading: true });
-                }
-            });
-
-            vttView.webContents.on('did-stop-loading', () => {
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('vtt-loading-status', { loading: false });
-                }
-            });
-
-            vttView.webContents.on('before-input-event', (event, input) => {
-                if (input.type === 'keyDown' && input.key === 'Escape') {
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        mainWindow.webContents.send('vtt-exit-fullscreen');
-                    }
-                }
-            });
-
-            vttView.webContents.loadURL('https://owlbear.rodeo');
-        }
-
-        try {
-            win.contentView.addChildView(vttView);
-        } catch (e) {
-            // Already added as a child view
-        }
-        vttView.setVisible(true);
-    } else {
-        if (vttView) {
-            vttView.setVisible(false);
-            try {
-                vttView.setBounds({ x: 0, y: 0, width: 0, height: 0 });
-                win.contentView.removeChildView(vttView);
-            } catch (e) {
-                // Not a child view or already removed
-            }
-        }
-    }
-});
-
-ipcMain.on('vtt-update-bounds', (event, bounds) => {
-    if (vttView) {
-        vttView.setBounds({
-            x: Math.round(bounds.x),
-            y: Math.round(bounds.y),
-            width: Math.round(bounds.width),
-            height: Math.round(bounds.height)
-        });
-    }
-});
-
-ipcMain.on('vtt-load-url', (event, { url }) => {
-    if (vttView) {
-        vttView.webContents.loadURL(url);
-    }
-});
-
-ipcMain.on('vtt-reload', () => {
-    if (vttView) {
-        vttView.webContents.reload();
-    }
-});
 
 ipcMain.on('vtt-open-browser', (event, { url }) => {
     shell.openExternal(url);

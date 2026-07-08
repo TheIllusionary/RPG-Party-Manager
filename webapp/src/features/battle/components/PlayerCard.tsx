@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { DAMAGE_TYPES } from '../utils/constants';
+import { DAMAGE_TYPES } from '@/features/battle/utils/constants';
 import {
   getSpellCostPreview,
   HP_TO_MANA_HP_COST,
@@ -8,16 +8,16 @@ import {
   MANA_TO_HP_MANA_COST,
   MANA_TO_HP_GAIN,
   getSaveModifiers,
-} from '../../../shared/utils/combatUtils';
-import type { IBuff, IEquipment, IPlayer, ISubclass } from '../../../types';
-import type { IPlayerCardProps } from '../../../types/battle';
+} from '@/shared/utils/combatUtils';
+import { calculateDerivedStats } from '@/shared/utils/statsEngine';
+import type { IBuff, IEquipment, IPlayer, ISubclass } from '@/types';
+import type { IPlayerCardProps } from '@/types/battle';
 import QuickActionBar from './QuickActionBar';
 import ActorModifierBadges from './ActorModifierBadges';
 import SpellSlotsBar from './SpellSlotsBar';
-import { getActiveTraits } from '../utils/traitUtils';
-import PendingChoices from './PendingChoices';
-import { applyRaceChoicesToPlayer } from '../../../shared/utils/raceParser';
-import type { MasterRace, MasterSubrace } from '../../../services/compendium/fiveETools/types';
+
+import PlayerHeader from '@/features/PlayerCard/components/PlayerHeader';
+import PlayerAttributes from '@/features/PlayerCard/components/PlayerAttributes';
 
 export default function PlayerCard({
   player,
@@ -30,6 +30,7 @@ export default function PlayerCard({
   compendiumClasses,
   compendiumSubclasses,
   compendiumRaces,
+  onOpenSheet
 }: IPlayerCardProps) {
   const [ccDropdownOpen, setCcDropdownOpen] = useState(false);
 
@@ -118,334 +119,66 @@ export default function PlayerCard({
   } = { ...party, ...combat };
 
   const { spriteName, spriteState } = getPlayerSpriteInfo(player);
-  const ultPercent = Math.min(100, (player.ultCurrent / player.ultMax) * 100);
+
+  const selectedRace = (compendiumRaces ?? []).find(r => r.entityKey === player.race) as MasterRace | undefined;
+  const selectedClass = (compendiumClasses ?? []).find(c => c.entityKey === player.classType) as MasterClass | undefined;
+  
+  const computedPlayer = useMemo(() => {
+    return calculateDerivedStats(player, selectedRace, selectedClass);
+  }, [player, selectedRace, selectedClass]);
+
+  const ultPercent = Math.min(100, (computedPlayer.ultCurrent / computedPlayer.ultMax) * 100);
   const canCastSpells =
-    playerUsesVampire(player) ||
+    playerUsesVampire(computedPlayer) ||
     castingUsesMana ||
-    (castingUsesSpellSlots && playerQualifiesForSpellSlots(player));
+    (castingUsesSpellSlots && playerQualifiesForSpellSlots(computedPlayer));
 
   return (
 
                                 <div key={player.id} data-player-id={player.id} className={`glass-panel integrated-player-card ${!player.inParty ? 'inactive' : ''} ${isPlayerMinimized(player.id) ? 'minimized-card' : ''} ${isTargetSelected('player', player.id) ? 'target-selected' : ''}`}>
-                                    <div className="player-card-header">
-                                        <div className="player-header-left">
-                                            {battleMode && (
-                                                <label className="target-select-wrap" title="Select for bulk actions">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="target-select-checkbox"
-                                                        checked={isTargetSelected('player', player.id)}
-                                                        onChange={() => toggleTargetSelection('player', player.id)}
-                                                        onClick={e => e.stopPropagation()}
-                                                    />
-                                                </label>
-                                            )}
-                                            <div className="player-info-container">
-                                                <div className={`player-sprite-container sprite-state-${spriteState}`} title={`State: ${spriteState.toUpperCase()}`}>
-                                                    <img src={`./sprites/${spriteName}.png`} alt={player.classType} className="player-sprite-img" />
-                                                    {spriteState === 'winded' && <span className="sweat-drop-overlay">💦</span>}
-                                                </div>
-                                                <div className="player-info">
-                                                    {editingId === player.id ? (
-                                                        <input
-                                                            className="input title-input"
-                                                            value={player.name}
-                                                            onChange={e => updatePlayer(player.id, 'name', e.target.value)}
-                                                            onBlur={() => setEditingId(null)}
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <h3 onClick={() => setEditingId(player.id)}>{player.name}</h3>
-                                                    )}
-                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
-                                                        {playerEditField?.id === player.id && playerEditField?.field === 'level' ? (
-                                                            <input
-                                                                type="number"
-                                                                min={1}
-                                                                max={20}
-                                                                className="player-inline-edit-input level-inline-input"
-                                                                value={playerEditValue}
-                                                                ref={focusAndSelectRef}
-                                                                autoFocus
-                                                                onChange={e => setPlayerEditValue(e.target.value)}
-                                                                onBlur={() => commitPlayerEdit(player)}
-                                                                onKeyDown={e => {
-                                                                    if (e.key === 'Enter') commitPlayerEdit(player);
-                                                                    if (e.key === 'Escape') cancelPlayerEdit();
-                                                                }}
-                                                                onClick={e => e.stopPropagation()}
-                                                            />
-                                                        ) : (
-                                                            <span
-                                                                className="player-stat-clickable"
-                                                                title="Click to set level (1–20)"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    startPlayerEdit(player, 'level');
-                                                                }}
-                                                            >
-                                                                Lv. {getLevelInfo(player.xp).level}
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                    <div className="player-subtitle">
-                                                        <input
-                                                            className="input inline-input class-input"
-                                                            list={`races-list-${player.id}`}
-                                                            placeholder="Race"
-                                                            title="Race"
-                                                            value={compendiumRaces?.find(r => r.entityKey === player.race)?.name || player.race || ''}
-                                                            onChange={e => {
-                                                                const val = e.target.value;
-                                                                const match = compendiumRaces?.find(r => r.name === val);
-                                                                updatePlayer(player.id, 'race', match ? match.entityKey : val);
-                                                            }}
-                                                        />
-                                                        <datalist id={`races-list-${player.id}`}>
-                                                            {(compendiumRaces || []).slice().sort((a,b) => a.name.localeCompare(b.name)).map(race => (
-                                                                <option key={race.id} value={race.name} />
-                                                            ))}
-                                                        </datalist>
+                                    <PlayerHeader
+                                        player={player}
+                                        computedPlayer={computedPlayer}
+                                        updatePlayer={updatePlayer}
+                                        battleMode={battleMode}
+                                        isTargetSelected={isTargetSelected}
+                                        toggleTargetSelection={toggleTargetSelection}
+                                        spriteState={spriteState}
+                                        spriteName={spriteName}
+                                        editingId={editingId}
+                                        setEditingId={setEditingId}
+                                        playerEditField={playerEditField}
+                                        playerEditValue={playerEditValue}
+                                        focusAndSelectRef={focusAndSelectRef}
+                                        setPlayerEditValue={setPlayerEditValue}
+                                        commitPlayerEdit={commitPlayerEdit}
+                                        cancelPlayerEdit={cancelPlayerEdit}
+                                        startPlayerEdit={startPlayerEdit}
+                                        getLevelInfo={getLevelInfo}
+                                        compendiumRaces={compendiumRaces}
+                                        compendiumClasses={compendiumClasses}
+                                        compendiumSubclasses={compendiumSubclasses}
+                                        ALL_CC_EFFECTS={ALL_CC_EFFECTS}
+                                        addCc={addCc}
+                                        removeCc={removeCc}
+                                        isPlayerMinimized={isPlayerMinimized}
+                                        setMinimizedPlayers={setMinimizedPlayers}
+                                        calculateEffectiveAC={party.calculateEffectiveAC}
+                                        toggleParty={toggleParty}
+                                        removePlayer={removePlayer}
+                                        onOpenCodex={() => onOpenSheet && onOpenSheet(player.id)}
+                                    />
 
-                                                        {/* Subrace Dropdown — shown when the selected race has subraces */}
-                                                        {((): React.ReactNode => {
-                                                          const selectedRace = (compendiumRaces ?? []).find(r => r.entityKey === player.race) as MasterRace | undefined;
-                                                          if (!selectedRace?.subraces?.length) return null;
-                                                          return (
-                                                            <select
-                                                              className="input inline-input class-input"
-                                                              value={player.subraceId || ''}
-                                                              title="Subrace"
-                                                              onChange={e => {
-                                                                const val = e.target.value || null;
-                                                                updatePlayer(player.id, 'subraceId' as keyof IPlayer, val);
-                                                              }}
-                                                            >
-                                                              <option value="">— Subrace —</option>
-                                                              {selectedRace.subraces.map(sr => (
-                                                                <option key={sr.entityKey} value={sr.entityKey}>{sr.name}</option>
-                                                              ))}
-                                                            </select>
-                                                          );
-                                                        })()}
-
-                                                        {/* PendingChoices — shown when race/subrace has unresolved choices */}
-                                                        {((): React.ReactNode => {
-                                                          const selectedRace = (compendiumRaces ?? []).find(r => r.entityKey === player.race) as MasterRace | undefined;
-                                                          const selectedSubrace = selectedRace?.subraces?.find(sr => sr.entityKey === player.subraceId);
-                                                          const allChoices = [
-                                                            ...(selectedRace?.abilityChoices ?? []),
-                                                            ...(selectedRace?.skillChoices ?? []),
-                                                            ...(selectedRace?.languageChoices ?? []),
-                                                            ...(selectedSubrace?.abilityChoices ?? []),
-                                                            ...(selectedSubrace?.skillChoices ?? []),
-                                                            ...(selectedSubrace?.languageChoices ?? []),
-                                                          ];
-                                                          if (allChoices.length === 0) return null;
-                                                          const currentSelections = [
-                                                            ...(player.proficiencyChoices ?? []),
-                                                            ...Object.keys(player.asiChoices ?? {}),
-                                                          ];
-                                                          return (
-                                                            <PendingChoices
-                                                              choices={allChoices}
-                                                              currentSelections={currentSelections}
-                                                              onCommit={selections => {
-                                                                const skillOptions = new Set(allChoices.filter(c => c.type === 'skill').flatMap(c => c.options));
-                                                                const profChoices = selections.filter(s => skillOptions.has(s));
-                                                                const asiChoices: Record<string, number> = {};
-                                                                selections.filter(s => !skillOptions.has(s)).forEach(stat => { asiChoices[stat] = 1; });
-                                                                const diff = applyRaceChoicesToPlayer(player, selectedRace ?? null, selectedSubrace ?? null, asiChoices, profChoices);
-                                                                for (const [field, value] of Object.entries(diff)) {
-                                                                  updatePlayer(player.id, field as keyof IPlayer, value);
-                                                                }
-                                                              }}
-                                                            />
-                                                          );
-                                                        })()}
-
-                                                        <input
-                                                            className="input inline-input class-input"
-                                                            list={`classes-list-${player.id}`}
-                                                            placeholder="Class"
-                                                            title="Class"
-                                                            value={compendiumClasses?.find(c => c.entityKey === player.classType)?.name || (player.classType === 'Default' ? '' : player.classType) || ''}
-                                                            onChange={e => {
-                                                                const val = e.target.value;
-                                                                const match = compendiumClasses?.find(c => c.name === val);
-                                                                updatePlayer(player.id, 'classType', match ? match.entityKey : (val || 'Default'));
-                                                            }}
-                                                        />
-                                                        <datalist id={`classes-list-${player.id}`}>
-                                                            <option value="Default" />
-                                                            {(compendiumClasses || []).slice().sort((a,b) => a.name.localeCompare(b.name)).map(cls => (
-                                                                <option key={cls.id} value={cls.name} />
-                                                            ))}
-                                                        </datalist>
-
-                                                        <input
-                                                            className="input inline-input class-input"
-                                                            list={`subclasses-list-${player.id}`}
-                                                            placeholder="Subclass"
-                                                            title="Subclass"
-                                                            value={compendiumSubclasses?.find(s => s.entityKey === player.subclassId)?.name || player.subclassId || ''}
-                                                            onChange={e => {
-                                                                const val = e.target.value;
-                                                                const match = compendiumSubclasses?.find(s => s.name === val);
-                                                                updatePlayer(player.id, 'subclassId', match ? match.entityKey : (val || null));
-                                                            }}
-                                                        />
-                                                        <datalist id={`subclasses-list-${player.id}`}>
-                                                            {(compendiumSubclasses || [])
-                                                                .filter(sub => !player.classType || player.classType === 'Default' || sub.classId === player.classType)
-                                                                .map((sub, i) => (
-                                                                <option key={`${sub.entityKey}-${i}`} value={sub.name} />
-                                                            ))}
-                                                        </datalist>
-
-                                                        <input
-                                                            className="input inline-input class-input"
-                                                            list={`optional-subclasses-list-${player.id}`}
-                                                            placeholder="+ Optional"
-                                                            title="+ Optional Subclass"
-                                                            value={compendiumSubclasses?.find(s => s.entityKey === player.optionalSubclassId)?.name || player.optionalSubclassId || ''}
-                                                            onChange={e => {
-                                                                const val = e.target.value;
-                                                                const match = compendiumSubclasses?.find(s => s.name === val);
-                                                                updatePlayer(player.id, 'optionalSubclassId', match ? match.entityKey : (val || null));
-                                                            }}
-                                                        />
-                                                        <datalist id={`optional-subclasses-list-${player.id}`}>
-                                                            {(compendiumSubclasses || [])
-                                                                .filter(sub => sub.entityKey !== player.subclassId)
-                                                                .map((sub, i) => (
-                                                                <option key={`${sub.entityKey}-${i}`} value={sub.name} />
-                                                            ))}
-                                                        </datalist>
-
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="player-header-left-rows">
-                                                {/* Crowd Control Badges & Add Button */}
-                                                <div className="player-cc-container" onClick={e => e.stopPropagation()}>
-                                                    <span className="cc-header-tag">CC</span>
-                                                    {(player.cc || []).map(cc => (
-                                                        <button
-                                                            key={cc}
-                                                            className="player-cc-badge"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                removeCc(player.id, cc);
-                                                            }}
-                                                            title={`Click to cleanse ${cc}`}
-                                                        >
-                                                            {cc} <span className="cleanse-x">×</span>
-                                                        </button>
-                                                    ))}
-                                                    <div className="player-cc-add-dropdown">
-                                                        <button
-                                                            className="player-cc-add-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setCcDropdownOpen(prev => !prev);
-                                                            }}
-                                                            title="Add Crowd Control effect"
-                                                        >
-                                                            +
-                                                        </button>
-                                                        {ccDropdownOpen && (
-                                                            <div className="cc-dropdown-menu">
-                                                                {ALL_CC_EFFECTS.map(effect => {
-                                                                    const hasCc = (player.cc || []).includes(effect);
-                                                                    return (
-                                                                        <button
-                                                                            key={effect}
-                                                                            disabled={hasCc}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                addCc(player.id, effect);
-                                                                                setCcDropdownOpen(false);
-                                                                            }}
-                                                                            className="cc-dropdown-item"
-                                                                        >
-                                                                            {effect}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        </div>
-
-                                        <div className="card-top-right">
-                                            <button
-                                                type="button"
-                                                className="app-icon-btn"
-                                                title={isPlayerMinimized(player.id) ? 'Expandir card' : 'Recolher card'}
-                                                aria-label={isPlayerMinimized(player.id) ? 'Expandir card' : 'Recolher card'}
-                                                onClick={() =>
-                                                    setMinimizedPlayers((prev) => ({
-                                                        ...prev,
-                                                        [player.id]: !isPlayerMinimized(player.id),
-                                                    }))
-                                                }
-                                            >
-                                                {isPlayerMinimized(player.id) ? (
-                                                    <ChevronDown className="h-4 w-4" />
-                                                ) : (
-                                                    <ChevronUp className="h-4 w-4" />
-                                                )}
-                                            </button>
-                                            <div className="armor-class-badge" title={`Armor Class (AC) [Base: ${player.ac || 10}]`}>
-                                                🛡️ {party.calculateEffectiveAC(player)}
-                                            </div>
-                                            <div className="player-controls">
-                                                <button
-                                                    className={`party-toggle ${player.inParty ? 'in-party' : 'out-party'}`}
-                                                    onClick={() => toggleParty(player.id)}
-                                                    title={player.inParty ? "In Active Party" : "Benched"}
-                                                >
-                                                    {player.inParty ? '⚔️' : '💤'}
-                                                </button>
-                                                <button className="delete-btn" onClick={() => removePlayer(player.id)}>×</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="compact-stats-grid">
-                                        {statsList.map(stat => {
-                                            const bonus = getEquipmentBonus(player.id, stat);
-                                            const eff = effectiveStat(player, stat);
-                                            return (
-                                                <div key={stat} className="compact-stat-box">
-                                                    <div className="stat-name">{stat.toUpperCase()}</div>
-                                                    <div className="stat-mod-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                                                        <div className="stat-mod-badge">{formatModifier(calculateModifier(eff))}</div>
-                                                        {bonus !== 0 && (
-                                                            <div className="stat-equip-bonus" style={{ color: bonus > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                                                                {bonus > 0 ? '+' : ''}{bonus}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="stat-score-wrapper">
-                                                        <input
-                                                            type="number"
-                                                            className="stat-score-input"
-                                                            value={player[stat] || 10}
-                                                            onChange={e => updatePlayer(player.id, stat, parseInt(e.target.value) || 0)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div className="stats-grid">
+                                    <PlayerAttributes
+                                        player={player}
+                                        computedPlayer={computedPlayer}
+                                        updatePlayer={updatePlayer}
+                                        statsList={statsList}
+                                        getEquipmentBonus={getEquipmentBonus}
+                                        effectiveStat={effectiveStat}
+                                        formatModifier={formatModifier}
+                                        calculateModifier={calculateModifier}
+                                    />                                    <div className="stats-grid">
                                         <div className={`stat-block ${player.hpCurrent <= 0 ? 'ko-state' : ''}`}>
                                             <div className="stat-label">
                                                 <span>{player.hpCurrent <= 0 ? 'STATUS: K.O.' : (playerUsesVampire(player) ? 'HP (Blood)' : 'HP')}</span>
@@ -887,146 +620,19 @@ export default function PlayerCard({
                                                     </div>
                                                 );
                                             })()}
-                                            {(() => {
-                                                if (!compendiumClasses || !compendiumRaces) return null;
-                                                const activeTraits = getActiveTraits(player, compendiumClasses, compendiumSubclasses || [], compendiumRaces);
-                                                if (activeTraits.length === 0) return null;
-                                                
-                                                const groupedTraits = activeTraits.reduce((acc, trait) => {
-                                                    const src = trait.source || 'Other';
-                                                    if (!acc[src]) acc[src] = [];
-                                                    acc[src].push(trait);
-                                                    return acc;
-                                                }, {} as Record<string, typeof activeTraits>);
-
-                                                return (
-                                                    <div className="subclass-player-section glass-panel p-4 mb-4">
-                                                        <div className="text-xs font-bold uppercase mb-4" style={{ color: 'var(--primary)' }}>
-                                                            Active Features & Traits
-                                                        </div>
-                                                        <div className="traits-accordion-container">
-                                                            {Object.entries(groupedTraits).map(([source, traits]) => (
-                                                                <div key={source} className="traits-category-group">
-                                                                    <h3 className="traits-category-header">{source} Features</h3>
-                                                                    <div className="traits-list">
-                                                                        {traits.map((trait, idx) => (
-                                                                            <details key={`${source}-${trait.name}-${idx}`} className="trait-details">
-                                                                                <summary className="trait-summary">
-                                                                                    {trait.name}
-                                                                                </summary>
-                                                                                <div className="trait-content">
-                                                                                    {trait.stats && (
-                                                                                        <div className="flex flex-wrap gap-2 mb-2">
-                                                                                            {trait.stats.acBonus && <span className="badge badge-outline text-xs">AC +{trait.stats.acBonus}</span>}
-                                                                                            {trait.stats.hpMaxBonus && <span className="badge badge-outline text-xs">HP +{trait.stats.hpMaxBonus}</span>}
-                                                                                            {trait.stats.speedBonus && <span className="badge badge-outline text-xs">Speed +{trait.stats.speedBonus}</span>}
-                                                                                            {trait.stats.resistances && trait.stats.resistances.map(r => <span key={r} className="badge badge-outline text-xs" style={{ color: '#fb923c' }}>Resist: {r}</span>)}
-                                                                                            {trait.stats.immunities && trait.stats.immunities.map(i => <span key={i} className="badge badge-outline text-xs" style={{ color: '#4ade80' }}>Immune: {i}</span>)}
-                                                                                            {trait.stats.vulnerabilities && trait.stats.vulnerabilities.map(v => <span key={v} className="badge badge-outline text-xs" style={{ color: '#ef4444' }}>Vuln: {v}</span>)}
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {trait.desc && (
-                                                                                        <p className="text-xs max-w-prose leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-                                                                                            {trait.desc}
-                                                                                        </p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </details>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                            {!battleMode && (
-                                                <div className="stat-block mt-2">
-                                                    <div className="stat-label">
-                                                        <span>EXP to Level {getLevelInfo(player.xp).level + 1}</span>
-                                                        <span>{player.xp} / {getLevelInfo(player.xp).nextLevelXp || "Max"}</span>
-                                                    </div>
-                                                    <div className="stat-bar-bg xp-bg">
-                                                        <div
-                                                            className="stat-bar-fill xp-fill"
-                                                            style={{
-                                                                width: `${getLevelInfo(player.xp).nextLevelXp ? ((player.xp - getLevelInfo(player.xp).currentLevelXp) / (getLevelInfo(player.xp).nextLevelXp - getLevelInfo(player.xp).currentLevelXp)) * 100 : 100}%`
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="stat-controls exp-controls">
-                                                        <button onClick={() => {
-                                                            setXpModalId(player.id);
-                                                            setXpModalType('flat');
-                                                            setXpInputValue('');
-                                                        }}>Give XP</button>
-                                                        <button onClick={() => {
-                                                            setXpModalId(player.id);
-                                                            setXpModalType('pct');
-                                                            setXpInputValue('');
-                                                        }}>Give XP %</button>
-                                                        <button className="btn-success" onClick={() => {
-                                                            const info = getLevelInfo(player.xp);
-                                                            if (info.nextLevelXp) updatePlayer(player.id, 'xp', info.nextLevelXp);
-                                                        }}>Level Up</button>
-                                                    </div>
-
-                                                    {xpModalId === player.id && (
-                                                        <div className="damage-heal-modal" style={{ marginTop: '0.25rem' }}>
-                                                            <input
-                                                                type="number"
-                                                                className="input dh-input"
-                                                                value={xpInputValue}
-                                                                onChange={e => setXpInputValue(e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        const val = parseInt(xpInputValue);
-                                                                        if (isNaN(val)) { setXpModalId(null); return; }
-                                                                        if (xpModalType === 'flat') {
-                                                                            updatePlayer(player.id, 'xp', Math.max(0, player.xp + val));
-                                                                        } else {
-                                                                            const info = getLevelInfo(player.xp);
-                                                                            if (info.nextLevelXp) {
-                                                                                const req = info.nextLevelXp - info.currentLevelXp;
-                                                                                updatePlayer(player.id, 'xp', Math.max(0, player.xp + Math.floor(req * (val / 100))));
-                                                                            }
-                                                                        }
-                                                                        setXpModalId(null);
-                                                                        setXpInputValue('');
-                                                                    }
-                                                                    if (e.key === 'Escape') { setXpModalId(null); setXpInputValue(''); }
-                                                                }}
-                                                                placeholder={xpModalType === 'flat' ? 'Flat XP (neg to remove)' : 'XP % (e.g. 10, -10)'}
-                                                                autoFocus
-                                                            />
-                                                            <button className="btn btn-primary small-btn" onClick={() => {
-                                                                const val = parseInt(xpInputValue);
-                                                                if (isNaN(val)) { setXpModalId(null); return; }
-                                                                if (xpModalType === 'flat') {
-                                                                    updatePlayer(player.id, 'xp', Math.max(0, player.xp + val));
-                                                                } else {
-                                                                    const info = getLevelInfo(player.xp);
-                                                                    if (info.nextLevelXp) {
-                                                                        const req = info.nextLevelXp - info.currentLevelXp;
-                                                                        updatePlayer(player.id, 'xp', Math.max(0, player.xp + Math.floor(req * (val / 100))));
-                                                                    }
-                                                                }
-                                                                setXpModalId(null);
-                                                                setXpInputValue('');
-                                                            }}>Apply</button>
-                                                            <button className="btn small-btn" onClick={() => { setXpModalId(null); setXpInputValue(''); }}>Cancel</button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
                                             <div className="stats-skills-content">
+                                            <div className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--primary)' }}>
+                                                Proficiencies (PB +{getProficiencyBonus(computedPlayer)})
+                                            </div>
                                             <div className="compact-proficiencies">
                                                 {statsList.map(stat => {
-                                                    const eff = effectiveStat(player, stat);
-                                                    const isProf = player.saves?.[stat];
-                                                    const baseSave = calculateModifier(eff) + (isProf ? getProficiencyBonus(player) : 0);
-                                                    const saveMods = getSaveModifiers(player, '', equipment, buffsDatabase, stat.substring(0, 3).toLowerCase());
+                                                    const eff = effectiveStat(computedPlayer, stat);
+                                                    const isComputedProf = computedPlayer.saves?.[stat];
+                                                    const isBaseProf = player.saves?.[stat];
+                                                    const isFixed = isComputedProf && !isBaseProf;
+                                                    
+                                                    const baseSave = calculateModifier(eff) + (isComputedProf ? getProficiencyBonus(computedPlayer) : 0);
+                                                    const saveMods = getSaveModifiers(computedPlayer, '', equipment, buffsDatabase, stat.substring(0, 3).toLowerCase());
                                                     const finalSave = baseSave + saveMods.saveBonus;
                                                     
                                                     let modClass = '';
@@ -1035,13 +641,17 @@ export default function PlayerCard({
                                                     if (saveMods.saveBonus > 0) modClass = 'buffed-save';
                                                     if (saveMods.saveBonus < 0) modClass = 'debuffed-save';
 
+                                                    if (!isComputedProf && saveMods.saveBonus === 0 && saveMods.advantageState === 'none') {
+                                                        return null;
+                                                    }
+
                                                     return (
                                                         <div 
                                                             key={`save-${stat}`} 
-                                                            className={`proficiency-chip save-chip ${isProf ? 'proficient' : ''} ${modClass}`} 
-                                                            onClick={() => toggleSaveProficiency(player.id, stat)}
-                                                            title={`Click to toggle save proficiency. ${saveMods.saveBonus !== 0 ? `Modifiers applied: ${saveMods.saveBonus > 0 ? '+' : ''}${saveMods.saveBonus}` : ''} ${saveMods.advantageState !== 'normal' ? `(${saveMods.advantageState})` : ''}`}
-                                                            style={{ position: 'relative' }}
+                                                            className={`proficiency-chip save-chip ${isComputedProf ? 'proficient' : ''} ${isFixed ? 'locked-trait' : ''} ${modClass}`} 
+                                                            onClick={isFixed ? undefined : () => toggleSaveProficiency(player.id, stat)}
+                                                            title={isFixed ? `Granted by Race/Class (Fixed)\nModifiers: ${saveMods.saveBonus} ${saveMods.advantageState}` : `Click to toggle save proficiency. Modifiers: ${saveMods.saveBonus} ${saveMods.advantageState}`}
+                                                            style={{ position: 'relative', cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                         >
                                                             {stat.toUpperCase()} Save {finalSave >= 0 ? '+' : ''}{finalSave}
                                                             {saveMods.advantageState === 'advantage' && <span className="adv-indicator" title="Advantage on saving throw">A</span>}
@@ -1050,15 +660,19 @@ export default function PlayerCard({
                                                     );
                                                 })}
                                                 {dndSkills.map(skill => {
-                                                    const skillBonus = calculateSkillBonus(player, skill.stat, skill.name);
-                                                    const isProficient = player.skills && player.skills[skill.name];
-                                                    if (isProficient || skillBonus > 0) {
+                                                    const skillBonus = calculateSkillBonus(computedPlayer, skill.stat, skill.name);
+                                                    const isComputedProficient = computedPlayer.skills && computedPlayer.skills[skill.name];
+                                                    const isBaseProficient = player.skills && player.skills[skill.name];
+                                                    const isFixed = isComputedProficient && !isBaseProficient;
+                                                    
+                                                    if (isComputedProficient || skillBonus > 0) {
                                                         return (
                                                             <div 
                                                                 key={`skill-${skill.name}`} 
-                                                                className={`proficiency-chip skill-chip ${isProficient ? 'proficient' : ''}`}
-                                                                onClick={() => toggleSkill(player.id, skill.name)}
-                                                                title="Click to toggle skill proficiency"
+                                                                className={`proficiency-chip skill-chip ${isComputedProficient ? 'proficient' : ''} ${isFixed ? 'locked-trait' : ''}`}
+                                                                onClick={isFixed ? undefined : () => toggleSkill(player.id, skill.name)}
+                                                                title={isFixed ? "Granted by Race/Class (Fixed)" : "Click to toggle skill proficiency"}
+                                                                style={{ cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                             >
                                                                 {skill.name} {skillBonus >= 0 ? '+' : ''}{skillBonus}
                                                             </div>
@@ -1068,15 +682,7 @@ export default function PlayerCard({
                                                 })}
                                             </div>
 
-                                                <div className="rp-field full-width stats-skills-features">
-                                                    <label>Features & Traits</label>
-                                                    <textarea
-                                                        className="input rp-textarea mini-textarea"
-                                                        value={player.features || ''}
-                                                        onChange={e => updatePlayer(player.id, 'features', e.target.value)}
-                                                        placeholder="List notable feats, darkvision..."
-                                                    />
-                                                </div>
+
 
                                                 {/* Resistances & Vulnerabilities Editor */}
                                                 <div className="rp-field full-width player-resistances-section">
@@ -1086,20 +692,22 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label res-lbl">Resistances (1/2 dmg)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.resistances || []).map(r => (
+                                                                {(computedPlayer.resistances || []).map(r => {
+                                                                    const isFixed = !(player.resistances || []).includes(r);
+                                                                    return (
                                                                     <span 
                                                                         key={r} 
-                                                                        className="damage-pill pill-resistance"
-                                                                        onClick={() => {
+                                                                        className={`damage-pill pill-resistance ${isFixed ? 'locked-trait' : ''}`}
+                                                                        onClick={isFixed ? undefined : () => {
                                                                             const updated = (player.resistances || []).filter(x => x !== r);
                                                                             updatePlayer(player.id, 'resistances', updated);
                                                                         }}
-                                                                        title="Click to remove"
-                                                                        style={{ cursor: 'pointer' }}
+                                                                        title={isFixed ? "Granted by Race/Class (Fixed)" : "Click to remove"}
+                                                                        style={{ cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                                     >
                                                                         {r}
                                                                     </span>
-                                                                ))}
+                                                                )})}
                                                                 <select
                                                                     className="input pill-select-add"
                                                                     value=""
@@ -1112,7 +720,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {DAMAGE_TYPES.filter(t => !(player.resistances || []).includes(t)).map(t => (
+                                                                    {DAMAGE_TYPES.filter(t => !(computedPlayer.resistances || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1123,20 +731,22 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label imm-lbl">Immunities (0 dmg)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.immunities || []).map(i => (
+                                                                {(computedPlayer.immunities || []).map(i => {
+                                                                    const isFixed = !(player.immunities || []).includes(i);
+                                                                    return (
                                                                     <span 
                                                                         key={i} 
-                                                                        className="damage-pill pill-immunity"
-                                                                        onClick={() => {
+                                                                        className={`damage-pill pill-immunity ${isFixed ? 'locked-trait' : ''}`}
+                                                                        onClick={isFixed ? undefined : () => {
                                                                             const updated = (player.immunities || []).filter(x => x !== i);
                                                                             updatePlayer(player.id, 'immunities', updated);
                                                                         }}
-                                                                        title="Click to remove"
-                                                                        style={{ cursor: 'pointer' }}
+                                                                        title={isFixed ? "Granted by Race/Class (Fixed)" : "Click to remove"}
+                                                                        style={{ cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                                     >
                                                                         {i}
                                                                     </span>
-                                                                ))}
+                                                                )})}
                                                                 <select
                                                                     className="input pill-select-add"
                                                                     value=""
@@ -1149,7 +759,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {DAMAGE_TYPES.filter(t => !(player.immunities || []).includes(t)).map(t => (
+                                                                    {DAMAGE_TYPES.filter(t => !(computedPlayer.immunities || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1160,7 +770,7 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label vul-lbl">Vulnerabilities (2x dmg)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.vulnerabilities || []).map(v => (
+                                                                {(computedPlayer.vulnerabilities || []).map(v => (
                                                                     <span 
                                                                         key={v} 
                                                                         className="damage-pill pill-vulnerability"
@@ -1186,7 +796,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {DAMAGE_TYPES.filter(t => !(player.vulnerabilities || []).includes(t)).map(t => (
+                                                                    {DAMAGE_TYPES.filter(t => !(computedPlayer.vulnerabilities || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1203,20 +813,22 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label res-lbl">CC Resistances (adv. on save)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.ccResistances || []).map(r => (
+                                                                {(computedPlayer.ccResistances || []).map(r => {
+                                                                    const isFixed = !(player.ccResistances || []).includes(r);
+                                                                    return (
                                                                     <span 
                                                                         key={r} 
-                                                                        className="damage-pill pill-resistance"
-                                                                        onClick={() => {
+                                                                        className={`damage-pill pill-resistance ${isFixed ? 'locked-trait' : ''}`}
+                                                                        onClick={isFixed ? undefined : () => {
                                                                             const updated = (player.ccResistances || []).filter(x => x !== r);
                                                                             updatePlayer(player.id, 'ccResistances', updated);
                                                                         }}
-                                                                        title="Click to remove"
-                                                                        style={{ cursor: 'pointer' }}
+                                                                        title={isFixed ? "Granted by Race/Class (Fixed)" : "Click to remove"}
+                                                                        style={{ cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                                     >
                                                                         {r}
                                                                     </span>
-                                                                ))}
+                                                                )})}
                                                                 <select
                                                                     className="input pill-select-add"
                                                                     value=""
@@ -1228,7 +840,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {ALL_CC_EFFECTS.filter(t => !(player.ccResistances || []).includes(t)).map(t => (
+                                                                    {ALL_CC_EFFECTS.filter(t => !(computedPlayer.ccResistances || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1239,20 +851,22 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label imm-lbl">CC Immunities (cannot be affected)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.ccImmunities || []).map(i => (
+                                                                {(computedPlayer.ccImmunities || []).map(i => {
+                                                                    const isFixed = !(player.ccImmunities || []).includes(i);
+                                                                    return (
                                                                     <span 
                                                                         key={i} 
-                                                                        className="damage-pill pill-immunity"
-                                                                        onClick={() => {
+                                                                        className={`damage-pill pill-immunity ${isFixed ? 'locked-trait' : ''}`}
+                                                                        onClick={isFixed ? undefined : () => {
                                                                             const updated = (player.ccImmunities || []).filter(x => x !== i);
                                                                             updatePlayer(player.id, 'ccImmunities', updated);
                                                                         }}
-                                                                        title="Click to remove"
-                                                                        style={{ cursor: 'pointer' }}
+                                                                        title={isFixed ? "Granted by Race/Class (Fixed)" : "Click to remove"}
+                                                                        style={{ cursor: isFixed ? 'not-allowed' : 'pointer' }}
                                                                     >
                                                                         {i}
                                                                     </span>
-                                                                ))}
+                                                                )})}
                                                                 <select
                                                                     className="input pill-select-add"
                                                                     value=""
@@ -1264,7 +878,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {ALL_CC_EFFECTS.filter(t => !(player.ccImmunities || []).includes(t)).map(t => (
+                                                                    {ALL_CC_EFFECTS.filter(t => !(computedPlayer.ccImmunities || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1275,7 +889,7 @@ export default function PlayerCard({
                                                         <div className="damage-mod-row">
                                                             <span className="damage-mod-type-label vul-lbl">CC Vulnerabilities (disadv. on save)</span>
                                                             <div className="damage-mod-pills">
-                                                                {(player.ccVulnerabilities || []).map(v => (
+                                                                {(computedPlayer.ccVulnerabilities || []).map(v => (
                                                                     <span 
                                                                         key={v} 
                                                                         className="damage-pill pill-vulnerability"
@@ -1300,7 +914,7 @@ export default function PlayerCard({
                                                                     }}
                                                                 >
                                                                     <option value="">Add</option>
-                                                                    {ALL_CC_EFFECTS.filter(t => !(player.ccVulnerabilities || []).includes(t)).map(t => (
+                                                                    {ALL_CC_EFFECTS.filter(t => !(computedPlayer.ccVulnerabilities || []).includes(t)).map(t => (
                                                                         <option key={t} value={t}>{t}</option>
                                                                     ))}
                                                                 </select>
@@ -1355,85 +969,6 @@ export default function PlayerCard({
                                                 </div>
                                             </div>
 
-                                            <div className="combat-tab-content integrated-combat">
-                                                <div className="combat-stats-row mini-combat-row">
-                                                    <div className="combat-stat-box">
-                                                        <label>Base AC</label>
-                                                        <input
-                                                            type="number"
-                                                            className="input combat-input"
-                                                            value={player.ac}
-                                                            placeholder="10"
-                                                            onChange={e => updatePlayer(player.id, 'ac', parseInt(e.target.value) || 0)}
-                                                        />
-                                                    </div>
-                                                    <div className="combat-stat-box">
-                                                        <label>Base HP</label>
-                                                        <input
-                                                            type="number"
-                                                            className="input combat-input"
-                                                            value={player.hpBase}
-                                                            onChange={e => updatePlayer(player.id, 'hpBase', Math.max(1, parseInt(e.target.value) || 1))}
-                                                        />
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--success)', whiteSpace: 'nowrap' }}>
-                                                            +{calculateModifier(player.con) * getLevelInfo(player.xp).level} CON = {calculateMaxHP(player)} Max HP
-                                                        </div>
-                                                    </div>
-                                                    <div className="combat-stat-box">
-                                                        <label>Resource Trait</label>
-                                                        <select
-                                                            className="input combat-input"
-                                                            value={player.resourceTrait || 'standard'}
-                                                            onChange={e => updatePlayer(player.id, 'resourceTrait', e.target.value)}
-                                                        >
-                                                            <option value="standard">Standard</option>
-                                                            <option value="vampire">Blood Magic (Vampire)</option>
-                                                        </select>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                                            {playerUsesVampire(player) ? 'Mana → HP pool' : 'HP ↔ Mana conversion'}
-                                                        </div>
-                                                    </div>
-                                                    {!playerUsesVampire(player) && (
-                                                        <>
-                                                            <div className="combat-stat-box">
-                                                                <label>Mana Mod</label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="input combat-input"
-                                                                    value={player.manaModifier ?? getDefaultManaModifier(player)}
-                                                                    onChange={e => updatePlayer(player.id, 'manaModifier', parseInt(e.target.value) || 0)}
-                                                                    onWheel={e => {
-                                                                        e.preventDefault();
-                                                                        const current = player.manaModifier ?? getDefaultManaModifier(player);
-                                                                        updatePlayer(player.id, 'manaModifier', current + Math.sign(e.deltaY) * -1);
-                                                                    }}
-                                                                    onKeyDown={e => {
-                                                                        const current = player.manaModifier ?? getDefaultManaModifier(player);
-                                                                        if (e.key === 'ArrowUp') { e.preventDefault(); updatePlayer(player.id, 'manaModifier', current + 1); }
-                                                                        if (e.key === 'ArrowDown') { e.preventDefault(); updatePlayer(player.id, 'manaModifier', current - 1); }
-                                                                    }}
-                                                                />
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                                    {player.manaModifier != null ? 'Manual override' : 'Auto (spellcasting stat)'}
-                                                                </div>
-                                                            </div>
-                                                            <div className="combat-stat-box">
-                                                                <label>Max Mana</label>
-                                                                <div className="combat-input calculated-stat">{calculateMaxMana(player)}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Auto Calc.</div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                    {playerUsesVampire(player) && (
-                                                        <div className="combat-stat-box">
-                                                            <label>Merged Mana Bonus</label>
-                                                            <div className="combat-input calculated-stat">+{calculateMaxMana(player)} HP</div>
-                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>100% mana → max HP</div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-
                                                 <div className="starve-row" style={{ marginTop: '0.5rem' }}>
                                                     <div className="starve-control" title="MP Starve: Each stack increases spell costs by 100%. Adjust manually.">
                                                         <button
@@ -1449,37 +984,6 @@ export default function PlayerCard({
                                                         >＋</button>
                                                     </div>
                                                 </div>
-
-
-                                                <div className="carrying-capacity mini-capacity">
-                                                    <h4>Capacity</h4>
-                                                    <div className="capacity-bar">
-                                                        Max Load: {(player.str || 10) * 15} lbs <br />
-                                                        Push/Drag/Lift: {(player.str || 10) * 30} lbs
-                                                    </div>
-                                                </div>
-
-
-                                                <div className="rp-field">
-                                                    <label>Background / Race / Alignment</label>
-                                                    <input
-                                                        className="input"
-                                                        value={player.background || ''}
-                                                        onChange={e => updatePlayer(player.id, 'background', e.target.value)}
-                                                        placeholder="e.g. Human Fighter, Acolyte, LG"
-                                                    />
-                                                </div>
-
-                                                <div className="xp-section mini-xp">
-                                                    <label>EXP</label>
-                                                    <input
-                                                        type="number"
-                                                        className="input xp-input"
-                                                        value={player.xp || 0}
-                                                        onChange={e => updatePlayer(player.id, 'xp', parseInt(e.target.value) || 0)}
-                                                    />
-                                                </div>
-                                            </div>
                                         </div>
                                     )}
                                 </div>

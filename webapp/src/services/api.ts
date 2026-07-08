@@ -203,3 +203,29 @@ export function updateCampaignData(
     body: JSON.stringify(data),
   });
 }
+
+// ===== COMPENDIUM ENDPOINTS =====
+export function fetchCompendiumSpells(): Promise<any[]> {
+  return request<any[]>('/compendium/spells');
+}
+
+export function fetchCompendiumItems(): Promise<any[]> {
+  return request<any[]>('/compendium/items');
+}
+
+export function fetchCompendiumMonsters(): Promise<any[]> {
+  return request<any[]>('/compendium/monsters');
+}
+
+export function fetchCompendiumClasses(): Promise<any[]> {
+  return request<any[]>('/compendium/classes');
+}
+
+export function fetchCompendiumSubclasses(): Promise<any[]> {
+  return request<any[]>('/compendium/subclasses');
+}
+
+export function fetchCompendiumRaces(): Promise<any[]> {
+  return request<any[]>('/compendium/races');
+}
+

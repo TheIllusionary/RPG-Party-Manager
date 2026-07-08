@@ -28,6 +28,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@owlbear-rodeo/sdk": "^3.1.0",
     "@xyflow/react": "^12.11.1",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",

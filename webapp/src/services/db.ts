@@ -38,4 +38,48 @@ db.version(1).stores({
   campaignState: 'id, campaignId, type, updatedAt, isDeleted'
 });
 
+db.version(2).stores({
+  // No new indexes, just a data migration
+}).upgrade(async tx => {
+  // Migrate standalone items
+  const items = await tx.table('items').toArray();
+  for (const item of items) {
+    if (!item.category) item.category = 'gear';
+    if (!item.rarity) item.rarity = 'Common';
+    if (!item.equipState) item.equipState = 'carried';
+    if (item.requiresAttunement === undefined) item.requiresAttunement = false;
+    if (item.isAttuned === undefined) item.isAttuned = false;
+    
+    // Migrate flat modifiers to modifiers.stats
+    if (item.modifiers && !item.modifiers.stats && Object.keys(item.modifiers).length > 0) {
+      const flatMods = { ...item.modifiers };
+      item.modifiers = { stats: flatMods };
+    }
+    await tx.table('items').put(item);
+  }
+
+  // Migrate items embedded in campaignState (equipment)
+  const equipmentStates = await tx.table('campaignState').where('type').equals('equipment').toArray();
+  for (const state of equipmentStates) {
+    if (state.data && state.data.inventories) {
+      for (const sectionId in state.data.inventories) {
+        const inventory = state.data.inventories[sectionId];
+        for (const item of inventory) {
+          if (!item.category) item.category = 'gear';
+          if (!item.rarity) item.rarity = 'Common';
+          if (!item.equipState) item.equipState = 'carried';
+          if (item.requiresAttunement === undefined) item.requiresAttunement = false;
+          if (item.isAttuned === undefined) item.isAttuned = false;
+          
+          if (item.modifiers && !item.modifiers.stats && Object.keys(item.modifiers).length > 0) {
+            const flatMods = { ...item.modifiers };
+            item.modifiers = { stats: flatMods };
+          }
+        }
+      }
+      await tx.table('campaignState').put(state);
+    }
+  }
+});
+
 export default db;

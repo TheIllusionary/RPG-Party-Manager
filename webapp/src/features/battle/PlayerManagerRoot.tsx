@@ -87,6 +87,7 @@ export default function PlayerManagerRoot({
       campaignId={campaignId}
       party={party} 
       combat={combat} 
+      onOpenSheet={props.onOpenSheet}
       library={library}
       updateLibrary={updateLibrary}
       subclasses={subclasses}

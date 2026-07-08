@@ -97,6 +97,7 @@ Also update `docs/mudancas-recentes.md` when the change affects user-visible beh
 ## 6. TypeScript & Quality
 
 - New code: `.ts` / `.tsx` only under `webapp/src/`.
+- **Imports MUST use absolute path aliasing (`@/` for `src/`)** instead of relative paths that go up more than one directory level (`../`).
 - Type props with interfaces from `src/types/`; use `// TODO: fix any` sparingly, never silently.
 - Run `npm run build --prefix webapp` after structural changes.
 - Do not commit `.env`, credentials, or `node_modules`.

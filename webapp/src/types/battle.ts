@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import type { ActorDamageModifiers } from '../engine/types';
 import type { LogicBlock } from './domain';
 import type {
@@ -160,6 +160,7 @@ export interface IPlayerManagerShellProps {
   compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
   compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
   bestiaryFavorites?: string[];
+  onOpenSheet?: (playerId: string) => void;
 }
 
 export interface IUsePartyStateParams {
@@ -352,24 +353,8 @@ export interface ICombatState {
   enemySearchText: string;
   setEnemySearchText: Dispatch<SetStateAction<string>>;
   triggerEnemyLimitBreak: (id: string) => void;
-  isVttOpen: boolean;
-  setIsVttOpen: Dispatch<SetStateAction<boolean>>;
-  isVttFullscreen: boolean;
-  setIsVttFullscreen: Dispatch<SetStateAction<boolean>>;
-  vttRoomUrl: string;
-  setVttRoomUrl: Dispatch<SetStateAction<string>>;
-  vttInputVal: string;
-  setVttInputVal: Dispatch<SetStateAction<string>>;
   battleNotes: string;
   setBattleNotes: Dispatch<SetStateAction<string>>;
-  vttLoading: boolean;
-  setVttLoading: Dispatch<SetStateAction<boolean>>;
-  vttPlaceholderRef: RefObject<HTMLDivElement | null>;
-  isVttActive: boolean;
-  getVttUrl: (input: string) => string;
-  handleLoadVtt: () => void;
-  handleReloadVtt: () => void;
-  handleOpenInBrowser: () => void;
   startEnemyEdit: (enemy: IEnemy, field: keyof IEnemy) => void;
   commitEnemyEdit: (enemy: IEnemy) => void;
   cancelEnemyEdit: () => void;
@@ -442,6 +427,7 @@ export interface IPlayerCardProps {
   compendiumClasses?: import('../services/compendium/fiveETools/types').MasterClass[];
   compendiumSubclasses?: import('../services/compendium/fiveETools/types').MasterSubclass[];
   compendiumRaces?: import('../services/compendium/fiveETools/types').MasterRace[];
+  onOpenSheet?: (playerId: string) => void;
 }
 
 export interface IEnemyCardProps {

@@ -4,8 +4,24 @@ import { extractStatsFromText } from './traitExtractor';
 import {
   parseAbilityArray,
   parseSkillProficiencies,
+  parseFixedSkillProficiencies,
   parseLanguageProficiencies,
 } from '../../../shared/utils/raceParser';
+
+function extractStringArray(raw: any): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.flatMap(r => {
+      if (typeof r === 'string') return [r];
+      if (r && typeof r === 'object' && r.resist) return extractStringArray(r.resist);
+      if (r && typeof r === 'object' && r.immune) return extractStringArray(r.immune);
+      if (r && typeof r === 'object' && r.conditionImmune) return extractStringArray(r.conditionImmune);
+      // For some cases, it might be { "choose": ... }, which is too complex for now, ignore.
+      return [];
+    });
+  }
+  return [];
+}
 
 export class FiveEToolsRaceAdapter extends FiveEToolsBaseAdapter<any, MasterRace | MasterSubrace> {
 
@@ -70,7 +86,12 @@ export class FiveEToolsRaceAdapter extends FiveEToolsBaseAdapter<any, MasterRace
     // Parse ability array — split into fixed bonuses and choice blocks
     const { fixed: fixedAbility, choices: abilityChoices } = parseAbilityArray(raw.ability ?? []);
     const skillChoices = parseSkillProficiencies(raw.skillProficiencies ?? []);
+    const fixedSkills = parseFixedSkillProficiencies(raw.skillProficiencies ?? []);
     const languageChoices = parseLanguageProficiencies(raw.languageProficiencies ?? []);
+
+    const resistances = extractStringArray(raw.resist);
+    const immunities = extractStringArray(raw.immune);
+    const conditionImmunities = extractStringArray(raw.conditionImmune);
 
     return {
       id: crypto.randomUUID(),
@@ -83,7 +104,11 @@ export class FiveEToolsRaceAdapter extends FiveEToolsBaseAdapter<any, MasterRace
       ability: fixedAbility,
       ...(abilityChoices.length > 0 ? { abilityChoices } : {}),
       ...(skillChoices.length > 0 ? { skillChoices } : {}),
+      ...(fixedSkills.length > 0 ? { skills: fixedSkills } : {}),
       ...(languageChoices.length > 0 ? { languageChoices } : {}),
+      ...(resistances.length > 0 ? { resistances } : {}),
+      ...(immunities.length > 0 ? { immunities } : {}),
+      ...(conditionImmunities.length > 0 ? { conditionImmunities } : {}),
       traits,
       subraces: [], // populated later by the ETL pipeline after all records are processed
       search: { plainText: raw.name, tags: [] },
@@ -104,7 +129,12 @@ export class FiveEToolsRaceAdapter extends FiveEToolsBaseAdapter<any, MasterRace
 
     const { fixed: fixedAbility, choices: abilityChoices } = parseAbilityArray(raw.ability ?? []);
     const skillChoices = parseSkillProficiencies(raw.skillProficiencies ?? []);
+    const fixedSkills = parseFixedSkillProficiencies(raw.skillProficiencies ?? []);
     const languageChoices = parseLanguageProficiencies(raw.languageProficiencies ?? []);
+
+    const resistances = extractStringArray(raw.resist);
+    const immunities = extractStringArray(raw.immune);
+    const conditionImmunities = extractStringArray(raw.conditionImmune);
 
     return {
       id: crypto.randomUUID(),
@@ -116,7 +146,11 @@ export class FiveEToolsRaceAdapter extends FiveEToolsBaseAdapter<any, MasterRace
       ability: fixedAbility,
       ...(abilityChoices.length > 0 ? { abilityChoices } : {}),
       ...(skillChoices.length > 0 ? { skillChoices } : {}),
+      ...(fixedSkills.length > 0 ? { skills: fixedSkills } : {}),
       ...(languageChoices.length > 0 ? { languageChoices } : {}),
+      ...(resistances.length > 0 ? { resistances } : {}),
+      ...(immunities.length > 0 ? { immunities } : {}),
+      ...(conditionImmunities.length > 0 ? { conditionImmunities } : {}),
       traits,
     };
   }

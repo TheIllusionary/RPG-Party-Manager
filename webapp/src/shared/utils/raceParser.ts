@@ -146,6 +146,32 @@ export function parseSkillProficiencies(rawSkillProfs: any[]): IChoiceObject[] {
 }
 
 /**
+ * Parses a raw 5etools `skillProficiencies` array into a flat array of fixed skill strings.
+ */
+export function parseFixedSkillProficiencies(rawSkillProfs: any[]): string[] {
+  const fixed: string[] = [];
+  if (!Array.isArray(rawSkillProfs)) return fixed;
+  
+  const nameMap = Object.keys(ALL_SKILLS).reduce((acc, name) => {
+    acc[name.toLowerCase()] = name;
+    return acc;
+  }, {} as Record<string, string>);
+
+  for (const entry of rawSkillProfs) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    if (entry.choose) continue;
+
+    for (const [key, value] of Object.entries(entry)) {
+      if (value === true && nameMap[key.toLowerCase()]) {
+        fixed.push(nameMap[key.toLowerCase()]);
+      }
+    }
+  }
+
+  return Array.from(new Set(fixed));
+}
+
+/**
  * Parses a raw 5etools `languageProficiencies` array into IChoiceObject[].
  */
 export function parseLanguageProficiencies(rawLangProfs: any[]): IChoiceObject[] {
