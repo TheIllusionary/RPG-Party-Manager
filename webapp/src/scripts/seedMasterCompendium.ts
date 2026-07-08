@@ -13,6 +13,7 @@ import {
   resolveSpellClassesFromSources,
 } from '../services/compendium/fiveETools/spellAdapter.js';
 import { FiveEToolsMonsterAdapter } from '../services/compendium/fiveETools/monsterAdapter.js';
+import { resolveMonsterCopy } from '../shared/utils/copyResolver.js';
 import { FiveEToolsClassAdapter } from '../services/compendium/fiveETools/classAdapter.js';
 import { FiveEToolsRaceAdapter } from '../services/compendium/fiveETools/raceAdapter.js';
 import { FiveEToolsItemAdapter } from '../services/compendium/fiveETools/itemAdapter.js';
@@ -137,17 +138,30 @@ async function seedMonsters(): Promise<void> {
     (f) => f.isFile() && f.name.startsWith('bestiary-') && f.name.endsWith('.json')
   );
 
+  const allRawMonsters: any[] = [];
+  const monstersMap = new Map<string, any>();
+
+  // 1. Collect all monsters
   for (const file of files) {
     const payload = loadJsonFile<any>(resolve(dataDir, file.name));
     const monsters = payload.monster ?? [];
     for (const raw of monsters) {
-      try {
-        const master = adapter.toMasterDocument(raw);
-        await store.put(DOCUMENT_COLLECTIONS.compendiumMonsters, master);
-        upserted += 1;
-      } catch (err: unknown) {
-        console.warn(`  [Warning] Failed to parse monster ${raw.name}:`, err);
+      allRawMonsters.push(raw);
+      if (raw.name && raw.source) {
+        monstersMap.set(`${raw.name.toLowerCase()}|${raw.source.toLowerCase()}`, raw);
       }
+    }
+  }
+
+  // 2. Resolve copies and insert
+  for (const raw of allRawMonsters) {
+    try {
+      const resolved = resolveMonsterCopy(raw, monstersMap);
+      const master = adapter.toMasterDocument(resolved);
+      await store.put(DOCUMENT_COLLECTIONS.compendiumMonsters, master);
+      upserted += 1;
+    } catch (err: unknown) {
+      console.warn(`  [Warning] Failed to parse monster ${raw.name}:`, err);
     }
   }
 

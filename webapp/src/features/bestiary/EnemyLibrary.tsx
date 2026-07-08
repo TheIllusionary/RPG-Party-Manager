@@ -78,7 +78,7 @@ export default function EnemyLibrary({
     bestiaryFavorites = [],
     updateBestiaryFavorites = () => {}
 }: IEnemyLibraryProps) {
-    const { monsters: compendiumMonsters } = useCompendiumMonsters();
+    const { monsters: compendiumMonsters, loading: loadingMonsters } = useCompendiumMonsters();
     const data = [...compendiumMonsters, ...library];
     const updateData = updateLibrary;
 
@@ -806,6 +806,15 @@ export default function EnemyLibrary({
                         </tr>
                     </thead>
                     <tbody>
+                        {loadingMonsters && paginatedData.length === 0 && (
+                            <tr>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                        <span className="spinner" style={{ animation: 'spin 1s linear infinite' }}>⏳</span> Fetching data from server...
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
                         {paginatedData.map((enemy: any) => {
                             const isExpanded = expandedEnemyId === enemy.id;
                             const miniSprite = (enemy.classType || '').toLowerCase() === 'boss' ? 'boss' : 'enemy';

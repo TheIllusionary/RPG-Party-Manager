@@ -293,6 +293,11 @@ export interface MasterClass {
     weapons?: string[];
     skills?: string;
   };
+  skills?: string[];
+  saves?: string[];
+  resistances?: string[];
+  immunities?: string[];
+  conditionImmunities?: string[];
   features?: Array<{ name: string; desc: string; level: number; stats?: IExtractedStats }>;
   subclasses?: MasterSubclass[];
   search: SanitizedText;
@@ -317,6 +322,11 @@ export interface MasterRace {
   skillChoices?: IChoiceObject[];
   /** Structured language choice blocks. */
   languageChoices?: IChoiceObject[];
+  skills?: string[];
+  saves?: string[];
+  resistances?: string[];
+  immunities?: string[];
+  conditionImmunities?: string[];
   traits?: Array<{ name: string; desc: string; stats?: IExtractedStats }>;
   /** Parsed subraces for this base race. */
   subraces?: MasterSubrace[];
@@ -367,6 +377,8 @@ export interface IChoiceObject {
   count: number;
   /** The concrete list of options the player can pick from. */
   options: string[];
+  /** The level at which this choice is unlocked (e.g. 1 for race, 4/8/12 for class ASIs). Defaults to 1 if not present. */
+  level?: number;
 }
 
 /** A subrace linked back to its parent MasterRace via parentEntityKey. */
@@ -386,5 +398,10 @@ export interface MasterSubrace {
   skillChoices?: IChoiceObject[];
   /** Structured language choice blocks. */
   languageChoices?: IChoiceObject[];
+  skills?: string[];
+  saves?: string[];
+  resistances?: string[];
+  immunities?: string[];
+  conditionImmunities?: string[];
   traits?: Array<{ name: string; desc: string; stats?: IExtractedStats }>;
 }

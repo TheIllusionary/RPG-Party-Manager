@@ -23,6 +23,14 @@ export interface IAttack {
   ccCustom?: string;
 }
 
+export interface IResolvedChoices {
+  [level: number]: {
+    asi?: Record<string, number>;
+    proficiencies?: string[];
+    languages?: string[];
+  };
+}
+
 export interface IPlayer {
   id: string;
   name: string;
@@ -69,10 +77,12 @@ export interface IPlayer {
   optionalSubclassId?: string | null;
   /** The selected subrace entity key (e.g. 'phb_race_elf_high-elf'). */
   subraceId?: string | null;
-  /** ASI choices made by the player (stat abbr → chosen bonus, e.g. { str: 1 }). */
+  /** ASI choices made by the player (stat abbr → chosen bonus, e.g. { str: 1 }). Legacy field. */
   asiChoices?: Record<string, number>;
-  /** Skill/tool proficiency choices made at character creation (array of chosen skill names). */
+  /** Skill/tool proficiency choices made at character creation (array of chosen skill names). Legacy field. */
   proficiencyChoices?: string[];
+  /** Level-gated resolved choices (ASIs, skills, languages). */
+  resolvedChoices?: IResolvedChoices;
   resourceTrait?: string;
   recentSpells?: number[];
   /** D&D 5e spell slots — used when mana rule is disabled. Keys "1"–"9". */
@@ -119,15 +129,33 @@ export interface IEnemy {
   isDefault?: boolean;
 }
 
+export type ItemCategory = 'weapon' | 'armor' | 'shield' | 'consumable' | 'wondrous' | 'gear' | 'tool';
+export type ItemRarity = 'Common' | 'Uncommon' | 'Rare' | 'Very Rare' | 'Legendary' | 'Mythic/Artifact';
+export type EquipState = 'equipped' | 'carried' | 'stowed';
+
 export interface IInventoryItem {
   id: string;
   name: string;
   description?: string;
-  quantity?: number;
-  weight?: string;
-  type?: string;
-  rarity?: string;
-  modifiers?: Partial<Record<StatAbbr, number>>;
+  quantity: number;
+  weight: string;
+  value?: string;
+  type?: string; // Legacy slot type
+  rarity: ItemRarity | string; // Allow string temporarily for migration safety
+  category: ItemCategory | string;
+  equipState: EquipState;
+  requiresAttunement?: boolean;
+  isAttuned?: boolean;
+  
+  // Mechanical payload
+  damage?: { roll: string; type: string }[];
+  properties?: string[];
+  modifiers?: {
+    stats?: Partial<Record<StatAbbr, number>>;
+    resistances?: string[];
+    immunities?: string[];
+  } & Partial<Record<StatAbbr, number>>; // Allow flat stats for legacy compatibility
+  
   setAttributes?: Partial<Record<StatAbbr, number>>;
   acBonus?: number;
   baseAC?: number;
@@ -140,7 +168,6 @@ export interface IInventoryItem {
   ccImmunities?: string[];
   ccVulnerabilities?: string[];
   buffs?: string[];
-  category?: string;
   isWondrousOnly?: boolean;
 }
 

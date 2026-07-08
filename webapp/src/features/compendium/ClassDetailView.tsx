@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { MasterClass, MasterSubclass } from '../../services/compendium/fiveETools/types';
 import './ClassDetailView.css';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { AccordionContainer, AccordionGroup, AccordionItem } from '../../shared/components/Accordion/Accordion';
 
 export interface ClassDetailViewProps {
   masterClass: MasterClass;
@@ -107,29 +106,37 @@ export default function ClassDetailView({ masterClass, availableSubclasses }: Cl
           </div>
         </aside>
 
-        <main className="class-timeline">
-          {levels.map((level) => (
-            <div key={level} className="class-timeline-level">
-              <div className="class-timeline-level__header">
-                <span className="class-timeline-level__badge">{level}</span>
-                <div className="class-timeline-level__line" />
-              </div>
+        <main className="class-timeline" style={{ width: '100%' }}>
+          <AccordionContainer>
+            {levels.map((level) => {
+              const featuresAtLevel = progressionByLevel[level];
+              const featureNames = featuresAtLevel.map(f => f.name).join(', ');
               
-              {progressionByLevel[level].map((feature, idx) => (
-                <div key={`${feature.name}-${idx}`} className="class-timeline-feature">
-                  <h4>
-                    {feature.name}
-                    {feature.sourceType === 'subclass' && (
-                      <span className="class-timeline-feature__source">Subclass</span>
-                    )}
-                  </h4>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {feature.desc}
-                  </ReactMarkdown>
-                </div>
-              ))}
-            </div>
-          ))}
+              return (
+                <AccordionGroup key={level} title={`Level ${level} - ${featureNames}`}>
+                  {featuresAtLevel.map((feature, idx) => (
+                    <AccordionItem 
+                      key={`${feature.name}-${idx}`} 
+                      summary={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>{feature.name}</span>
+                          {feature.sourceType === 'subclass' && (
+                            <span className="badge badge-outline text-xs" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>Subclass</span>
+                          )}
+                        </div>
+                      }
+                    >
+                      <div 
+                        className="text-sm max-w-prose leading-relaxed whitespace-pre-wrap"
+                        style={{ color: 'var(--text-secondary)' }}
+                        dangerouslySetInnerHTML={{ __html: feature.desc }}
+                      />
+                    </AccordionItem>
+                  ))}
+                </AccordionGroup>
+              );
+            })}
+          </AccordionContainer>
         </main>
       </div>
     </div>

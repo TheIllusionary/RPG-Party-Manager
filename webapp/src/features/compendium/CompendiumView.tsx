@@ -21,6 +21,7 @@ import {
   filterSpells,
   type SpellFilterState,
 } from './spellFilterUtils';
+import db from '../../services/db';
 
 import './compendium.css';
 
@@ -150,6 +151,20 @@ export default function CompendiumView() {
           <p className="compendium-header__subtitle">
             Spells and equipment from the local ETL catalog.
           </p>
+          <div style={{ marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              className="compendium-link-btn"
+              onClick={async () => {
+                if (window.confirm('Are you sure you want to force wipe the Dexie monsters library? This will clear all local cached monsters.')) {
+                  await db.library.clear();
+                  alert('Dexie library cleared! You may now run the ETL pipeline and reload.');
+                }
+              }}
+            >
+              ⚠️ Force Wipe Dexie Library
+            </button>
+          </div>
         </div>
 
         <nav className="compendium-tabs" aria-label="Compendium sections">
@@ -236,7 +251,11 @@ export default function CompendiumView() {
 
           <ul className="compendium-list" role="listbox" aria-label={activeTab === 'spells' ? 'Spells' : (activeTab === 'items' ? 'Items' : 'Classes')}>
             {loading && (
-              <li className="compendium-list__empty">Loading catalog…</li>
+              <li className="compendium-list__empty">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '2rem 0' }}>
+                  <span className="spinner" style={{ animation: 'spin 1s linear infinite' }}>⏳</span> Fetching data from server...
+                </div>
+              </li>
             )}
             {!loading && activeTab === 'spells' && filteredSpells.length === 0 && (
               <li className="compendium-list__empty">

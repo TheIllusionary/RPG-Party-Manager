@@ -1,0 +1,77 @@
+/* ===== TRAITS ACCORDION ===== */
+.traits-accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.traits-category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.traits-category-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.25rem;
+    margin: 0;
+}
+
+.traits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.trait-details {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.trait-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem;
+    color: var(--text-primary);
+    background: rgba(99, 102, 241, 0.05);
+    transition: var(--transition);
+    user-select: none;
+    list-style: none; /* Hide default arrow in modern browsers */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Custom arrow for summary */
+.trait-summary::-webkit-details-marker {
+    display: none; /* Hide default arrow in WebKit */
+}
+
+.trait-summary::after {
+    content: '▼';
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.trait-details[open] .trait-summary::after {
+    transform: rotate(180deg);
+}
+
+.trait-summary:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+}
+
+.trait-content {
+    padding: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}

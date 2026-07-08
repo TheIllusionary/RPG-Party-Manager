@@ -4,6 +4,7 @@ import type { IMinimizedMap } from './battle';
 
 export type AppTab =
   | 'players'
+  | 'playerSheet'
   | 'notebook'
   | 'inventory'
   | 'charequip'
@@ -12,7 +13,8 @@ export type AppTab =
   | 'subclasses'
   | 'rules'
   | 'compendium'
-  | 'bestiary';
+  | 'bestiary'
+  | 'map';
 
 export interface IGameAppProps {
   campaign: ICampaign;

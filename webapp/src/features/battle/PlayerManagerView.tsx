@@ -4,7 +4,6 @@ import PartyLevelModal from './components/PartyLevelModal';
 import CombatHeader from './components/CombatHeader';
 import PlayerCard from './components/PlayerCard';
 import EnemyCard from './components/EnemyCard';
-import VttOverlay from './components/VttOverlay';
 import AttackResolutionModal from './components/AttackResolutionModal';
 import FloatingActionBar from './components/FloatingActionBar';
 import EncounterScenePanel from './components/EncounterScenePanel';
@@ -28,7 +27,8 @@ export default function PlayerManagerView({
   compendiumClasses,
   compendiumSubclasses,
   compendiumRaces,
-  bestiaryFavorites = []
+  bestiaryFavorites = [],
+  onOpenSheet
 }: IPlayerManagerViewProps) {
   const players = party.data;
   const enemyList = enemies;
@@ -77,6 +77,7 @@ export default function PlayerManagerView({
                 compendiumClasses={compendiumClasses}
                 compendiumSubclasses={compendiumSubclasses}
                 compendiumRaces={compendiumRaces}
+                onOpenSheet={onOpenSheet}
               />
             ))}
           </div>
@@ -117,7 +118,6 @@ export default function PlayerManagerView({
         </div>
       </div>
 
-      <VttOverlay combat={combat} battleMode={battleMode} data={players} />
       <AttackResolutionModal
         party={party}
         combat={combat}

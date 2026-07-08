@@ -3,7 +3,7 @@ import './CharacterEquipment.css';
 import type { ICharacterEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 import { parseItemText } from '../../shared/utils/itemParser';
 import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
-import { ItemCombobox } from '../../shared/components/ItemCombobox';
+import SearchableCombobox from '../../shared/components/SearchableCombobox/SearchableCombobox';
 import { Trash2 } from 'lucide-react';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
@@ -157,7 +157,7 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
             const mods = prev.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
             return {
                 ...prev,
-                modifiers: { ...mods, [stat]: parseInt(value) || 0 }
+                modifiers: { ...mods, stats: { ...(mods.stats || mods || {}), [stat]: parseInt(value) || 0 } }
             };
         });
     };
@@ -379,7 +379,13 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
             ...prev,
             [itemId]: {
                 ...prev[itemId],
-                modifiers: { ...prev[itemId].modifiers, [stat]: parseInt(value) || 0 }
+                modifiers: { 
+                    ...prev[itemId].modifiers, 
+                    stats: { 
+                        ...(prev[itemId].modifiers?.stats || prev[itemId].modifiers || {}), 
+                        [stat]: parseInt(value) || 0 
+                    } 
+                }
             }
         }));
     };
@@ -721,12 +727,11 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                 <span className="detail-slot-icon">{openSlotDef.icon}</span>
                                 <div>
                                     <div className="detail-slot-label">{openSlotDef.label}</div>
-                                    <ItemCombobox
+                                    <SearchableCombobox
                                         className="detail-name-input"
-                                        items={allCompendiumItems}
+                                        options={allCompendiumItems.map(i => ({ label: i.name, value: i.name }))}
                                         value={openSlotData.name}
                                         onChange={(val) => handleSlotNameChange(val)}
-                                        onSelect={() => {}}
                                         placeholder={`Enter ${openSlotDef.hint}`}
                                     />
                                 </div>
@@ -753,12 +758,12 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                             <input
                                                 type="number"
                                                 className="input detail-mod-input"
-                                                value={openSlotData.modifiers?.[stat] || 0}
+                                                value={openSlotData.modifiers?.stats?.[stat] || openSlotData.modifiers?.[stat] || 0}
                                                 onChange={e => updateDraftModifier(stat, e.target.value)}
                                                 onWheel={e => {
                                                     e.preventDefault();
                                                     const dir = Math.sign(e.deltaY) * -1;
-                                                    updateDraftModifier(stat, (openSlotData.modifiers?.[stat] || 0) + dir);
+                                                    updateDraftModifier(stat, (openSlotData.modifiers?.stats?.[stat] || openSlotData.modifiers?.[stat] || 0) + dir);
                                                 }}
                                             />
                                         </div>
@@ -1123,26 +1128,53 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                     <span className="wondrous-item-icon">✨</span>
                                     <div className="wondrous-item-meta">
                                         {isEditing ? (
-                                            <ItemCombobox
+                                            <SearchableCombobox
                                                 className="wondrous-name-input"
-                                                items={allCompendiumItems}
+                                                options={allCompendiumItems.map(i => ({ label: i.name, value: i.name }))}
                                                 value={display.name}
                                                 onChange={(val) => handleWondrousNameChange(item.id, val)}
-                                                onSelect={() => {}}
                                                 placeholder="Item Name"
                                             />
                                         ) : (
                                             <span className="wondrous-item-name">{item.name}</span>
                                         )}
                                         {isEditing ? (
-                                            <input
+                                            <select
                                                 className="input wondrous-cat-input"
-                                                value={display.category}
+                                                value={display.category || 'wondrous'}
                                                 onChange={e => updateWondrousDraft(item.id, 'category', e.target.value)}
-                                                placeholder="Category (e.g. Cursed, Artifact, Ring)"
-                                            />
+                                            >
+                                                <option value="weapon">⚔️ Weapon</option>
+                                                <option value="armor">🥋 Armor</option>
+                                                <option value="shield">🛡️ Shield</option>
+                                                <option value="consumable">🧪 Consumable</option>
+                                                <option value="wondrous">✨ Wondrous Item</option>
+                                                <option value="tool">🔨 Tool</option>
+                                                <option value="gear">🎒 Gear</option>
+                                            </select>
                                         ) : (
-                                            item.category && <span className="wondrous-category-tag">{item.category}</span>
+                                            <span className="wondrous-category-tag">{item.category || 'wondrous'}</span>
+                                        )}
+                                        {item.requiresAttunement && !isEditing && (
+                                            <button 
+                                                className={`btn small-btn`} 
+                                                onClick={() => {
+                                                    const updated = { ...item, isAttuned: !item.isAttuned };
+                                                    const newInv = wondrousItems.map(i => i.id === item.id ? updated : i);
+                                                    updateData({ ...data, equipped: { ...data.equipped, [selectedPlayerId]: { ...data.equipped[selectedPlayerId], __wondrous__: newInv } } });
+                                                }}
+                                                style={{ 
+                                                    padding: '0.15rem 0.45rem', 
+                                                    fontSize: '0.65rem', 
+                                                    background: item.isAttuned ? '#f59e0b' : 'transparent',
+                                                    color: item.isAttuned ? '#fff' : '#f59e0b',
+                                                    border: '1px solid #f59e0b',
+                                                    marginLeft: '0.5rem',
+                                                    borderRadius: '4px'
+                                                }}
+                                            >
+                                                {item.isAttuned ? '✨ Attuned' : '✨ Attune'}
+                                            </button>
                                         )}
                                     </div>
                                     <div className="wondrous-item-actions">
@@ -1167,6 +1199,10 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                             placeholder="Item description, properties, lore..."
                                             rows={2}
                                         />
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                                            <input type="checkbox" checked={!!display.requiresAttunement} onChange={e => updateWondrousDraft(item.id, 'requiresAttunement', e.target.checked)} />
+                                            Requires Attunement
+                                        </label>
                                         <div className="wondrous-mods">
                                             <span className="wondrous-mods-label">Stat Modifiers</span>
                                             <div className="detail-mods-grid">
@@ -1176,12 +1212,12 @@ export default function CharacterEquipment({ data, updateData, players, buffsDat
                                                         <input
                                                             type="number"
                                                             className="input detail-mod-input"
-                                                            value={display.modifiers?.[stat] || 0}
+                                                            value={display.modifiers?.stats?.[stat] || display.modifiers?.[stat] || 0}
                                                             onChange={e => updateWondrousMod(item.id, stat, e.target.value)}
                                                             onWheel={e => {
                                                                 e.preventDefault();
                                                                 const dir = Math.sign(e.deltaY) * -1;
-                                                                updateWondrousMod(item.id, stat, (display.modifiers?.[stat] || 0) + dir);
+                                                                updateWondrousMod(item.id, stat, (display.modifiers?.stats?.[stat] || display.modifiers?.[stat] || 0) + dir);
                                                             }}
                                                         />
                                                     </div>

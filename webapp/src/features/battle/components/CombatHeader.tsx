@@ -25,7 +25,7 @@ export default function CombatHeader({
     addPlayer,
   } = party;
 
-  const { isVttOpen, setIsVttOpen, triggerTurnEffects } = combat;
+  const { triggerTurnEffects } = combat;
 
   const isAnyPlayerExpanded = data.some((p) => !isPlayerMinimized(p.id));
   const isAnyEnemyExpanded = battleMode
@@ -104,15 +104,7 @@ export default function CombatHeader({
             Add Player
           </button>
         )}
-        {battleMode && (
-          <button
-            type="button"
-            className={`btn ${isVttOpen ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setIsVttOpen((prev) => !prev)}
-          >
-            {isVttOpen ? 'Hide VTT' : 'Show VTT'}
-          </button>
-        )}
+
         {battleMode && (
           <button type="button" className="btn btn-secondary" onClick={triggerTurnEffects}>
             Turn

@@ -398,7 +398,7 @@ const addPlayer = () => {
     const newPlayer = {
         id: Date.now().toString(),
         name: 'New Player',
-        classType: 'Class',
+        classType: 'Default',
         xp: 0,
         inParty: true,
         hpBase: 10,

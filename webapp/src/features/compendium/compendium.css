@@ -734,3 +734,59 @@
 .pending-choices-apply-btn.is-ready:hover {
   background: rgba(16, 185, 129, 0.12);
 }
+
+.pending-choice-counter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border-color, rgba(255,255,255,0.1));
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.pending-choice-counter-label {
+  min-width: 32px;
+  font-weight: 500;
+}
+
+.pending-choice-counter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.pending-choice-counter-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+  font-weight: bold;
+}
+
+.pending-choice-counter-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+}
+
+.pending-choice-counter-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pending-choice-counter-value {
+  min-width: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-primary);
+}

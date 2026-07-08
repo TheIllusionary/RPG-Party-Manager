@@ -10,6 +10,8 @@ import SubclassManager from '../features/campaign/SubclassManager';
 import CampaignRulesPanel from '../features/campaign/CampaignRulesPanel';
 import CompendiumView from '../features/compendium/CompendiumView';
 import Notebook from '../features/campaign/Notebook';
+import OwlbearMap from '../features/battle/components/OwlbearMap';
+import PlayerSheetView from '../features/PlayerSheet/PlayerSheetView';
 import { mergeCampaignData } from '../data/defaultData';
 import { useLiveQuery } from 'dexie-react-hooks';
 import db from '../services/db';
@@ -43,6 +45,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
   });
 
   const [activeTab, setActiveTab] = useState<AppTab>('players');
+  const [activeSheetPlayerId, setActiveSheetPlayerId] = useState<string | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [battleMode, setBattleMode] = useState(false);
   const [enemies, setEnemies] = useState<IEnemy[]>([]);
@@ -365,7 +368,19 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </svg>
         </button>
 
+        {/* 1.5 - Party Sheet */}
+        <button className={`nav-item ${activeTab === 'playerSheet' ? 'active' : ''}`} onClick={() => switchTab('playerSheet')} title="Party Sheet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+        </button>
+
         {/* Notebook */}
+        <button className={`nav-item ${activeTab === 'map' ? 'active' : ''}`} onClick={() => switchTab('map')} title="Battlemap (Owlbear Rodeo)">
+          <div className="nav-icon">🗺️</div>
+          <span className="nav-label">Map</span>
+        </button>
         <button className={`nav-item ${activeTab === 'notebook' ? 'active' : ''}`} onClick={() => switchTab('notebook')} title="Quest Log / Notes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -511,6 +526,26 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           compendiumSubclasses={compendiumSubclasses}
           compendiumRaces={compendiumRaces}
           bestiaryFavorites={data.bestiaryFavorites || []}
+          onOpenSheet={(id) => {
+            setActiveSheetPlayerId(id);
+            switchTab('playerSheet');
+          }}
+        />
+      )}
+      {activeTab === 'playerSheet' && (
+        <PlayerSheetView
+          players={data.players}
+          updatePlayers={(d) => updateData('players', d)}
+          activeSheetPlayerId={activeSheetPlayerId}
+          setActiveSheetPlayerId={setActiveSheetPlayerId}
+          equipment={data.equipment}
+          subclasses={data.subclasses || []}
+          logicBlocks={data.logicBlocks ?? []}
+          buffsDatabase={data.buffsDatabase || []}
+          config={config}
+          compendiumClasses={compendiumClasses}
+          compendiumSubclasses={compendiumSubclasses}
+          compendiumRaces={compendiumRaces}
         />
       )}
       {activeTab === 'notebook' && (
@@ -529,6 +564,9 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           customItems={data.customItems || []}
           updateCustomItems={(items) => updateData('customItems', items)}
         />
+      )}
+      {activeTab === 'map' && (
+        <OwlbearMap />
       )}
       {activeTab === 'charequip' && (
         <CharacterEquipment

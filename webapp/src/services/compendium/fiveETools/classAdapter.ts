@@ -1,6 +1,7 @@
 import { FiveEToolsBaseAdapter } from './baseAdapter';
 import type { MasterClass, MasterSubclass, IExtractedStats } from './types';
 import { extractStatsFromText } from './traitExtractor';
+import { parseFixedSkillProficiencies } from '../../../shared/utils/raceParser';
 
 function parseHitDice(hdObj: any): string {
   if (!hdObj) return '';
@@ -143,6 +144,14 @@ export class FiveEToolsClassAdapter extends FiveEToolsBaseAdapter<any, { masterC
       }
     }
 
+    const fixedSkills = raw.startingProficiencies?.skills 
+      ? parseFixedSkillProficiencies(raw.startingProficiencies.skills)
+      : [];
+      
+    const saves = Array.isArray(raw.proficiency) 
+      ? raw.proficiency.map((s: string) => s.toLowerCase().substring(0, 3)) 
+      : [];
+
     const masterClass: MasterClass = {
       id: crypto.randomUUID(),
       entityKey,
@@ -151,6 +160,8 @@ export class FiveEToolsClassAdapter extends FiveEToolsBaseAdapter<any, { masterC
       source,
       hitDice: parseHitDice(raw.hd),
       proficiencies: parseProficiencies(raw.startingProficiencies),
+      ...(fixedSkills.length > 0 ? { skills: fixedSkills } : {}),
+      ...(saves.length > 0 ? { saves } : {}),
       features,
       search: this.sanitizer.parseInlineTags(raw.name), 
       provenance: this.buildProvenance('data/class/class-placeholder.json'),

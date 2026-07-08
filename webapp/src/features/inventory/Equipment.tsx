@@ -3,7 +3,7 @@ import './Equipment.css';
 import type { IEquipmentProps, IEditingItemsMap } from '../../types/inventory';
 import { useCompendiumItems } from '../../shared/hooks/useCompendiumItems';
 import { parseItemText } from '../../shared/utils/itemParser';
-import { ItemCombobox } from '../../shared/components/ItemCombobox';
+import SearchableCombobox from '../../shared/components/SearchableCombobox/SearchableCombobox';
 import { Trash2 } from 'lucide-react';
 const DAMAGE_TYPES = [
     'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
@@ -694,13 +694,11 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                         <button className="reorder-arrow-btn" disabled={true}>▼</button>
                                                                     </div>
                                                                 )}
-                                                                <ItemCombobox 
-                                                                    items={allCompendiumItems}
+                                                                <SearchableCombobox
+                                                                    options={allCompendiumItems.map(i => ({ label: i.name, value: i.name }))}
                                                                     value={display.name}
                                                                     onChange={(val) => handleItemNameChange(item.id, val)}
-                                                                    onSelect={() => {}}
                                                                     placeholder="Item Name"
-                                                                    style={{ flex: 1, minWidth: '150px' }}
                                                                 />
                                                             </div>
 
@@ -708,15 +706,26 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                             <div className="item-row-line2" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '120px', flex: '1 1 auto' }}>
                                                                     <select
+                                                                        className="input item-category-select"
+                                                                        style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', width: '100%' }}
+                                                                        value={display.category || 'gear'}
+                                                                        onChange={e => updateDraft(item.id, 'category', e.target.value)}
+                                                                    >
+                                                                        <option value="weapon">⚔️ Weapon</option>
+                                                                        <option value="armor">🥋 Armor</option>
+                                                                        <option value="shield">🛡️ Shield</option>
+                                                                        <option value="consumable">🧪 Consumable</option>
+                                                                        <option value="wondrous">✨ Wondrous Item</option>
+                                                                        <option value="tool">🔨 Tool</option>
+                                                                        <option value="gear">🎒 Gear</option>
+                                                                    </select>
+                                                                    <select
                                                                         className="input item-type-select"
                                                                         style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', width: '100%' }}
                                                                         value={display.type || 'other'}
                                                                         onChange={e => updateDraft(item.id, 'type', e.target.value)}
                                                                     >
-                                                                        <option value="other">Other / General</option>
-                                                                        <option value="Consumables">Consumables</option>
-                                                                        <option value="Key Item">Key Item</option>
-                                                                        <option value="Loot">Loot / Valuables</option>
+                                                                        <option value="other">No Equip Slot</option>
                                                                         <optgroup label="Equipable Slots">
                                                                             <option value="head">🎩 Head</option>
                                                                             <option value="neck">📿 Neck</option>
@@ -760,6 +769,10 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                         <input type="number" min="0" step="0.1" className="input item-weight-input"
                                                                             value={display.weight} disabled={display.isWondrousOnly} placeholder="—"
                                                                             onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
+                                                                        <label style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                                                            <input type="checkbox" checked={!!display.requiresAttunement} onChange={e => updateDraft(item.id, 'requiresAttunement', e.target.checked)} />
+                                                                            Attunement
+                                                                        </label>
                                                                     </div>
 
                                                                     <div className="item-row-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
@@ -798,12 +811,12 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                             {/* Row 2: Item Type tag, Modifiers tag, Quantity, Weight, Equip button, Edit button, Delete button */}
                                                             <div className="item-row-line2" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                                                                 <span className="item-type-badge" style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'capitalize', flexShrink: 0, ...getRarityBadgeStyle(item.rarity || 'Common') }}>
-                                                                    {item.type === 'other' ? 'Other' : item.type === 'mainHand' ? 'Main Hand' : item.type === 'mainHand2' ? 'Ring 1' : item.type === 'offhand' ? 'Offhand' : item.type === 'offhand2' ? 'Ring 2' : item.type}
+                                                                    {item.category === 'weapon' ? '⚔️ ' : item.category === 'armor' ? '🥋 ' : item.category === 'consumable' ? '🧪 ' : item.category === 'shield' ? '🛡️ ' : ''}{item.category || 'Gear'}
                                                                 </span>
 
-                                                                {item.modifiers && Object.values(item.modifiers).some(v => v !== 0) && (
+                                                                {(item.modifiers?.stats || item.modifiers) && Object.values(item.modifiers.stats || item.modifiers).some(v => v !== 0) && (
                                                                     <span style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '4px', flexShrink: 0 }}>
-                                                                        {['str', 'dex', 'con', 'int', 'wis', 'cha'].filter(s => item.modifiers[s] !== 0).map(s => `${s.toUpperCase()} ${item.modifiers[s] > 0 ? '+' : ''}${item.modifiers[s]}`).join(', ')}
+                                                                        {['str', 'dex', 'con', 'int', 'wis', 'cha'].filter(s => (item.modifiers?.stats?.[s] || item.modifiers?.[s]) !== 0).map(s => `${s.toUpperCase()} ${(item.modifiers?.stats?.[s] || item.modifiers?.[s]) > 0 ? '+' : ''}${(item.modifiers?.stats?.[s] || item.modifiers?.[s])}`).join(', ')}
                                                                     </span>
                                                                 )}
 
@@ -844,6 +857,26 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                                 );
                                                                             })()
                                                                         )}
+                                                                        {item.requiresAttunement && (
+                                                                            <button 
+                                                                                className={`btn small-btn`} 
+                                                                                onClick={() => {
+                                                                                    // Toggle attunement locally for now
+                                                                                    const updated = { ...item, isAttuned: !item.isAttuned };
+                                                                                    const newInv = inventories[section.id].map(i => i.id === item.id ? updated : i);
+                                                                                    updateData({ ...data, inventories: { ...inventories, [section.id]: newInv } });
+                                                                                }}
+                                                                                style={{ 
+                                                                                    padding: '0.3rem 0.65rem', 
+                                                                                    fontSize: '0.78rem', 
+                                                                                    background: item.isAttuned ? '#f59e0b' : 'transparent',
+                                                                                    color: item.isAttuned ? '#fff' : '#f59e0b',
+                                                                                    border: '1px solid #f59e0b'
+                                                                                }}
+                                                                            >
+                                                                                {item.isAttuned ? '✨ Attuned' : '✨ Attune'}
+                                                                            </button>
+                                                                        )}
                                                                         <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
                                                                         <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
                                                                     </div>
@@ -859,7 +892,7 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                             <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Item Stat Modifiers</span>
                                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.25rem', marginTop: '0.25rem' }}>
                                                                 {['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => {
-                                                                    const currentMods = display.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                                                                    const currentMods = display.modifiers?.stats || display.modifiers || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
                                                                     return (
                                                                         <div key={stat} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: '4px', padding: '0.15rem' }}>
                                                                             <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{stat}</span>
@@ -870,12 +903,12 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                                 value={currentMods[stat] || 0}
                                                                                 onChange={e => {
                                                                                     const val = parseInt(e.target.value) || 0;
-                                                                                    updateDraft(item.id, 'modifiers', { ...currentMods, [stat]: val });
+                                                                                    updateDraft(item.id, 'modifiers', { ...display.modifiers, stats: { ...currentMods, [stat]: val } });
                                                                                 }}
                                                                                 onWheel={e => {
                                                                                     e.preventDefault();
                                                                                     const dir = Math.sign(e.deltaY) * -1;
-                                                                                    updateDraft(item.id, 'modifiers', { ...currentMods, [stat]: (currentMods[stat] || 0) + dir });
+                                                                                    updateDraft(item.id, 'modifiers', { ...display.modifiers, stats: { ...currentMods, [stat]: (currentMods[stat] || 0) + dir } });
                                                                                 }}
                                                                             />
                                                                         </div>
