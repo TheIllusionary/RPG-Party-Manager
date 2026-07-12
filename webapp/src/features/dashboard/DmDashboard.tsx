@@ -22,7 +22,7 @@ export default function DmDashboard({ onBack }: DmDashboardProps) {
         <AppNavBar
           title="DM Test Dashboard"
           crumbs={[
-            ...(onBack ? [{ label: 'Campanhas', onClick: onBack }] : []),
+            ...(onBack ? [{ label: 'Campaigns', onClick: onBack }] : []),
             { label: 'DM Dashboard' },
           ]}
           actions={
@@ -48,7 +48,7 @@ export default function DmDashboard({ onBack }: DmDashboardProps) {
     >
       <div className="dm-dashboard-page">
         <p className="dm-dashboard-intro">
-          NoSQL local → RuleEvaluator → Player View WebSocket · API cloud por padrão
+          Local NoSQL → RuleEvaluator → Player View WebSocket · Cloud API by default
         </p>
 
         {store.error && (
@@ -56,8 +56,8 @@ export default function DmDashboard({ onBack }: DmDashboardProps) {
         )}
         {!store.electronAvailable && (
           <p className="dm-dashboard-alert dm-dashboard-alert--warn">
-            Modo browser: IPC indisponível. Rode{' '}
-            <code>npm run electron:dev</code> dentro de <code>webapp/</code>.
+            Browser mode: IPC unavailable. Run{' '}
+            <code>npm run electron:dev</code> inside <code>webapp/</code>.
           </p>
         )}
 
@@ -78,7 +78,7 @@ export default function DmDashboard({ onBack }: DmDashboardProps) {
           </section>
 
           <section className="dm-dashboard-section dm-dashboard-section--wide stack">
-            <h2 className="dm-dashboard-section-title">Editor de Regras</h2>
+            <h2 className="dm-dashboard-section-title">Rules Editor</h2>
             <BlockEditor actors={store.actors} />
           </section>
         </div>

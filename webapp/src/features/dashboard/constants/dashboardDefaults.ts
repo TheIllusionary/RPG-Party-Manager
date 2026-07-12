@@ -7,12 +7,12 @@ export const DASHBOARD_TEST_CAMPAIGN_ID = 'dm-dashboard-test';
 export const MANA_MAX_RULE: LogicBlock = {
   id: 'mana_max_formula',
   name: 'Mana Maximum',
-  description: 'Mana = (CON × 2) + Level. Desative para usar Spell Slots D&D 5e na campanha.',
+  description: 'Mana = Spell Slots Points at level scaled by INT (12 divisor) and WIS/CHA (24 divisor, baseline 14). Disable to use D&D 5e Spell Slots in the campaign.',
   trigger: 'manual',
   enabled: true,
   computeTarget: 'manaMax',
   effects: [],
-  updatedAt: new Date(0).toISOString(),
+  updatedAt: '2026-07-12T20:45:00Z',
   conditions: [{ field: 'actor.kind', op: 'eq', value: 'player' }],
   compute: {
     kind: 'binary',
@@ -32,7 +32,7 @@ export const SPELL_SLOTS_RULE: LogicBlock = {
   id: 'spell_slots_enabled',
   name: 'Spell Slots (D&D 5e)',
   description:
-    'Ativa spell slots para classes conjuradoras (Wizard, Cleric, etc.). Guerreiros e Ladinos não recebem slots.',
+    'Enables spell slots for spellcasting classes (Wizard, Cleric, etc.). Fighters and Rogues do not receive slots.',
   trigger: 'manual',
   enabled: false,
   effects: [],
@@ -42,9 +42,9 @@ export const SPELL_SLOTS_RULE: LogicBlock = {
 /** Fatigue on repeated lvl 1–3 casts — mana mode only; spell slots never use fatigue. */
 export const SPELL_FATIGUE_RULE: LogicBlock = {
   id: 'spell_fatigue_enabled',
-  name: 'Fadiga de Conjuração',
+  name: 'Casting Fatigue',
   description:
-    'Magias nível 1–3 repetidas no mesmo combate aumentam o custo de mana (homebrew). Não afeta spell slots.',
+    'Level 1–3 spells repeated in the same combat increase mana cost (homebrew). Does not affect spell slots.',
   trigger: 'manual',
   enabled: false,
   effects: [],

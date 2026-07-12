@@ -199,7 +199,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
   return (
     <div className="subclass-manager stack">
       <div className="app-page-header mb-4">
-        <h2 className="app-page-title">Subclasses customizadas</h2>
+        <h2 className="app-page-title">Custom Subclasses</h2>
       </div>
 
       <div className="subclass-layout">
@@ -207,7 +207,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
           <p className="app-section-title">Subclasses</p>
           <div className="stack-sm">
             {subclasses.length === 0 && (
-              <p className="subclass-empty m-0">Nenhuma subclasse ainda.</p>
+              <p className="subclass-empty m-0">No subclasses yet.</p>
             )}
             {subclasses.map((sub) => (
               <button
@@ -216,7 +216,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
                 className={`subclass-list-item ${sub.id === selectedId ? 'active' : ''}`}
                 onClick={() => selectSubclass(sub.id)}
               >
-                <strong>{sub.name || 'Sem título'}</strong>
+                <strong>{sub.name || 'Untitled'}</strong>
                 {sub.baseClass && <span>{sub.baseClass}</span>}
               </button>
             ))}
@@ -227,7 +227,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
             onClick={addSubclass}
           >
             <Plus className="icon-sm" aria-hidden />
-            Nova Subclasse
+            New Subclass
           </button>
         </aside>
 
@@ -248,7 +248,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
                     onClick={() => setIsEditing(true)}
                   >
                     <Pencil className="icon-sm" aria-hidden />
-                    Editar
+                    Edit
                   </button>
                 ) : (
                   <button
@@ -256,7 +256,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
                     className="btn btn-secondary"
                     onClick={() => setIsEditing(false)}
                   >
-                    Concluir edição
+                    Finish editing
                   </button>
                 )}
                 <button
@@ -423,7 +423,7 @@ export default function SubclassManager({ subclasses = [], updateSubclasses }: I
         ) : (
           <div className="subclass-editor glass-panel subclass-empty-editor">
             <p className="text-secondary">
-              Escolha uma subclasse na lista ao lado ou crie uma nova para ver detalhes e editar.
+              Select a subclass from the list or create a new one to view details and edit.
             </p>
           </div>
         )}

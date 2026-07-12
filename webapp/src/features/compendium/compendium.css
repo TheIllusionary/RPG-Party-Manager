@@ -280,7 +280,15 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0;
+}
+
+.compendium-list li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compendium-list li:last-child {
+  border-bottom: none;
 }
 
 .compendium-list__empty {

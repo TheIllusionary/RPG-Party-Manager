@@ -2,6 +2,8 @@ import { evaluate, RuleEvaluationError } from '../../engine/RuleEvaluator';
 import { getLevelInfo, calculateModifier } from '../../features/battle/utils/partyUtils';
 import { logicEngine } from '../../services/homebrew/LogicEngine';
 import { getEnabledLogicBlocks } from './logicBlockUtils';
+import { getCasterProgression } from '../schema/classAbilityMap';
+import { getBaseManaSlotsPoints } from './spellSlotUtils';
 import { isManaCastingEnabled } from './castingSystem';
 import {
   actorToEnemy,
@@ -37,17 +39,25 @@ function playerIsVampire(player: IPlayer, subclass?: ISubclass | null): boolean 
 }
 
 export function legacyCalculateMaxMana(player: IPlayer): number {
+  if (player.manaModifier !== undefined && player.manaModifier !== null) {
+    return Math.max(0, player.manaModifier);
+  }
+
   const level = getLevelInfo(player.xp ?? 0).level;
-  const baseCasterPoints = level * 6 + 2;
+  const progression = getCasterProgression(player.classType);
+  if (!progression) {
+    return 0;
+  }
+
+  const basePoints = getBaseManaSlotsPoints(level, progression);
   const intScore = player.int ?? 10;
   const wisScore = player.wis ?? 10;
   const chaScore = player.cha ?? 10;
-  const intMultiplier = Math.max(0, (intScore - 10) / 10);
-  const wisMultiplier = Math.max(0, (wisScore - 10) / 20);
-  const chaMultiplier = Math.max(0, (chaScore - 10) / 20);
-  const totalBonusMult = 1 + intMultiplier + wisMultiplier + chaMultiplier;
-  const calculated = Math.floor(baseCasterPoints * totalBonusMult);
-  return Math.max(0, calculated + (player.manaModifier ?? 0));
+
+  const mult = 1 + (intScore - 14) / 12 + (wisScore - 14) / 24 + (chaScore - 14) / 24;
+  const finalMult = Math.max(0, mult);
+
+  return Math.floor(basePoints * finalMult);
 }
 
 export function legacyCalculateMaxHP(
@@ -111,7 +121,12 @@ function runComputeRules(
     if (target === 'hpMax') hasHpComputeRule = true;
 
     try {
-      const value = evaluate(actor, block);
+      let value: number;
+      if (block.id === 'mana_max_formula') {
+        value = legacyCalculateMaxMana(actorToPlayer(actor));
+      } else {
+        value = evaluate(actor, block);
+      }
       const applied = applyComputeToPools(target, value, nextMana, nextHp);
       nextMana = applied.manaMax;
       nextHp = applied.hpMax;

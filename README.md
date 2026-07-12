@@ -162,6 +162,17 @@ npm run build:electron
 # Output: webapp/dist-electron/PartyManager-Setup-<version>.exe
 ```
 
+**Portable build (unpacked directory):**
+
+To package the application as a portable directory (which doesn't require installation and can be run directly on Windows):
+
+```bash
+# Run the portable build script:
+python webapp/scripts/build-portable.py
+# Output directory: webapp/dist-packaged/Party Manager-win32-x64/
+# Executable is at: webapp/dist-packaged/Party Manager-win32-x64/Party Manager.exe
+```
+
 **Release on push to `main` (CI — recommended):**
 
 Every push to `main` that changes `webapp/**` triggers GitHub Actions:

@@ -18,13 +18,13 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
     <div className="rules-editor">
       <div className="rules-editor-header">
         <div className="rules-editor-title-block">
-          <h3 className="rules-editor-title">Editor de Regras</h3>
+          <h3 className="rules-editor-title">Rules Editor</h3>
           <p className="rules-editor-subtitle">
-            Vertical Block Builder — monte fórmulas em passos, sem caminhos técnicos.
+            Vertical Block Builder — Build formulas step-by-step, no technical paths.
           </p>
         </div>
         <div className="rules-editor-status">
-          {editor.saving && <span className="rules-editor-saving">Salvando…</span>}
+          {editor.saving && <span className="rules-editor-saving">Saving…</span>}
           {editor.saveError && <span className="rules-editor-error">{editor.saveError}</span>}
         </div>
       </div>
@@ -32,16 +32,16 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
       <div className="rules-editor-layout">
         <aside className="rules-editor-sidebar">
           <div className="rules-editor-sidebar-header">
-            <h4 className="rules-editor-sidebar-title">Suas regras</h4>
+            <h4 className="rules-editor-sidebar-title">Your rules</h4>
             <button type="button" className="btn btn-primary btn-with-icon" onClick={editor.addBlock}>
               <Plus className="icon-sm" aria-hidden />
-              Nova
+              New
             </button>
           </div>
 
           <div className="rules-editor-list">
             {editor.blocks.length === 0 && (
-              <p className="rules-editor-list-empty">Nenhuma regra criada.</p>
+              <p className="rules-editor-list-empty">No rules created.</p>
             )}
             {editor.blocks.map((block) => {
               const active = block.id === editor.selectedBlockId;
@@ -64,7 +64,7 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
                     type="button"
                     className="rules-editor-icon-btn"
                     onClick={() => editor.selectBlock(block.id)}
-                    aria-label={`Editar ${block.name}`}
+                    aria-label={`Edit ${block.name}`}
                   >
                     <Edit2 className="icon-sm" />
                   </button>
@@ -72,7 +72,7 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
                     type="button"
                     className="rules-editor-icon-btn rules-editor-icon-btn--danger"
                     onClick={() => editor.deleteBlock(block.id)}
-                    aria-label={`Excluir ${block.name}`}
+                    aria-label={`Delete ${block.name}`}
                   >
                     <Trash2 className="icon-sm" />
                   </button>
@@ -93,7 +93,7 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
                   disabled={editor.saving}
                 >
                   <Save className="icon-sm" aria-hidden />
-                  Salvar regra
+                  Save rule
                 </button>
               </div>
 
@@ -105,14 +105,14 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
               />
 
               <div className="rules-editor-preview">
-                <h4 className="rules-editor-preview-title">Pré-visualização</h4>
+                <h4 className="rules-editor-preview-title">Preview</h4>
                 <div className="rules-editor-table-wrap">
                   <table className="rules-debug-table">
                     <thead>
                       <tr>
                         <th>Actor</th>
-                        <th>Resultado</th>
-                        <th>Nota</th>
+                        <th>Result</th>
+                        <th>Note</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -124,7 +124,7 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
                           </td>
                           <td className={row.skipped ? 'rules-debug-skipped' : 'rules-debug-error'}>
                             {row.skipped
-                              ? 'N/A (condição não atendida)'
+                              ? 'N/A (condition not met)'
                               : row.error ?? ''}
                           </td>
                         </tr>
@@ -132,7 +132,7 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
                       {editor.previewRows.length === 0 && (
                         <tr>
                           <td colSpan={3} className="rules-debug-skipped">
-                            Sem atores — use Seed sample no dashboard.
+                            No actors — use Seed sample in dashboard.
                           </td>
                         </tr>
                       )}
@@ -144,8 +144,8 @@ export default function BlockEditor({ actors }: BlockEditorProps) {
           ) : (
             <div className="rules-editor-empty">
               <p>
-                Selecione uma regra na lista ou crie uma nova para editar a fórmula em blocos
-                verticais.
+                Select a rule from the list or create a new one to edit its formula in vertical
+                blocks.
               </p>
             </div>
           )}

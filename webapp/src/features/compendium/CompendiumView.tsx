@@ -36,7 +36,12 @@ function sortItems(items: ISRDEquipmentItem[]): ISRDEquipmentItem[] {
   return [...items].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export default function CompendiumView() {
+export interface CompendiumViewProps {
+  activeTab?: CompendiumTab;
+  hideHeader?: boolean;
+}
+
+export default function CompendiumView({ activeTab: propActiveTab, hideHeader = false }: CompendiumViewProps = {}) {
   const { spells: compendiumSpells, loading: loadingSpells, error: errorSpells, reload: reloadSpells } = useCompendiumSpells();
   const { items: compendiumItems, loading: loadingItems, error: errorItems, reload: reloadItems } = useCompendiumItems();
   const { classes: compendiumClasses, loading: loadingClasses, error: errorClasses, reload: reloadClasses } = useCompendiumClasses();
@@ -44,15 +49,23 @@ export default function CompendiumView() {
 
   const { races: compendiumRaces, loading: loadingRaces, error: errorRaces, reload: reloadRaces } = useCompendiumRaces();
 
-  const [activeTab, setActiveTab] = useState<CompendiumTab>('spells');
+  const [internalActiveTab, setInternalActiveTab] = useState<CompendiumTab>('spells');
+  const activeTab = propActiveTab ?? internalActiveTab;
+  const setActiveTab = propActiveTab ? () => {} : setInternalActiveTab;
+
   const [searches, setSearches] = useState<Record<string, string>>({ spells: '', items: '', classes: '', races: '' });
   const [spellFilters, setSpellFilters] = useState<SpellFilterState>(DEFAULT_SPELL_FILTERS);
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [initializedSources, setInitializedSources] = useState(false);
+
+  useEffect(() => {
+    setViewMode('list');
+  }, [activeTab]);
 
   const spells = useMemo(() => sortSpells(compendiumSpells), [compendiumSpells]);
   const items = useMemo(() => sortItems(compendiumItems), [compendiumItems]);
@@ -116,21 +129,7 @@ export default function CompendiumView() {
     return bySource.filter((r) => r.name.toLowerCase().includes(q));
   }, [races, searches.races, selectedSources]);
 
-  useEffect(() => {
-    if (activeTab === 'spells') {
-      if (filteredSpells.length === 0) { setSelectedSpellId(null); return; }
-      if (!selectedSpellId || !filteredSpells.some((s) => s.id === selectedSpellId)) setSelectedSpellId(filteredSpells[0].id);
-    } else if (activeTab === 'items') {
-      if (filteredItems.length === 0) { setSelectedItemId(null); }
-      else if (!selectedItemId || !filteredItems.some((i) => i.id === selectedItemId)) setSelectedItemId(filteredItems[0].id);
-    } else if (activeTab === 'classes') {
-      if (filteredClasses.length === 0) { setSelectedClassId(null); }
-      else if (!selectedClassId || !filteredClasses.some((c) => c.id === selectedClassId)) setSelectedClassId(filteredClasses[0].id);
-    } else if (activeTab === 'races') {
-      if (filteredRaces.length === 0) { setSelectedRaceId(null); }
-      else if (!selectedRaceId || !filteredRaces.some((r) => r.id === selectedRaceId)) setSelectedRaceId(filteredRaces[0].id);
-    }
-  }, [activeTab, filteredSpells, filteredItems, filteredClasses, filteredRaces, selectedSpellId, selectedItemId, selectedClassId, selectedRaceId]);
+
 
   const selectedSpell = filteredSpells.find((s) => s.id === selectedSpellId) ?? null;
   const selectedItem = filteredItems.find((i) => i.id === selectedItemId) ?? null;
@@ -142,6 +141,7 @@ export default function CompendiumView() {
 
   return (
     <div className="compendium-view">
+      {!hideHeader && (
       <header className="compendium-header glass-panel">
         <div className="compendium-header__intro">
           <h1 className="compendium-header__title">
@@ -171,7 +171,7 @@ export default function CompendiumView() {
           <button
             type="button"
             className={`compendium-tab ${activeTab === 'spells' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('spells')}
+            onClick={() => { setActiveTab('spells'); setViewMode('list'); }}
           >
             <Sparkles size={16} aria-hidden />
             Spells
@@ -180,7 +180,7 @@ export default function CompendiumView() {
           <button
             type="button"
             className={`compendium-tab ${activeTab === 'items' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('items')}
+            onClick={() => { setActiveTab('items'); setViewMode('list'); }}
           >
             <Package size={16} aria-hidden />
             Items
@@ -189,7 +189,7 @@ export default function CompendiumView() {
           <button
             type="button"
             className={`compendium-tab ${activeTab === 'classes' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('classes')}
+            onClick={() => { setActiveTab('classes'); setViewMode('list'); }}
           >
             <User size={16} aria-hidden />
             Classes
@@ -198,7 +198,7 @@ export default function CompendiumView() {
           <button
             type="button"
             className={`compendium-tab ${activeTab === 'races' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('races')}
+            onClick={() => { setActiveTab('races'); setViewMode('list'); }}
           >
             <Shield size={16} aria-hidden />
             Races
@@ -206,6 +206,7 @@ export default function CompendiumView() {
           </button>
         </nav>
       </header>
+      )}
 
       {error && (
         <p className="compendium-flash compendium-flash--error" role="alert">
@@ -234,7 +235,7 @@ export default function CompendiumView() {
 
           <label className="compendium-search">
             <span className="compendium-search__label">
-              {activeTab === 'spells' ? 'Buscar magia' : (activeTab === 'items' ? 'Search items' : 'Search classes')}
+              {activeTab === 'spells' ? 'Search spells' : (activeTab === 'items' ? 'Search items' : 'Search classes')}
             </span>
             <input
               type="search"
@@ -248,7 +249,10 @@ export default function CompendiumView() {
           <p className="compendium-list-meta" aria-live="polite">
             {loading ? 'Loading…' : `${listCount} of ${totalCount} shown`}
           </p>
+        </aside>
 
+        <main className="compendium-main-content">
+          {viewMode === 'list' && (
           <ul className="compendium-list" role="listbox" aria-label={activeTab === 'spells' ? 'Spells' : (activeTab === 'items' ? 'Items' : 'Classes')}>
             {loading && (
               <li className="compendium-list__empty">
@@ -259,17 +263,17 @@ export default function CompendiumView() {
             )}
             {!loading && activeTab === 'spells' && filteredSpells.length === 0 && (
               <li className="compendium-list__empty">
-                Nenhuma magia encontrada. Ajuste os filtros ou importe o SRD.
+                No spells found. Adjust the filters or import the SRD.
               </li>
             )}
             {!loading && activeTab === 'items' && filteredItems.length === 0 && (
               <li className="compendium-list__empty">
-                Nenhum item encontrado. Execute o ETL para popular o banco local.
+                No items found. Run the ETL to populate the local database.
               </li>
             )}
             {!loading && activeTab === 'classes' && filteredClasses.length === 0 && (
               <li className="compendium-list__empty">
-                Nenhuma classe encontrada. Execute o ETL.
+                No classes found. Run the ETL.
               </li>
             )}
             {!loading &&
@@ -281,12 +285,24 @@ export default function CompendiumView() {
                     role="option"
                     aria-selected={spell.id === selectedSpellId}
                     className={`compendium-list__item ${spell.id === selectedSpellId ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedSpellId(spell.id)}
+                    onClick={() => { setSelectedSpellId(spell.id); setViewMode('detail'); }}
                   >
-                    <span className="compendium-list__item-name">{spell.name}</span>
-                    <span className="compendium-list__item-meta">
-                      {spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`} · {spell.school}
-                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span className="compendium-list__item-name">{spell.name}</span>
+                        <span className="compendium-list__item-meta">
+                          {spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`} · {spell.school}
+                        </span>
+                      </div>
+                      <div className="compendium-list__item-tags" style={{ display: 'flex', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <span>{spell.castingTime}</span> · 
+                        <span>{spell.range}</span> · 
+                        <span>{spell.duration}</span>
+                        {spell.components?.length > 0 && (
+                          <> · <span>Components: {spell.components.join(', ')}</span></>
+                        )}
+                      </div>
+                    </div>
                   </button>
                 </li>
               ))}
@@ -299,7 +315,7 @@ export default function CompendiumView() {
                     role="option"
                     aria-selected={item.id === selectedItemId}
                     className={`compendium-list__item ${item.id === selectedItemId ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedItemId(item.id)}
+                    onClick={() => { setSelectedItemId(item.id); setViewMode('detail'); }}
                   >
                     <span className="compendium-list__item-name">{item.name}</span>
                     <span className="compendium-list__item-meta">{item.category}</span>
@@ -315,7 +331,7 @@ export default function CompendiumView() {
                     role="option"
                     aria-selected={cls.id === selectedClassId}
                     className={`compendium-list__item ${cls.id === selectedClassId ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedClassId(cls.id)}
+                    onClick={() => { setSelectedClassId(cls.id); setViewMode('detail'); }}
                   >
                     <span className="compendium-list__item-name">{cls.name}</span>
                     <span className="compendium-list__item-meta">{cls.source}</span>
@@ -331,7 +347,7 @@ export default function CompendiumView() {
                     role="option"
                     aria-selected={race.id === selectedRaceId}
                     className={`compendium-list__item ${race.id === selectedRaceId ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedRaceId(race.id)}
+                    onClick={() => { setSelectedRaceId(race.id); setViewMode('detail'); }}
                   >
                     <span className="compendium-list__item-name">{race.name}</span>
                     <span className="compendium-list__item-meta">
@@ -341,40 +357,24 @@ export default function CompendiumView() {
                 </li>
               ))}
           </ul>
-        </aside>
+          )}
 
-        <main className="compendium-detail-pane">
-          {!loading && activeTab === 'spells' && selectedSpell && <SpellCard spell={selectedSpell} />}
-          {!loading && activeTab === 'items' && selectedItem && <ItemCard item={selectedItem} />}
-          {!loading && activeTab === 'classes' && selectedClass && (
-            <ClassDetailView masterClass={selectedClass} availableSubclasses={compendiumSubclasses.filter(sc => sc.classId === selectedClass.entityKey)} />
-          )}
-          {!loading && activeTab === 'races' && selectedRace && (
-            <RaceDetailView race={selectedRace} />
-          )}
-          {!loading && activeTab === 'spells' && !selectedSpell && (
-            <div className="compendium-detail-placeholder">
-              <Sparkles size={40} strokeWidth={1.2} aria-hidden />
-              <p>Select a spell from the list.</p>
+          {viewMode === 'detail' && (
+          <div className="compendium-detail-pane">
+            <div className="compendium-detail-header">
+              <button className="btn btn-secondary small-btn" onClick={() => setViewMode('list')} style={{ marginBottom: '1rem' }}>
+                &larr; Back to List
+              </button>
             </div>
-          )}
-          {!loading && activeTab === 'items' && !selectedItem && (
-            <div className="compendium-detail-placeholder">
-              <Package size={40} strokeWidth={1.2} aria-hidden />
-              <p>Select an item from the list.</p>
-            </div>
-          )}
-          {!loading && activeTab === 'classes' && !selectedClass && (
-            <div className="compendium-detail-placeholder">
-              <User size={40} strokeWidth={1.2} aria-hidden />
-              <p>Select a class from the list.</p>
-            </div>
-          )}
-          {!loading && activeTab === 'races' && !selectedRace && (
-            <div className="compendium-detail-placeholder">
-              <Shield size={40} strokeWidth={1.2} aria-hidden />
-              <p>Select a race from the list.</p>
-            </div>
+            {!loading && activeTab === 'spells' && selectedSpell && <SpellCard spell={selectedSpell} />}
+            {!loading && activeTab === 'items' && selectedItem && <ItemCard item={selectedItem} />}
+            {!loading && activeTab === 'classes' && selectedClass && (
+              <ClassDetailView masterClass={selectedClass} availableSubclasses={compendiumSubclasses.filter(sc => sc.classId === selectedClass.entityKey)} />
+            )}
+            {!loading && activeTab === 'races' && selectedRace && (
+              <RaceDetailView race={selectedRace} />
+            )}
+          </div>
           )}
         </main>
       </div>

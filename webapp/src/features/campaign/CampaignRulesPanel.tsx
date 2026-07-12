@@ -44,35 +44,35 @@ function RuleCard({
         )}
         <div className="campaign-rule-card__meta">
           <span className="campaign-rule-pill">{triggerLabel(block.trigger)}</span>
-          {hasCompute && <span className="campaign-rule-pill campaign-rule-pill--muted">Fórmula</span>}
-          {hasEffects && <span className="campaign-rule-pill campaign-rule-pill--muted">Efeitos</span>}
+          {hasCompute && <span className="campaign-rule-pill campaign-rule-pill--muted">Formula</span>}
+          {hasEffects && <span className="campaign-rule-pill campaign-rule-pill--muted">Effects</span>}
           {(block.conditions?.length ?? 0) > 0 && (
             <span className="campaign-rule-pill campaign-rule-pill--muted">
-              {block.conditions!.length} condição(ões)
+              {block.conditions!.length} condition(s)
             </span>
           )}
         </div>
       </div>
 
       {castingModeControlled ? (
-        <span className="campaign-rule-pill campaign-rule-pill--mode" title="Controlado pelo seletor Mana / Spell Slots acima">
+        <span className="campaign-rule-pill campaign-rule-pill--mode" title="Controlled by the Mana / Spell Slots selector above">
           {block.id === MANA_CASTING_RULE_ID
             ? block.enabled
-              ? 'Mana ativo'
-              : 'Inativo'
+              ? 'Mana active'
+              : 'Inactive'
             : block.enabled
-              ? 'Spell Slots ativo'
-              : 'Inativo'}
+              ? 'Spell Slots active'
+              : 'Inactive'}
         </span>
       ) : (
-      <label className="campaign-rule-toggle" title={block.enabled ? 'Desativar regra' : 'Ativar regra'}>
+      <label className="campaign-rule-toggle" title={block.enabled ? 'Disable rule' : 'Enable rule'}>
         <input
           type="checkbox"
           checked={block.enabled}
           onChange={() => onToggle(block.id)}
         />
         <span className="campaign-rule-toggle__track" aria-hidden />
-        <span className="sr-only">{block.enabled ? 'Ativa' : 'Inativa'}</span>
+        <span className="sr-only">{block.enabled ? 'Active' : 'Inactive'}</span>
       </label>
       )}
     </article>
@@ -123,15 +123,15 @@ export default function CampaignRulesPanel({
       const dashboardBlocks = await dmDashboardBridge.listLogicBlocks();
       const activeDashboard = filterActiveLogicBlocks(dashboardBlocks);
       if (activeDashboard.length === 0) {
-        setImportMessage('Nenhuma regra encontrada no DM Dashboard.');
+        setImportMessage('No rules found in DM Dashboard.');
         return;
       }
       const merged = mergeLogicBlocksById(logicBlocks, activeDashboard);
       updateLogicBlocks(merged);
-      setImportMessage(`${activeDashboard.length} regra(s) importada(s) do DM Dashboard.`);
+      setImportMessage(`${activeDashboard.length} rule(s) imported from DM Dashboard.`);
     } catch (err) {
       console.error(err);
-      setImportMessage('Falha ao importar regras do DM Dashboard.');
+      setImportMessage('Failed to import rules from DM Dashboard.');
     } finally {
       setImporting(false);
     }
@@ -143,11 +143,11 @@ export default function CampaignRulesPanel({
         <div className="campaign-rules-header__text">
           <h2 className="campaign-rules-title">
             <ScrollText size={22} aria-hidden />
-            Regras da campanha
+            Campaign Rules
           </h2>
           <p className="campaign-rules-subtitle">
-            Ative ou desative regras homebrew para esta campanha. A criação e edição completa
-            ficam no DM Dashboard (tela de campanhas).
+            Enable or disable homebrew rules for this campaign. Full creation and editing
+            are done in the DM Dashboard (campaigns screen).
           </p>
         </div>
         <div className="campaign-rules-header__actions">
@@ -159,19 +159,19 @@ export default function CampaignRulesPanel({
               disabled={importing}
             >
               <Download size={16} aria-hidden />
-              {importing ? 'Importando…' : 'Importar do DM Dashboard'}
+              {importing ? 'Importing…' : 'Import from DM Dashboard'}
             </button>
           )}
           <p className="campaign-rules-stats" aria-live="polite">
-            <strong>{enabledCount}</strong> ativa(s) · <strong>{visibleBlocks.length}</strong> total
+            <strong>{enabledCount}</strong> active · <strong>{visibleBlocks.length}</strong> total
           </p>
         </div>
       </header>
 
-      <div className="casting-system-toggle glass-panel" role="group" aria-label="Sistema de conjuração">
+      <div className="casting-system-toggle glass-panel" role="group" aria-label="Casting system">
         <div className="casting-system-toggle__text">
-          <strong>Sistema de conjuração</strong>
-          <span>Escolha um — mana homebrew ou spell slots D&amp;D 5e (só conjuradores). Fadiga é regra separada (só mana).</span>
+          <strong>Casting System</strong>
+          <span>Choose one — homebrew mana or D&amp;D 5e spell slots (casters only). Fatigue is a separate rule (mana only).</span>
         </div>
         <div className="casting-system-toggle__buttons">
           <button
@@ -202,15 +202,15 @@ export default function CampaignRulesPanel({
       {visibleBlocks.length === 0 ? (
         <div className="campaign-rules-empty glass-panel">
           <ScrollText size={40} strokeWidth={1.2} aria-hidden />
-          <p>Nenhuma regra nesta campanha.</p>
+          <p>No rules in this campaign.</p>
           {electronAvailable ? (
             <p className="text-secondary">
-              Crie regras no DM Dashboard e use &quot;Importar do DM Dashboard&quot; acima,
-              ou aguarde a sincronização automática.
+              Create rules in the DM Dashboard and use &quot;Import from DM Dashboard&quot; above,
+              or wait for automatic sync.
             </p>
           ) : (
             <p className="text-secondary">
-              No app Electron, importe regras do DM Dashboard. Na web, exporte/importe o JSON da campanha.
+              In the Electron app, import rules from the DM Dashboard. On web, export/import the campaign JSON.
             </p>
           )}
         </div>

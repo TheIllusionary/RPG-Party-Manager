@@ -306,7 +306,7 @@ export default function PlayerSheetView({
                                             value={player.hpBase}
                                             onChange={e => updatePlayer(player.id, 'hpBase', Math.max(1, parseInt(e.target.value) || 1))}
                                         />
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--success)', whiteSpace: 'nowrap' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--success)' }}>
                                             +{calculateModifier(player.con) * getLevelInfo(player.xp).level} CON = {calculateMaxHP(player)} Max HP
                                         </div>
                                     </div>
@@ -331,8 +331,12 @@ export default function PlayerSheetView({
                                                 <input
                                                     type="number"
                                                     className="input combat-input"
-                                                    value={player.manaModifier ?? getDefaultManaModifier(player)}
-                                                    onChange={e => updatePlayer(player.id, 'manaModifier', parseInt(e.target.value) || 0)}
+                                                    value={player.manaModifier ?? ''}
+                                                    placeholder="Auto"
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        updatePlayer(player.id, 'manaModifier', val === '' ? null : (parseInt(val) || 0));
+                                                    }}
                                                 />
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                     {player.manaModifier != null ? 'Manual override' : 'Auto (spellcasting stat)'}

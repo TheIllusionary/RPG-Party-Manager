@@ -31,6 +31,8 @@ export interface UseRuleEngineCombatParams {
   updatePlayers: (players: IPlayer[]) => void;
   setEnemies: Dispatch<SetStateAction<IEnemy[]>>;
   showActionToast: (msg: string) => void;
+  initiativeMode?: 'none' | 'group' | 'individual';
+  customTurnOrder?: string[];
 }
 
 export interface UseRuleEngineCombatResult {
@@ -46,7 +48,7 @@ export interface UseRuleEngineCombatResult {
   ) => void;
   applyQuickHeal: (entityType: 'player' | 'enemy', entityId: string, amount: number) => void;
   getModifiersFor: (entityId: string) => ActorDamageModifiers | null;
-  advanceEncounterTurn: () => void;
+  advanceEncounterTurn: (overridePlayers?: IPlayer[], overrideEnemies?: IEnemy[]) => void;
 }
 
 export function useRuleEngineCombat({
@@ -59,6 +61,8 @@ export function useRuleEngineCombat({
   updatePlayers,
   setEnemies,
   showActionToast,
+  initiativeMode = 'none',
+  customTurnOrder = [],
 }: UseRuleEngineCombatParams): UseRuleEngineCombatResult {
   const engineRef = useRef<RuleEngine>(createCombatRuleEngine());
   const [turnIndex, setTurnIndex] = useState(0);
@@ -90,8 +94,41 @@ export function useRuleEngineCombat({
       id: e.id,
       name: e.name,
     }));
+    
+    if (initiativeMode === 'none') {
+        return [...partyActors, ...enemyActors];
+    }
+    
+    // For group or individual, we map customTurnOrder IDs back to actors
+    if (customTurnOrder.length > 0) {
+        const order: TurnActorRef[] = [];
+        for (const id of customTurnOrder) {
+            if (id === 'group-party') {
+                order.push({ type: 'player', id: 'group-party', name: 'Party' });
+            } else if (id === 'group-enemies') {
+                order.push({ type: 'enemy', id: 'group-enemies', name: 'Enemies' });
+            } else {
+                const p = partyActors.find(x => x.id === id);
+                if (p) order.push(p);
+                else {
+                    const e = enemyActors.find(x => x.id === id);
+                    if (e) order.push(e);
+                }
+            }
+        }
+        return order;
+    }
+    
+    // Default fallback if order not set yet but mode is active
+    if (initiativeMode === 'group') {
+        return [
+            { type: 'player', id: 'group-party', name: 'Party' },
+            { type: 'enemy', id: 'group-enemies', name: 'Enemies' }
+        ];
+    }
+    
     return [...partyActors, ...enemyActors];
-  }, [players, enemies]);
+  }, [players, enemies, initiativeMode, customTurnOrder]);
 
   const currentTurnActor = turnOrder.length > 0 ? turnOrder[turnIndex % turnOrder.length] : null;
 
@@ -172,21 +209,62 @@ export function useRuleEngineCombat({
     [config],
   );
 
-  const advanceEncounterTurn = useCallback(() => {
+  const advanceEncounterTurn = useCallback((overridePlayers?: IPlayer[], overrideEnemies?: IEnemy[]) => {
     if (turnOrder.length === 0) {
       showActionToast('⚠️ No actors in turn order');
       return;
     }
 
     const current = turnOrder[turnIndex % turnOrder.length];
-    syncRuleEngine(engineRef.current, config);
+    const activePlayers = overridePlayers || players;
+    const activeEnemies = overrideEnemies || enemies;
+
+    const localConfig = {
+      ...config,
+      players: activePlayers,
+      enemies: activeEnemies,
+    };
+
+    syncRuleEngine(engineRef.current, localConfig);
     const engine = engineRef.current;
-    const beforeHp = engine.getActor(current.id)?.resources.hp?.current;
 
-    engine.advanceTurn(current.id);
-    syncRosterFromEngine();
+    let beforeHp: number | undefined;
+    if (current.id !== 'group-party' && current.id !== 'group-enemies') {
+      beforeHp = engine.getActor(current.id)?.resources.hp?.current;
+    }
 
-    const afterHp = engineRef.current.getActor(current.id)?.resources.hp?.current;
+    if (current.id === 'group-party') {
+      const activePlayerIds = activePlayers.filter((p) => p.inParty).map((p) => p.id);
+      for (const pid of activePlayerIds) {
+        if (engine.getActor(pid)) {
+          engine.advanceTurn(pid);
+        }
+      }
+    } else if (current.id === 'group-enemies') {
+      const enemyIds = activeEnemies.map((e) => e.id);
+      for (const eid of enemyIds) {
+        if (engine.getActor(eid)) {
+          engine.advanceTurn(eid);
+        }
+      }
+    } else {
+      if (engine.getActor(current.id)) {
+        engine.advanceTurn(current.id);
+      }
+    }
+
+    // Apply the rule engine patches directly to the activePlayers and activeEnemies
+    const finalPlayers = activePlayers.map((p) => patchPlayerFromActor(p, engine.getActor(p.id)));
+    const finalEnemies = activeEnemies.map((e) => patchEnemyFromActor(e, engine.getActor(e.id)));
+
+    updatePlayers(finalPlayers);
+    setEnemies(finalEnemies);
+
+    let afterHp: number | undefined;
+    if (current.id !== 'group-party' && current.id !== 'group-enemies') {
+      afterHp = engine.getActor(current.id)?.resources.hp?.current;
+    }
+
     const hpNote =
       beforeHp != null && afterHp != null && beforeHp !== afterHp
         ? ` HP ${beforeHp}→${afterHp}`
@@ -194,7 +272,7 @@ export function useRuleEngineCombat({
 
     showActionToast(`⏭ Turn: ${current.name}${hpNote}`);
     setTurnIndex((prev) => (prev + 1) % turnOrder.length);
-  }, [turnOrder, turnIndex, config, syncRosterFromEngine, showActionToast]);
+  }, [turnOrder, turnIndex, config, showActionToast, players, enemies, updatePlayers, setEnemies]);
 
   return {
     encounterRules,

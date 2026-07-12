@@ -212,9 +212,6 @@ function createWindow() {
 
     mainWindow.on('closed', () => {
         mainWindow = null;
-        if (vttView) {
-            vttView = null;
-        }
     });
 }
 

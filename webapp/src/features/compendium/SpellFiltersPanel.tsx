@@ -13,7 +13,7 @@ function FilterSelect({
   value,
   onChange,
   choices,
-  allLabel = 'Todos',
+  allLabel = 'All',
 }: {
   label: string;
   value: string;
@@ -57,9 +57,9 @@ function TriSelect({
         value={value}
         onChange={(e) => onChange(e.target.value as TriState)}
       >
-        <option value="any">Todos</option>
-        <option value="yes">Sim</option>
-        <option value="no">Não</option>
+        <option value="any">All</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
       </select>
     </label>
   );
@@ -76,16 +76,16 @@ export default function SpellFiltersPanel({
   return (
     <div className="compendium-spell-filters">
       <div className="compendium-spell-filters__head">
-        <span className="compendium-spell-filters__title">Filtros</span>
+        <span className="compendium-spell-filters__title">Filters</span>
         {activeCount > 0 && (
           <button type="button" className="compendium-filter-clear" onClick={onClear}>
-            Limpar ({activeCount})
+            Clear ({activeCount})
           </button>
         )}
       </div>
 
       <div className="compendium-filter-levels">
-        <span className="compendium-filter-field__label">Nível</span>
+        <span className="compendium-filter-field__label">Level</span>
         <div className="compendium-filter-pills">
           {options.levels.map((level) => (
             <button
@@ -104,13 +104,13 @@ export default function SpellFiltersPanel({
 
       <div className="compendium-filter-grid">
         <FilterSelect
-          label="Escola"
+          label="School"
           value={filters.school}
           onChange={(school) => onChange({ ...filters, school })}
           choices={options.schools}
         />
         <FilterSelect
-          label="Classe"
+          label="Class"
           value={filters.className}
           onChange={(className) => onChange({ ...filters, className })}
           choices={options.classes}
@@ -122,13 +122,13 @@ export default function SpellFiltersPanel({
           choices={options.castingTimes}
         />
         <FilterSelect
-          label="Duração"
+          label="Duration"
           value={filters.duration}
           onChange={(duration) => onChange({ ...filters, duration })}
           choices={options.durations}
         />
         <FilterSelect
-          label="Alcance"
+          label="Range"
           value={filters.range}
           onChange={(range) => onChange({ ...filters, range })}
           choices={options.ranges}
@@ -139,24 +139,24 @@ export default function SpellFiltersPanel({
           onChange={(ritual) => onChange({ ...filters, ritual })}
         />
         <TriSelect
-          label="Concentração"
+          label="Concentration"
           value={filters.concentration}
           onChange={(concentration) => onChange({ ...filters, concentration })}
         />
         <TriSelect
-          label="Com dano"
+          label="Has damage"
           value={filters.hasDamage}
           onChange={(hasDamage) => onChange({ ...filters, hasDamage })}
         />
         <TriSelect
-          label="Com save"
+          label="Has save"
           value={filters.hasSave}
           onChange={(hasSave) => onChange({ ...filters, hasSave })}
         />
       </div>
 
       <div className="compendium-filter-components">
-        <span className="compendium-filter-field__label">Componentes</span>
+        <span className="compendium-filter-field__label">Components</span>
         <div className="compendium-filter-pills">
           {['V', 'S', 'M'].map((component) => (
             <button

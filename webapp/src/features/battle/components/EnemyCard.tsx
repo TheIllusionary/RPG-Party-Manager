@@ -86,7 +86,7 @@ export default function EnemyCard({
   const ruleHpMax = calculateEnemyMaxHP(enemy);
 
   return (
-    <div className={`glass-panel integrated-player-card enemy-card ${enemy.hp <= 0 ? 'ko-state' : ''} ${minimizedEnemies[enemy.id] ? 'minimized-card' : ''} ${isTargetSelected('enemy', enemy.id) ? 'target-selected' : ''}`}>
+    <div id={`enemy-card-${enemy.id}`} className={`glass-panel integrated-player-card enemy-card ${enemy.hp <= 0 ? 'ko-state' : ''} ${minimizedEnemies[enemy.id] ? 'minimized-card' : ''} ${isTargetSelected('enemy', enemy.id) ? 'target-selected' : ''}`}>
 
                                             {/* Header */}
                                             <div className="player-card-header">

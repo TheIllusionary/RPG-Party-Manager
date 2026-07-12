@@ -6,6 +6,7 @@ webapp/node_modules/
 webapp/dist/
 webapp/dist-electron/
 webapp/electron/lib/
+webapp/dist-packaged/
 dist/
 dist-electron/
 

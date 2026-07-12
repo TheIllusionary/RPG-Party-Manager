@@ -14,10 +14,10 @@ export default function RuleDebugConsole({ store }: RuleDebugConsoleProps) {
       <div className="rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-300">
         <p className="font-medium text-slate-100">Bloco: {MANA_MAX_RULE.name}</p>
         <p className="mt-2 leading-relaxed text-slate-400">
-          Mana = (CON × 2) + Level · só aplica a <strong className="text-slate-200">player</strong>
+          Mana = Spell Slots Points scaled by INT/WIS/CHA · só aplica a <strong className="text-slate-200">player</strong>
         </p>
         <p className="mt-1 font-mono text-xs text-emerald-400/90">
-          actor.stats.con · actor.customAttributes.level
+          Base Spell slots points * (1 + (INT-14)/12 + (WIS-14)/24 + (CHA-14)/24)
         </p>
       </div>
 

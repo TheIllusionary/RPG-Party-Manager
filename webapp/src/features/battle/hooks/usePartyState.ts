@@ -15,6 +15,7 @@ import {
     HP_TO_MANA_GAIN,
     MANA_TO_HP_MANA_COST,
     MANA_TO_HP_GAIN,
+    calculateEffectiveAC as getBaseAndEquippedAC,
 } from '../../../shared/utils/combatUtils';
 import { resolvePlayerResources } from '../../../shared/utils/campaignRulesResolver';
 import { repairPlayerHpFields } from '../../../shared/utils/migrationUtils';
@@ -315,28 +316,11 @@ const calculateMaxHP = (player: IPlayer) => {
 };
 
 const calculateEffectiveAC = (player: IPlayer) => {
-    let ac = player.ac || 10;
-    ac += getEquipmentBonus(player.id, 'ac');
+    let ac = getBaseAndEquippedAC(player, equipment, buffsDatabase);
     if (compendiumClasses && compendiumRaces) {
         const traits = getActiveTraits(player, compendiumClasses, compendiumSubclasses || [], compendiumRaces);
         const stats = aggregateStats(traits);
         ac += (stats.acBonus || 0);
-    }
-
-    if (Array.isArray(buffsDatabase) && buffsDatabase.length > 0 && player.buffs) {
-        player.buffs.forEach(name => {
-            const config = buffsDatabase.find(x => x.name === name);
-            if (config) {
-                const isToggle = config.type === 'toggle';
-                const isSpent = player.spentBuffs?.[name] === true;
-                const isToggledActive = player.buffStates?.[name] !== false;
-                const isActive = isToggle ? (isToggledActive && !isSpent) : !isSpent;
-                
-                if (isActive && config.additionalAC) {
-                    ac += config.additionalAC;
-                }
-            }
-        });
     }
 
     if (player.cc && player.cc.length > 0) {

@@ -47,8 +47,8 @@ function OperandEditor({
           );
         }}
       >
-        <option value="variable">Atributo</option>
-        <option value="literal">Número</option>
+        <option value="variable">Attribute</option>
+        <option value="literal">Number</option>
       </select>
       {operand.kind === 'variable' ? (
         <SchemaSelect
@@ -89,7 +89,7 @@ function ConditionValueEditor({
         className="vbb-control vbb-condition-value"
         value={strValue}
         onChange={(e) => onChange(e.target.value)}
-        aria-label="Tipo de ator"
+        aria-label="Actor type"
       >
         {ACTOR_KIND_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -107,7 +107,7 @@ function ConditionValueEditor({
         className="vbb-control vbb-condition-value"
         value={typeof value === 'number' ? value : Number(value) || 0}
         onChange={(e) => onChange(Number(e.target.value))}
-        aria-label="Valor da condição"
+        aria-label="Condition value"
       />
     );
   }
@@ -118,8 +118,8 @@ function ConditionValueEditor({
       className="vbb-control vbb-condition-value"
       value={String(value ?? '')}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Valor"
-      aria-label="Valor da condição"
+      placeholder="Value"
+      aria-label="Condition value"
     />
   );
 }
@@ -196,10 +196,10 @@ export default function VerticalBlockBuilder({
   return (
     <div className="vbb-root">
       <div className="vbb-card">
-        <h4 className="vbb-section-title">Receita da regra</h4>
+        <h4 className="vbb-section-title">Rule Recipe</h4>
         <div className="vbb-meta-grid">
           <label className="vbb-field">
-            Nome
+            Name
             <input
               className="vbb-control"
               value={block.name}
@@ -207,12 +207,12 @@ export default function VerticalBlockBuilder({
             />
           </label>
           <label className="vbb-field vbb-field--wide">
-            Descrição
+            Description
             <input
               className="vbb-control"
               value={block.description ?? ''}
               onChange={(e) => onMetaChange({ description: e.target.value })}
-              placeholder="Ex.: Mana máxima baseada em CON e nível"
+              placeholder="E.g.: Max Mana based on CON and level"
             />
           </label>
         </div>
@@ -220,7 +220,7 @@ export default function VerticalBlockBuilder({
 
       <div className="vbb-card vbb-card--solid">
         <label className="vbb-field vbb-field--emphasis">
-          Quando esta regra roda
+          When this rule runs
           <select
             className="vbb-control"
             value={draft.trigger}
@@ -237,10 +237,10 @@ export default function VerticalBlockBuilder({
 
       <div className="stack">
         <div className="vbb-section-header">
-          <h4 className="vbb-section-title">Fórmula (empilhada)</h4>
+          <h4 className="vbb-section-title">Formula (stacked)</h4>
           <button type="button" className="vbb-btn-secondary" onClick={addCombineStep}>
             <Plus className="icon-sm" aria-hidden />
-            Passo matemático
+            Math Step
           </button>
         </div>
 
@@ -250,7 +250,7 @@ export default function VerticalBlockBuilder({
               <div className="vbb-step-body">
                 {step.kind === 'seed' ? (
                   <>
-                    <span className="vbb-step-label vbb-step-label--seed">Começar com</span>
+                    <span className="vbb-step-label vbb-step-label--seed">Start with</span>
                     <OperandEditor
                       operand={step.operand}
                       onChange={(operand) => updateStep(step.id, { operand } as Partial<FormulaStep>)}
@@ -259,7 +259,7 @@ export default function VerticalBlockBuilder({
                 ) : (
                   <>
                     <span className="vbb-step-label vbb-step-label--combine">
-                      Depois {index > 0 ? `#${index}` : ''}
+                      Then {index > 0 ? `#${index}` : ''}
                     </span>
                     <div className="vbb-combine-row">
                       <select
@@ -290,7 +290,7 @@ export default function VerticalBlockBuilder({
                   type="button"
                   className="vbb-icon-danger"
                   onClick={() => removeStep(step.id)}
-                  aria-label="Remover passo"
+                  aria-label="Remove step"
                 >
                   <Trash2 className="icon-sm" />
                 </button>
@@ -302,17 +302,17 @@ export default function VerticalBlockBuilder({
 
       <div className="stack">
         <div className="vbb-section-header">
-          <h4 className="vbb-section-title">Condições (se aplicável)</h4>
+          <h4 className="vbb-section-title">Conditions (if applicable)</h4>
           <button type="button" className="vbb-btn-secondary" onClick={addCondition}>
             <Plus className="icon-sm" aria-hidden />
-            Condição
+            Condition
           </button>
         </div>
 
         {draft.conditions.length === 0 && (
           <p className="vbb-empty-hint">
-            Sem condições — a regra vale para todos os atores. Ex.: &quot;Se tipo de ator é
-            jogador&quot; usa <code>actor.kind</code> (player / npc / monster).
+            No conditions — the rule applies to all actors. E.g.: &quot;If actor type is
+            player&quot; uses <code>actor.kind</code> (player / npc / monster).
           </p>
         )}
 
@@ -321,7 +321,7 @@ export default function VerticalBlockBuilder({
             <div key={condition.id} className="vbb-step vbb-step--condition">
               <div className="vbb-condition-grid">
                 <label className="vbb-condition-field">
-                  <span className="vbb-condition-field-label">Campo</span>
+                  <span className="vbb-condition-field-label">Field</span>
                   <SchemaSelect
                     className="vbb-control"
                     value={condition.friendlyLabel}
@@ -329,7 +329,7 @@ export default function VerticalBlockBuilder({
                   />
                 </label>
                 <label className="vbb-condition-field">
-                  <span className="vbb-condition-field-label">Operador</span>
+                  <span className="vbb-condition-field-label">Operator</span>
                   <select
                     className="vbb-control"
                     value={condition.op}
@@ -347,7 +347,7 @@ export default function VerticalBlockBuilder({
                   </select>
                 </label>
                 <label className="vbb-condition-field">
-                  <span className="vbb-condition-field-label">Valor</span>
+                  <span className="vbb-condition-field-label">Value</span>
                   <ConditionValueEditor
                     friendlyLabel={condition.friendlyLabel}
                     value={condition.value}
@@ -359,7 +359,7 @@ export default function VerticalBlockBuilder({
                 type="button"
                 className="vbb-icon-danger"
                 onClick={() => removeCondition(condition.id)}
-                aria-label="Remover condição"
+                aria-label="Remove condition"
               >
                 <Trash2 className="icon-sm" />
               </button>

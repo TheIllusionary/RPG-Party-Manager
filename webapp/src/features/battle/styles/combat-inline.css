@@ -257,6 +257,24 @@
   justify-content: space-between;
   gap: 0.5rem 1rem;
   margin-bottom: 0.45rem;
+  width: 100%;
+}
+
+.encounter-scene-panel__head-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.encounter-scene-panel__head-left .action-toast {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 1rem;
+  z-index: 10;
+  white-space: nowrap;
 }
 
 .encounter-scene-panel__title {
@@ -268,11 +286,79 @@
   color: #fbbf24;
 }
 
-.encounter-scene-panel__turn {
+.encounter-scene-panel__turn-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.6rem;
+  margin-top: 0.45rem;
+}
+
+.crpg-initiative-container {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  border-radius: var(--radius-md);
+  max-width: calc(100% - 220px);
+}
+
+.crpg-initiative-spacer {
+  flex: 1;
+}
+
+.crpg-initiative-card {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-width: 110px;
+}
+
+.crpg-initiative-card:hover {
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(30, 30, 30, 0.85);
+}
+
+.crpg-initiative-card.is-active {
+  border-color: #fbbf24;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.18), rgba(251, 191, 36, 0.08));
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.22);
+}
+
+.crpg-initiative-card__name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+
+.crpg-initiative-card.is-active .crpg-initiative-card__name {
+  color: var(--text-primary);
+  text-shadow: 0 0 3px rgba(251, 191, 36, 0.3);
+}
+
+.encounter-scene-panel__turn-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .encounter-turn-label {
@@ -317,8 +403,18 @@
   cursor: not-allowed;
 }
 
+.encounter-next-turn-btn.is-end-turn {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+}
+
+.encounter-next-turn-btn.is-end-turn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f87171, #ef4444) !important;
+}
+
 .encounter-scene-panel__rules {
   min-height: 0;
+  margin-top: 0.45rem;
 }
 
 .encounter-scene-panel__empty {
@@ -374,6 +470,20 @@
   .encounter-scene-panel__head {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .encounter-scene-panel__turn-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .crpg-initiative-container {
+    max-width: 100%;
+  }
+  .encounter-scene-panel__turn-controls {
+    justify-content: space-between;
+    margin-left: 0;
+    width: 100%;
   }
 }
 

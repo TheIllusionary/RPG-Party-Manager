@@ -1,5 +1,5 @@
 import type { IPlayer } from '../../types';
-import { getCasterProgression } from '../schema/classAbilityMap';
+import { getCasterProgression, type CasterProgression } from '../schema/classAbilityMap';
 
 /** D&D 5e full-caster spell slots by character level (index 0 = level 1). */
 const FULL_CASTER_SLOTS: readonly (readonly number[])[] = [
@@ -51,10 +51,22 @@ const HALF_CASTER_SLOTS: readonly (readonly number[])[] = [
 
 export type PlayerSpellSlots = Record<string, { current: number; max: number }>;
 
-function getSlotMaxesForLevel(level: number, progression: CasterProgression): number[] {
+export function getSlotMaxesForLevel(level: number, progression: CasterProgression): number[] {
   const table = progression === 'half' ? HALF_CASTER_SLOTS : FULL_CASTER_SLOTS;
   const idx = Math.max(1, Math.min(20, Math.floor(level))) - 1;
   return [...table[idx]];
+}
+
+const SLOT_COSTS = [2, 3, 5, 6, 7, 9, 10, 11, 13];
+
+export function getBaseManaSlotsPoints(level: number, progression: CasterProgression | null): number {
+  if (!progression) return 0;
+  const maxes = getSlotMaxesForLevel(level, progression);
+  let points = 0;
+  maxes.forEach((numSlots, idx) => {
+    points += numSlots * (SLOT_COSTS[idx] || 0);
+  });
+  return points;
 }
 
 export function playerQualifiesForSpellSlots(player: IPlayer): boolean {

@@ -804,6 +804,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    width: 100%;
 }
 
 .battle-arena.active {
@@ -1274,6 +1275,8 @@
     gap: 1rem;
     flex: 1;
     min-width: 350px;
+    aspect-ratio: 16 / 9;
+    align-self: start;
     box-sizing: border-box;
 }
 
@@ -1283,8 +1286,23 @@
     height: 100%;
 }
 
+.vtt-embedded-panel:fullscreen {
+    padding: 1rem;
+    background-color: var(--bg-panel) !important;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Expand main content container when VTT is active */
+.main-content:has(.vtt-open) {
+    max-width: 100% !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+
 .battle-vtt-column .vtt-view-placeholder {
-    height: 650px;
+    flex: 1;
+    height: 100%;
     min-height: auto;
 }
 
@@ -1336,6 +1354,7 @@
     border-radius: var(--radius-sm);
     padding: 0.5rem 0.25rem;
     gap: 0.25rem;
+    position: relative;
 }
 
 .compact-stat-box .stat-name {
@@ -1367,7 +1386,11 @@
 }
 
 .compact-stat-box .stat-equip-bonus {
+    position: absolute;
+    top: 2px;
+    right: 4px;
     font-size: 0.65rem;
+    font-weight: bold;
 }
 
 .compact-proficiencies {
@@ -2596,4 +2619,28 @@ select.pill-select-add:hover {
 .cc-dropdown-item:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Specific overrides for enemy cards under VTT narrow columns */
+.vtt-open .enemy-card .card-top-right {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.4rem;
+    width: 95px !important;
+}
+
+.vtt-open .enemy-card .player-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    width: 100% !important;
+    margin-top: 0.2rem;
+}
+
+.vtt-open .enemy-search-dropdown {
+    width: 250px !important;
+    max-width: 100vw;
 }

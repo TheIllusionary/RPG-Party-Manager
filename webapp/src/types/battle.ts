@@ -388,6 +388,10 @@ export interface ICombatState {
   turnOrder: TurnActorRef[];
   currentTurnIndex: number;
   currentTurnActor: TurnActorRef | null;
+  initiativeMode: 'none' | 'group' | 'individual';
+  setInitiativeMode: Dispatch<SetStateAction<'none' | 'group' | 'individual'>>;
+  customTurnOrder: string[];
+  setCustomTurnOrder: Dispatch<SetStateAction<string[]>>;
   applyQuickDamage: (
     entityType: 'player' | 'enemy',
     entityId: string,
@@ -414,6 +418,8 @@ export interface ICombatHeaderProps {
   minimizedEnemies: IMinimizedMap;
   setMinimizedEnemies: Dispatch<SetStateAction<IMinimizedMap>>;
   setEnemies: Dispatch<SetStateAction<IEnemy[]>>;
+  isVttActive?: boolean;
+  onToggleVtt?: () => void;
 }
 
 export interface IPlayerCardProps {

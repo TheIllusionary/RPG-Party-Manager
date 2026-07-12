@@ -755,31 +755,29 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                     </select>
                                                                 </div>
 
-                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 auto', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
-                                                                    <div className="item-qty-weight" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
-                                                                        <label>Qty</label>
-                                                                        <input type="number" min="0" className="input item-qty-input"
-                                                                            value={display.quantity} disabled={display.isWondrousOnly}
-                                                                            onChange={e => updateDraft(item.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
-                                                                            onWheel={!display.isWondrousOnly ? e => {
-                                                                                e.preventDefault();
-                                                                                updateDraft(item.id, 'quantity', Math.max(0, (display.quantity || 0) + Math.sign(e.deltaY) * -1));
-                                                                            } : undefined} />
-                                                                        <label style={{ marginLeft: '0.25rem' }}>Wt</label>
-                                                                        <input type="number" min="0" step="0.1" className="input item-weight-input"
-                                                                            value={display.weight} disabled={display.isWondrousOnly} placeholder="—"
-                                                                            onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
-                                                                        <label style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', cursor: 'pointer' }}>
-                                                                            <input type="checkbox" checked={!!display.requiresAttunement} onChange={e => updateDraft(item.id, 'requiresAttunement', e.target.checked)} />
-                                                                            Attunement
-                                                                        </label>
-                                                                    </div>
+                                                                <div className="item-qty-weight" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
+                                                                    <label>Qty</label>
+                                                                    <input type="number" min="0" className="input item-qty-input"
+                                                                        value={display.quantity} disabled={display.isWondrousOnly}
+                                                                        onChange={e => updateDraft(item.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
+                                                                        onWheel={!display.isWondrousOnly ? e => {
+                                                                            e.preventDefault();
+                                                                            updateDraft(item.id, 'quantity', Math.max(0, (display.quantity || 0) + Math.sign(e.deltaY) * -1));
+                                                                        } : undefined} />
+                                                                    <label style={{ marginLeft: '0.25rem' }}>Wt</label>
+                                                                    <input type="number" min="0" step="0.1" className="input item-weight-input"
+                                                                        value={display.weight} disabled={display.isWondrousOnly} placeholder="—"
+                                                                        onChange={e => updateDraft(item.id, 'weight', e.target.value)} />
+                                                                    <label style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                                                        <input type="checkbox" checked={!!display.requiresAttunement} onChange={e => updateDraft(item.id, 'requiresAttunement', e.target.checked)} />
+                                                                        Attunement
+                                                                    </label>
+                                                                </div>
 
-                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
-                                                                        <button className="btn btn-success small-btn" onClick={() => saveItem(section.id, item.id)}>Save</button>
-                                                                        <button className="btn small-btn" onClick={() => cancelEdit(item.id)}>Cancel</button>
-                                                                        <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
-                                                                    </div>
+                                                                <div className="item-row-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                                                                    <button className="btn btn-success small-btn" onClick={() => saveItem(section.id, item.id)}>Save</button>
+                                                                    <button className="btn small-btn" onClick={() => cancelEdit(item.id)}>Cancel</button>
+                                                                    <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
                                                                 </div>
                                                             </div>
                                                         </>
@@ -826,60 +824,58 @@ export default function Equipment({ data, updateData, players, buffsDatabase, up
                                                                     </span>
                                                                 )}
 
-                                                                <div className="item-row-right-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                                                    <div className="item-qty-weight" style={{ flexShrink: 0 }}>
-                                                                        <label>Qty</label>
-                                                                        <input type="number" min="0" className="input item-qty-input"
-                                                                            value={display.quantity} disabled={true} />
-                                                                        <label>Wt</label>
-                                                                        <input type="number" min="0" step="0.1" className="input item-weight-input"
-                                                                            value={display.weight} disabled={true} placeholder="—" />
-                                                                    </div>
+                                                                <div className="item-qty-weight" style={{ flexShrink: 0, marginLeft: 'auto' }}>
+                                                                    <label>Qty</label>
+                                                                    <input type="number" min="0" className="input item-qty-input"
+                                                                        value={display.quantity} disabled={true} />
+                                                                    <label>Wt</label>
+                                                                    <input type="number" min="0" step="0.1" className="input item-weight-input"
+                                                                        value={display.weight} disabled={true} placeholder="—" />
+                                                                </div>
 
-                                                                    <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
-                                                                        {['head', 'neck', 'armor', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'].includes(item.type) && (
-                                                                            (() => {
-                                                                                const isEquipped = isItemEquipped(section.id, item);
-                                                                                return (
-                                                                                    <button 
-                                                                                        className={`btn small-btn ${isEquipped ? 'btn-success' : 'btn-primary'}`} 
-                                                                                        onClick={() => equipItem(section.id, item)}
-                                                                                        style={{ 
-                                                                                            padding: '0.3rem 0.65rem', 
-                                                                                            fontSize: '0.78rem', 
-                                                                                            background: isEquipped ? '#10b981' : 'var(--primary)', 
-                                                                                            borderColor: isEquipped ? '#10b981' : 'var(--primary)',
-                                                                                            color: '#fff'
-                                                                                        }}
-                                                                                    >
-                                                                                        {isEquipped ? '🛡️ Equipped' : '🛡️ Equip'}
-                                                                                    </button>
-                                                                                );
-                                                                            })()
-                                                                        )}
-                                                                        {item.requiresAttunement && (
-                                                                            <button 
-                                                                                className={`btn small-btn`} 
-                                                                                onClick={() => {
-                                                                                    // Toggle attunement locally for now
-                                                                                    const updated = { ...item, isAttuned: !item.isAttuned };
-                                                                                    const newInv = inventories[section.id].map(i => i.id === item.id ? updated : i);
-                                                                                    updateData({ ...data, inventories: { ...inventories, [section.id]: newInv } });
-                                                                                }}
-                                                                                style={{ 
-                                                                                    padding: '0.3rem 0.65rem', 
-                                                                                    fontSize: '0.78rem', 
-                                                                                    background: item.isAttuned ? '#f59e0b' : 'transparent',
-                                                                                    color: item.isAttuned ? '#fff' : '#f59e0b',
-                                                                                    border: '1px solid #f59e0b'
-                                                                                }}
-                                                                            >
-                                                                                {item.isAttuned ? '✨ Attuned' : '✨ Attune'}
-                                                                            </button>
-                                                                        )}
-                                                                        <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
-                                                                        <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
-                                                                    </div>
+                                                                <div className="item-row-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexShrink: 0 }}>
+                                                                    {['head', 'neck', 'armor', 'mainHand', 'mainHand2', 'offhand', 'offhand2', 'waist', 'feet', 'gloves', 'wondrous'].includes(item.type) && (
+                                                                        (() => {
+                                                                            const isEquipped = isItemEquipped(section.id, item);
+                                                                            return (
+                                                                                <button 
+                                                                                    className={`btn small-btn ${isEquipped ? 'btn-success' : 'btn-primary'}`} 
+                                                                                    onClick={() => equipItem(section.id, item)}
+                                                                                    style={{ 
+                                                                                        padding: '0.3rem 0.65rem', 
+                                                                                        fontSize: '0.78rem', 
+                                                                                        background: isEquipped ? '#10b981' : 'var(--primary)', 
+                                                                                        borderColor: isEquipped ? '#10b981' : 'var(--primary)',
+                                                                                        color: '#fff'
+                                                                                    }}
+                                                                                >
+                                                                                    {isEquipped ? '🛡️ Equipped' : '🛡️ Equip'}
+                                                                                </button>
+                                                                            );
+                                                                        })()
+                                                                    )}
+                                                                    {item.requiresAttunement && (
+                                                                        <button 
+                                                                            className={`btn small-btn`} 
+                                                                            onClick={() => {
+                                                                                // Toggle attunement locally for now
+                                                                                const updated = { ...item, isAttuned: !item.isAttuned };
+                                                                                const newInv = inventories[section.id].map(i => i.id === item.id ? updated : i);
+                                                                                updateData({ ...data, inventories: { ...inventories, [section.id]: newInv } });
+                                                                            }}
+                                                                            style={{ 
+                                                                                padding: '0.3rem 0.65rem', 
+                                                                                fontSize: '0.78rem', 
+                                                                                background: item.isAttuned ? '#f59e0b' : 'transparent',
+                                                                                color: item.isAttuned ? '#fff' : '#f59e0b',
+                                                                                border: '1px solid #f59e0b'
+                                                                            }}
+                                                                        >
+                                                                            {item.isAttuned ? '✨ Attuned' : '✨ Attune'}
+                                                                        </button>
+                                                                    )}
+                                                                    <button className="btn small-btn" onClick={() => startEditing(item)}>Edit</button>
+                                                                    <button className="btn remove-btn small-btn" style={{ padding: '0.25rem 0.5rem', color: '#ef4444', borderColor: 'transparent', background: 'rgba(239, 68, 68, 0.1)' }} onClick={() => removeItem(section.id, item.id)} title="Delete"><Trash2 size={16} /></button>
                                                                 </div>
                                                             </div>
                                                         </>

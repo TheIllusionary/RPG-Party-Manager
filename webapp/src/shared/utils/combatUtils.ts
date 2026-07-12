@@ -266,7 +266,10 @@ export function calculateEffectiveAC(player, equipment, buffsDatabase = []) {
         }
         baseAC = itemBaseAC + mod;
     } else {
-        baseAC = player.ac !== undefined && player.ac !== null ? player.ac : 10;
+        const base = player.ac !== undefined && player.ac !== null ? player.ac : 10;
+        const dexVal = player.dex !== undefined && player.dex !== null ? player.dex : 10;
+        const dexMod = Math.floor((dexVal - 10) / 2);
+        baseAC = base + dexMod;
     }
     
     // Add acBonus from all OTHER equipped items and wondrous items

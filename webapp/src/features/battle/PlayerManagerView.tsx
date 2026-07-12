@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PartyXpModal from './components/PartyXpModal';
 import PartyLevelModal from './components/PartyLevelModal';
 import CombatHeader from './components/CombatHeader';
@@ -9,6 +9,7 @@ import FloatingActionBar from './components/FloatingActionBar';
 import EncounterScenePanel from './components/EncounterScenePanel';
 import type { IPlayerManagerViewProps } from '../../types/battle';
 import { useCompendiumMonsters } from '../../shared/hooks/useCompendiumMonsters';
+import OwlbearMap from './components/OwlbearMap';
 
 export default function PlayerManagerView({
   party,
@@ -33,26 +34,44 @@ export default function PlayerManagerView({
   const players = party.data;
   const enemyList = enemies;
   const { monsters: compendiumMonsters } = useCompendiumMonsters();
+  const [isVttActive, setIsVttActive] = useState(false);
 
   return (
     <div className="player-manager stack">
       <PartyXpModal party={party} />
       <PartyLevelModal party={party} />
 
-      <CombatHeader
-        party={party}
-        combat={combat}
-        data={players}
-        enemies={enemyList}
-        battleMode={battleMode}
-        setBattleMode={setBattleMode}
-        minimizedEnemies={minimizedEnemies}
-        setMinimizedEnemies={setMinimizedEnemies}
-        setEnemies={setEnemies}
-      />
+      {!battleMode && (
+        <CombatHeader
+          party={party}
+          combat={combat}
+          data={players}
+          enemies={enemyList}
+          battleMode={battleMode}
+          setBattleMode={setBattleMode}
+          minimizedEnemies={minimizedEnemies}
+          setMinimizedEnemies={setMinimizedEnemies}
+          setEnemies={setEnemies}
+          isVttActive={isVttActive}
+          onToggleVtt={() => setIsVttActive(prev => !prev)}
+        />
+      )}
 
-      <div className={`battle-arena ${battleMode ? 'active' : ''} ${combat.isVttActive ? 'vtt-open' : ''}`}>
-        {battleMode && <EncounterScenePanel combat={combat} />}
+      <div className={`battle-arena ${battleMode ? 'active' : ''} ${isVttActive ? 'vtt-open' : ''}`}>
+        {battleMode && (
+          <EncounterScenePanel
+            combat={combat}
+            party={party}
+            enemies={enemyList}
+            minimizedEnemies={minimizedEnemies}
+            setMinimizedEnemies={setMinimizedEnemies}
+            setEnemies={setEnemies}
+            battleMode={battleMode}
+            setBattleMode={setBattleMode}
+            isVttActive={isVttActive}
+            onToggleVtt={() => setIsVttActive(prev => !prev)}
+          />
+        )}
 
         <div className="battle-arena-cols">
         <div className={battleMode ? 'battle-party-col' : ''}>
@@ -82,6 +101,8 @@ export default function PlayerManagerView({
             ))}
           </div>
         </div>
+
+        {battleMode && isVttActive && <OwlbearMap />}
 
         {battleMode && (
           <div className="battle-enemy-panel">

@@ -15,6 +15,8 @@ export interface IEnemyLibraryProps {
   updateBestiaryReview?: (review: IBestiaryReview) => void;
   bestiaryFavorites?: string[];
   updateBestiaryFavorites?: (favorites: string[]) => void;
+  subclasses?: any[];
+  updateSubclasses?: (subclasses: any[]) => void;
 }
 
 export interface IEncounterCombatant {

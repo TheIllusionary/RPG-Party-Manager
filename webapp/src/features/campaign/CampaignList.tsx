@@ -61,7 +61,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const name = newName.trim() || 'Nova Campanha';
+    const name = newName.trim() || 'New Campaign';
     setCreating(true);
     setError('');
 
@@ -98,8 +98,8 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
         const merged = mergeCampaignData(normalized);
 
         const result = await createCampaign({
-          name: 'Campanha Importada',
-          description: 'Migrada do JSON antigo',
+          name: 'Imported Campaign',
+          description: 'Migrated from legacy JSON',
         });
 
         const campaignId = result.campaign._id;
@@ -216,7 +216,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Nova Campanha"
+              placeholder="New Campaign"
               disabled={busy}
             />
           </div>
@@ -230,7 +230,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
               disabled={busy}
               onClick={() => importRef.current?.click()}
             >
-              Importar JSON
+              Import JSON
             </button>
           </div>
           <input
@@ -245,7 +245,7 @@ export default function CampaignList({ user, onSelectCampaign, onLogout, onOpenD
         {importing && (
           <div className="campaign-status glass-panel">
             <p className="m-0 text-sm text-success">
-              Importando e salvando na nuvem...
+              Importing and saving to cloud...
             </p>
           </div>
         )}

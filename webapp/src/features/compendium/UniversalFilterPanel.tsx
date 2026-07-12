@@ -33,13 +33,13 @@ export default function UniversalFilterPanel({
   return (
     <div className="compendium-universal-filters">
       <div className="compendium-universal-filters__head">
-        <span className="compendium-universal-filters__title">Fontes / Livros</span>
+        <span className="compendium-universal-filters__title">Sources / Books</span>
         <div className="compendium-universal-filters__actions">
           <button type="button" className="compendium-filter-clear" onClick={selectAll}>
-            Todos
+            All
           </button>
           <button type="button" className="compendium-filter-clear" onClick={clearAll}>
-            Nenhum
+            None
           </button>
         </div>
       </div>

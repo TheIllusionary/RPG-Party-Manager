@@ -95,7 +95,7 @@ export function useRulesEditor({ actors }: UseRulesEditorOptions): UseRulesEdito
           setBlocks(nextBlocks);
         }
       } catch (error) {
-        setSaveError(error instanceof Error ? error.message : 'Falha ao salvar blocos');
+        setSaveError(error instanceof Error ? error.message : 'Failed to save blocks');
       } finally {
         setSaving(false);
       }
@@ -157,7 +157,7 @@ export function useRulesEditor({ actors }: UseRulesEditorOptions): UseRulesEdito
         return null;
       });
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Falha ao carregar blocos');
+      setSaveError(error instanceof Error ? error.message : 'Failed to load blocks');
     }
   }, [electronAvailable, persistBlocks]);
 
@@ -179,7 +179,7 @@ export function useRulesEditor({ actors }: UseRulesEditorOptions): UseRulesEdito
     const now = new Date().toISOString();
     const block: LogicBlock = {
       id,
-      name: 'Nova Regra',
+      name: 'New Rule',
       trigger: 'manual',
       enabled: true,
       effects: [],
@@ -219,7 +219,7 @@ export function useRulesEditor({ actors }: UseRulesEditorOptions): UseRulesEdito
 
   const deleteBlock = useCallback(
     (blockId: string) => {
-      if (!window.confirm('Excluir esta regra? (soft delete — permanece no sync como tombstone)')) {
+      if (!window.confirm('Delete this rule? (soft delete — remains in sync as tombstone)')) {
         return;
       }
       const now = new Date().toISOString();
@@ -289,7 +289,7 @@ export function useRulesEditor({ actors }: UseRulesEditorOptions): UseRulesEdito
           blockId: withCompute.id,
           blockName: withCompute.name,
           result: null,
-          error: error instanceof Error ? error.message : 'Erro',
+          error: error instanceof Error ? error.message : 'Error',
         };
       }
     });

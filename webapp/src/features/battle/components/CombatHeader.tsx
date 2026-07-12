@@ -12,6 +12,8 @@ export default function CombatHeader({
   minimizedEnemies,
   setMinimizedEnemies,
   setEnemies,
+  isVttActive = false,
+  onToggleVtt,
 }: ICombatHeaderProps) {
   const {
     actionToast,
@@ -105,6 +107,15 @@ export default function CombatHeader({
           </button>
         )}
 
+        {battleMode && (
+          <button
+            type="button"
+            className={`btn ${isVttActive ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={onToggleVtt}
+          >
+            🗺️ VTT
+          </button>
+        )}
         {battleMode && (
           <button type="button" className="btn btn-secondary" onClick={triggerTurnEffects}>
             Turn

@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import OBR from '@owlbear-rodeo/sdk';
 
 export default function OwlbearMap() {
   const [vttRoomUrl, setVttRoomUrl] = useState('');
   const [vttInputVal, setVttInputVal] = useState('');
   const [sdkReady, setSdkReady] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load last used URL
@@ -13,6 +15,14 @@ export default function OwlbearMap() {
       setVttRoomUrl(saved);
       setVttInputVal(saved);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
   useEffect(() => {
@@ -54,9 +64,20 @@ export default function OwlbearMap() {
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch((err) => {
+        console.error('Error enabling fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   return (
-    <div className="battle-vtt-column" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="vtt-embedded-panel glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="battle-vtt-column" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div ref={containerRef} className="vtt-embedded-panel glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="vtt-toolbar" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <div className="vtt-toolbar-left" style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
             <input
@@ -75,6 +96,9 @@ export default function OwlbearMap() {
           </div>
           <div className="vtt-toolbar-right" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             {sdkReady && <span style={{ color: 'var(--color-green)', fontSize: '0.8rem', marginRight: '0.5rem' }}>SDK Ready</span>}
+            <button type="button" className="btn btn-secondary vtt-btn" onClick={toggleFullscreen}>
+              {isFullscreen ? '📴 Exit Fullscreen' : '📺 Fullscreen'}
+            </button>
             <button type="button" className="btn btn-secondary vtt-btn" onClick={handleOpenInBrowser}>
               🌐 Open in Browser
             </button>

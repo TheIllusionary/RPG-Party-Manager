@@ -77,6 +77,9 @@ const getPlayerRuleOptions = (player: IPlayer) => ({
 const calculateEnemyMaxHP = (enemy: IEnemy) =>
     resolveEnemyResources(enemy, logicBlocks).hpMax;
 
+const [initiativeMode, setInitiativeMode] = useState<'none' | 'group' | 'individual'>('none');
+const [customTurnOrder, setCustomTurnOrder] = useState<string[]>([]);
+
 const ruleEngineCombat = useRuleEngineCombat({
     players: data,
     enemies,
@@ -87,6 +90,8 @@ const ruleEngineCombat = useRuleEngineCombat({
     updatePlayers: updateData,
     setEnemies,
     showActionToast,
+    initiativeMode,
+    customTurnOrder,
 });
 
 const [inlineDeltaEdit, setInlineDeltaEdit] = useState(null); // { type: 'player'|'enemy', id, field: 'hp'|'mana' }
@@ -95,6 +100,7 @@ const [inlineDeltaValue, setInlineDeltaValue] = useState('');
 const [selectedTargets, setSelectedTargets] = useState([]);
 const [bulkActionValue, setBulkActionValue] = useState('');
 const [bulkTempHp, setBulkTempHp] = useState(false);
+
 
 const targetKey = (type, id) => `${type}:${id}`;
 const isTargetSelected = (type, id) => selectedTargets.includes(targetKey(type, id));
@@ -1122,23 +1128,28 @@ const triggerTurnEffects = () => {
         }
     });
 
-    // 3. Commit state changes
+    // 3. Construct updated arrays
+    const finalPlayers = data.map(p => {
+        if (changedPlayers[p.id]) {
+            return { ...p, ...changedPlayers[p.id] };
+        }
+        return p;
+    });
+
+    const finalEnemies = enemies.map(e => {
+        if (changedEnemies[e.id]) {
+            return { ...e, ...changedEnemies[e.id] };
+        }
+        return e;
+    });
+
+    // Commit state changes
     if (Object.keys(changedPlayers).length > 0) {
-        updateData(data.map(p => {
-            if (changedPlayers[p.id]) {
-                return { ...p, ...changedPlayers[p.id] };
-            }
-            return p;
-        }));
+        updateData(finalPlayers);
     }
 
     if (Object.keys(changedEnemies).length > 0) {
-        setEnemies(prev => prev.map(e => {
-            if (changedEnemies[e.id]) {
-                return { ...e, ...changedEnemies[e.id] };
-            }
-            return e;
-        }));
+        setEnemies(finalEnemies);
     }
 
     // 4. Log to battle notes
@@ -1150,6 +1161,8 @@ const triggerTurnEffects = () => {
         const separator = `\n--- Turn Resolved (No active effects) ---`;
         setBattleNotes(prev => (prev ? prev + separator : separator));
     }
+
+    return { players: finalPlayers, enemies: finalEnemies };
 };
 
 
@@ -1396,9 +1409,27 @@ const triggerTurnEffects = () => {
         turnOrder: ruleEngineCombat.turnOrder,
         currentTurnIndex: ruleEngineCombat.currentTurnIndex,
         currentTurnActor: ruleEngineCombat.currentTurnActor,
+        initiativeMode,
+        setInitiativeMode,
+        customTurnOrder,
+        setCustomTurnOrder,
         applyQuickDamage: ruleEngineCombat.applyQuickDamage,
         applyQuickHeal: ruleEngineCombat.applyQuickHeal,
         getModifiersFor: ruleEngineCombat.getModifiersFor,
-        advanceEncounterTurn: ruleEngineCombat.advanceEncounterTurn,
+        advanceEncounterTurn: () => {
+            const turnOrder = ruleEngineCombat.turnOrder;
+            const turnIndex = ruleEngineCombat.currentTurnIndex;
+            const isLastTurn =
+                initiativeMode === 'none' ||
+                turnOrder.length === 0 ||
+                (turnIndex % turnOrder.length) === turnOrder.length - 1;
+
+            if (isLastTurn) {
+                const { players: updatedPlayers, enemies: updatedEnemies } = triggerTurnEffects();
+                ruleEngineCombat.advanceEncounterTurn(updatedPlayers, updatedEnemies);
+            } else {
+                ruleEngineCombat.advanceEncounterTurn();
+            }
+        },
     } satisfies ICombatState;
 }

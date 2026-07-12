@@ -350,37 +350,24 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
   return (
     <RootLayout
       padForToolbar
-      header={
-        <AppNavBar
-          title={campaign.name}
-          crumbs={[
-            { label: 'Campanhas', onClick: onBackToCampaigns },
-            { label: campaign.name },
-          ]}
-        />
-      }
       toolbar={
         <nav className="bottom-nav">
         {/* 1 — Party */}
         <button className={`nav-item ${activeTab === 'players' ? 'active' : ''}`} onClick={() => switchTab('players')} title="Party Roster">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
         </button>
 
         {/* 1.5 - Party Sheet */}
         <button className={`nav-item ${activeTab === 'playerSheet' ? 'active' : ''}`} onClick={() => switchTab('playerSheet')} title="Party Sheet">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
         </button>
 
         {/* Notebook */}
-        <button className={`nav-item ${activeTab === 'map' ? 'active' : ''}`} onClick={() => switchTab('map')} title="Battlemap (Owlbear Rodeo)">
-          <div className="nav-icon">🗺️</div>
-          <span className="nav-label">Map</span>
-        </button>
         <button className={`nav-item ${activeTab === 'notebook' ? 'active' : ''}`} onClick={() => switchTab('notebook')} title="Quest Log / Notes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -429,13 +416,6 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </svg>
         </button>
 
-        {/* Subclasses */}
-        <button className={`nav-item ${activeTab === 'subclasses' ? 'active' : ''}`} onClick={() => switchTab('subclasses')} title="Custom Subclasses">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
-          </svg>
-        </button>
-
         {/* Rules */}
         <button className={`nav-item ${activeTab === 'rules' ? 'active' : ''}`} onClick={() => switchTab('rules')} title="Campaign Rules">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -445,17 +425,8 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           </svg>
         </button>
 
-        {/* Compendium */}
-        <button className={`nav-item ${activeTab === 'compendium' ? 'active' : ''}`} onClick={() => switchTab('compendium')} title="Compendium">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            <path d="M8 7h8M8 11h6" />
-          </svg>
-        </button>
-
-        {/* 6 — Database */}
-        <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Database">
+        {/* 6 — Codex */}
+        <button className={`nav-item ${activeTab === 'bestiary' ? 'active' : ''}`} onClick={() => switchTab('bestiary')} title="Codex">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
@@ -565,9 +536,7 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           updateCustomItems={(items) => updateData('customItems', items)}
         />
       )}
-      {activeTab === 'map' && (
-        <OwlbearMap />
-      )}
+
       {activeTab === 'charequip' && (
         <CharacterEquipment
           data={data.equipment}
@@ -589,20 +558,11 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
       {activeTab === 'chaos' && (
         <Chaos chaosData={data.chaos} updateChaosData={(d) => updateData('chaos', d)} />
       )}
-      {activeTab === 'subclasses' && (
-        <SubclassManager
-          subclasses={data.subclasses || []}
-          updateSubclasses={(s) => updateData('subclasses', s)}
-        />
-      )}
       {activeTab === 'rules' && (
         <CampaignRulesPanel
           logicBlocks={data.logicBlocks ?? []}
           updateLogicBlocks={(blocks) => updateData('logicBlocks', blocks)}
         />
-      )}
-      {activeTab === 'compendium' && (
-        <CompendiumView />
       )}
       {activeTab === 'bestiary' && (
         <EnemyLibrary
@@ -614,6 +574,8 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
           updateBestiaryReview={(r) => updateData('bestiaryReview', r)}
           bestiaryFavorites={data.bestiaryFavorites || []}
           updateBestiaryFavorites={(favs) => updateData('bestiaryFavorites', favs)}
+          subclasses={data.subclasses || []}
+          updateSubclasses={(s) => updateData('subclasses', s)}
         />
       )}
       </ErrorBoundary>
@@ -724,7 +686,20 @@ function GameApp({ campaign, onBackToCampaigns }: IGameAppProps) {
 
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
+              <button
+                className="btn"
+                onClick={onBackToCampaigns}
+                style={{
+                  minWidth: '120px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  borderColor: 'rgba(239, 68, 68, 0.5)',
+                  color: '#fca5a5',
+                  cursor: 'pointer'
+                }}
+              >
+                Exit Campaign
+              </button>
               <button className="btn" onClick={() => setIsConfigModalOpen(false)} style={{ minWidth: '100px' }}>
                 Close
               </button>

@@ -13,6 +13,8 @@ import {
   getStoredUser,
   setAuthSession,
   bootstrapPersistentState,
+  listCampaigns,
+  getLastCampaignId,
 } from '../services/api';
 import { syncAuthFromStorage } from '../services/syncBridge';
 import type { IAuthSession } from '../types/auth';
@@ -41,6 +43,15 @@ function App() {
         if (!cancelled) {
           setUser(profile);
           syncAuthFromStorage(getStoredToken);
+
+          const lastId = getLastCampaignId();
+          if (lastId) {
+            const campaigns = await listCampaigns();
+            const matched = campaigns.find(c => c._id === lastId);
+            if (matched) {
+              setActiveCampaign(matched);
+            }
+          }
         }
       } catch {
         clearAuthSession();

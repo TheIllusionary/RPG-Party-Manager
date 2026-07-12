@@ -18,13 +18,13 @@ export default function FloatingActionBar({ combat }: IFloatingActionBarProps) {
   return (
     <div className="bulk-action-bar">
       <span className="bulk-action-label">
-        {selectedTargets.length} alvo{selectedTargets.length !== 1 ? 's' : ''} selecionado{selectedTargets.length !== 1 ? 's' : ''}
+        {selectedTargets.length} target{selectedTargets.length !== 1 ? 's' : ''} selected
       </span>
       <input
         type="number"
         className="input bulk-action-input"
         value={bulkActionValue}
-        placeholder="Valor"
+        placeholder="Value"
         onChange={(e) => setBulkActionValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') applyBulkHpToTargets(false);
@@ -41,7 +41,7 @@ export default function FloatingActionBar({ combat }: IFloatingActionBarProps) {
       <button type="button" className="btn bulk-btn-damage" onClick={() => applyBulkHpToTargets(false)}>Apply Damage</button>
       <button type="button" className="btn bulk-btn-heal" onClick={() => applyBulkHpToTargets(true)}>Apply Heal</button>
       <button type="button" className="btn bulk-btn-mana" onClick={applyBulkManaDrain}>Drain Mana</button>
-      <button type="button" className="btn bulk-btn-clear" onClick={clearTargetSelection} title="Limpar seleção">✕</button>
+      <button type="button" className="btn bulk-btn-clear" onClick={clearTargetSelection} title="Clear selection">✕</button>
     </div>
   );
 }

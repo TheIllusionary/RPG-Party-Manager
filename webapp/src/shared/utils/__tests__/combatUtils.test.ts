@@ -10,6 +10,13 @@ describe('combatUtils', () => {
             expect(result).toBe(12);
         });
 
+        it('adds DEX modifier to player base ac when no armor is equipped', () => {
+            const player = { id: 'p1', ac: 10, dex: 16 };
+            const equipment = { equipped: { p1: {} } };
+            const result = calculateEffectiveAC(player, equipment);
+            expect(result).toBe(13); // 10 + 3
+        });
+
         it('returns 10 if player has no ac and no armor', () => {
             const player = { id: 'p1' };
             const equipment = { equipped: {} };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getCompendiumMonsters } from '../../services/compendiumBridge';
 import type { MasterMonster } from '../../services/compendium/fiveETools/types';
 import type { IMonster } from '../../types';
+import defaultMonstersList from '../../features/bestiary/default_monsters.json';
 
 function masterMonsterToIMonster(master: MasterMonster): IMonster {
   // Try to parse numeric AC
@@ -65,12 +66,15 @@ export function useCompendiumMonsters(): UseCompendiumMonstersResult {
     setError(null);
     try {
       const masterList = await getCompendiumMonsters();
-      const adapted = masterList.map(masterMonsterToIMonster);
-      setMonsters(adapted);
+      if (masterList && masterList.length > 0) {
+        const adapted = masterList.map(masterMonsterToIMonster);
+        setMonsters(adapted);
+      } else {
+        setMonsters(defaultMonstersList as unknown as IMonster[]);
+      }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      setMonsters([]);
+      setError(err instanceof Error ? err.message : String(err));
+      setMonsters(defaultMonstersList as unknown as IMonster[]);
     } finally {
       setLoading(false);
     }

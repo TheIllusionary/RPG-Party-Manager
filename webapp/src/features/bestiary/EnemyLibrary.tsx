@@ -4,6 +4,8 @@ import { parseAbilities, rollFormula, extractExtraEffects } from '../../shared/u
 import type { IBestiaryReviewStatus, IEnemyLibraryProps } from '../../types/bestiary';
 import type { IMonster } from '../../types';
 import { useCompendiumMonsters } from '../../shared/hooks/useCompendiumMonsters';
+import CompendiumView from '../compendium/CompendiumView';
+import SubclassManager from '../campaign/SubclassManager';
 
 const defaultMonsters = [] as IMonster[];
 
@@ -76,13 +78,15 @@ export default function EnemyLibrary({
     bestiaryReview = {}, 
     updateBestiaryReview = () => {},
     bestiaryFavorites = [],
-    updateBestiaryFavorites = () => {}
+    updateBestiaryFavorites = () => {},
+    subclasses = [],
+    updateSubclasses = () => {}
 }: IEnemyLibraryProps) {
     const { monsters: compendiumMonsters, loading: loadingMonsters } = useCompendiumMonsters();
     const data = [...compendiumMonsters, ...library];
     const updateData = updateLibrary;
 
-    const [activeSubTab, setActiveSubTab] = useState('bestiary'); // 'bestiary' | 'buffs' | 'items'
+    const [activeSubTab, setActiveSubTab] = useState('bestiary'); // 'bestiary' | 'spells' | 'items' | 'classes' | 'subclasses' | 'races' | 'buffs'
     const [buffSearchTerm, setBuffSearchTerm] = useState('');
     const [editingBuffId, setEditingBuffId] = useState(null);
     const [buffDraft, setBuffDraft] = useState(null);
@@ -641,7 +645,7 @@ export default function EnemyLibrary({
     return (
         <div className="enemy-library-tab">
             {/* Database Tab Bar */}
-            <div className="db-tabs-bar" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
+            <div className="db-tabs-bar" style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
                 <button 
                     className={`btn ${activeSubTab === 'bestiary' ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => setActiveSubTab('bestiary')}
@@ -649,10 +653,10 @@ export default function EnemyLibrary({
                     💀 Bestiary
                 </button>
                 <button 
-                    className={`btn ${activeSubTab === 'buffs' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setActiveSubTab('buffs')}
+                    className={`btn ${activeSubTab === 'spells' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('spells')}
                 >
-                    ⚡ Buffs &amp; Debuffs
+                    ✨ Spells
                 </button>
                 <button 
                     className={`btn ${activeSubTab === 'items' ? 'btn-primary' : 'btn-secondary'}`}
@@ -660,13 +664,50 @@ export default function EnemyLibrary({
                 >
                     🛡️ Items
                 </button>
+                <button 
+                    className={`btn ${activeSubTab === 'classes' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('classes')}
+                >
+                    👤 Classes
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'subclasses' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('subclasses')}
+                >
+                    🎭 Subclasses (Custom)
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'races' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('races')}
+                >
+                    🧬 Races
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'buffs' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('buffs')}
+                >
+                    ⚡ Buffs &amp; Debuffs
+                </button>
             </div>
 
+            {activeSubTab === 'spells' && (
+                <CompendiumView activeTab="spells" hideHeader={true} />
+            )}
+
             {activeSubTab === 'items' && (
-                <div className="db-subtab-container glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <h3>🛡️ Items Database</h3>
-                    <p style={{ marginTop: '1rem', fontStyle: 'italic' }}>Work in progress — coming soon!</p>
-                </div>
+                <CompendiumView activeTab="items" hideHeader={true} />
+            )}
+
+            {activeSubTab === 'classes' && (
+                <CompendiumView activeTab="classes" hideHeader={true} />
+            )}
+
+            {activeSubTab === 'subclasses' && (
+                <SubclassManager subclasses={subclasses} updateSubclasses={updateSubclasses} />
+            )}
+
+            {activeSubTab === 'races' && (
+                <CompendiumView activeTab="races" hideHeader={true} />
             )}
 
             {activeSubTab === 'buffs' && (

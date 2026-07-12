@@ -134,8 +134,7 @@ export default function PlayerCard({
     (castingUsesSpellSlots && playerQualifiesForSpellSlots(computedPlayer));
 
   return (
-
-                                <div key={player.id} data-player-id={player.id} className={`glass-panel integrated-player-card ${!player.inParty ? 'inactive' : ''} ${isPlayerMinimized(player.id) ? 'minimized-card' : ''} ${isTargetSelected('player', player.id) ? 'target-selected' : ''}`}>
+                                <div id={`player-card-${player.id}`} key={player.id} data-player-id={player.id} className={`glass-panel integrated-player-card ${!player.inParty ? 'inactive' : ''} ${isPlayerMinimized(player.id) ? 'minimized-card' : ''} ${isTargetSelected('player', player.id) ? 'target-selected' : ''}`}>
                                     <PlayerHeader
                                         player={player}
                                         computedPlayer={computedPlayer}
@@ -169,16 +168,7 @@ export default function PlayerCard({
                                         onOpenCodex={() => onOpenSheet && onOpenSheet(player.id)}
                                     />
 
-                                    <PlayerAttributes
-                                        player={player}
-                                        computedPlayer={computedPlayer}
-                                        updatePlayer={updatePlayer}
-                                        statsList={statsList}
-                                        getEquipmentBonus={getEquipmentBonus}
-                                        effectiveStat={effectiveStat}
-                                        formatModifier={formatModifier}
-                                        calculateModifier={calculateModifier}
-                                    />                                    <div className="stats-grid">
+                                    <div className="stats-grid">
                                         <div className={`stat-block ${player.hpCurrent <= 0 ? 'ko-state' : ''}`}>
                                             <div className="stat-label">
                                                 <span>{player.hpCurrent <= 0 ? 'STATUS: K.O.' : (playerUsesVampire(player) ? 'HP (Blood)' : 'HP')}</span>
@@ -570,6 +560,16 @@ export default function PlayerCard({
 
                                     {!isPlayerMinimized(player.id) && (
                                         <div className="player-details-extended">
+                                            <PlayerAttributes
+                                                player={player}
+                                                computedPlayer={computedPlayer}
+                                                updatePlayer={updatePlayer}
+                                                statsList={statsList}
+                                                getEquipmentBonus={getEquipmentBonus}
+                                                effectiveStat={effectiveStat}
+                                                formatModifier={formatModifier}
+                                                calculateModifier={calculateModifier}
+                                            />
                                             {(() => {
                                                 const sub = getPlayerSubclass(player);
                                                 const optSub = getOptionalPlayerSubclass?.(player);
