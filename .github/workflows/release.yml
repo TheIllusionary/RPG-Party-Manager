@@ -82,13 +82,30 @@ jobs:
       - name: Build Electron services (document store, Player View WS)
         run: npm run build:electron-services --prefix webapp
 
-      - name: Build & publish to public releases repo
+      - name: Build & publish to public releases repo (if token available)
+        if: "${{ secrets.RELEASES_REPO_TOKEN != '' }}"
         working-directory: webapp
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: npx electron-builder --win --publish always
 
-      - name: Upload installers and latest.yml
+      - name: Build Electron App without publishing (if token unavailable)
+        if: "${{ secrets.RELEASES_REPO_TOKEN == '' }}"
+        working-directory: webapp
+        run: npx electron-builder --win --publish never
+
+      - name: Prepare installer assets
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" |
+            Where-Object { $_.Name -ne 'PartyManager-Setup.exe' } |
+            Select-Object -First 1
+          if (-not $installer) { throw "Versioned installer not found." }
+          $fixed = "webapp/dist-electron/PartyManager-Setup.exe"
+          Copy-Item $installer.FullName $fixed -Force
+
+      - name: Upload installers to public releases repo
+        if: "${{ secrets.RELEASES_REPO_TOKEN != '' }}"
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
@@ -97,9 +114,7 @@ jobs:
           $installer = Get-ChildItem "webapp/dist-electron/PartyManager-Setup-*.exe" |
             Where-Object { $_.Name -ne 'PartyManager-Setup.exe' } |
             Select-Object -First 1
-          if (-not $installer) { throw "Versioned installer not found." }
           $fixed = "webapp/dist-electron/PartyManager-Setup.exe"
-          Copy-Item $installer.FullName $fixed -Force
           gh release upload $tag $fixed $installer.FullName "webapp/dist-electron/latest.yml" --repo $env:RELEASES_REPO --clobber
 
       - name: Upload build artifacts (backup)
