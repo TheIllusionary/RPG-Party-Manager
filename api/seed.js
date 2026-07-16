@@ -1,57 +1,133 @@
 /**
- * Database seed — triggers lazy creation of the MongoDB database and collections.
+ * Cloud Compendium Seed Script
+ *
+ * Uploads locally-processed ETL data (from seedMasterCompendium.ts output)
+ * into the MongoDB Atlas Compendium collection for cloud sync.
+ *
+ * Prerequisites:
+ *   1. Run `npm run seed:master-compendium --prefix webapp` first to populate
+ *      the local FileSystemDocumentStore (~/AppData/Roaming/party-manager/documents/).
+ *   2. Ensure MONGO_URI is set in api/.env pointing to your Atlas cluster.
+ *
+ * Usage:
+ *   cd api && node seed.js
  */
-import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
-import Campaign from './models/Campaign.js';
-import CampaignData from './models/CampaignData.js';
-import User from './models/User.js';
-import { DEFAULT_DATA } from './data/defaultData.js';
-import { applyCloudDefaults } from './config/applyDefaults.js';
-import { connectDB, disconnectDB, getMongoUri, maskMongoUri } from './config/db.js';
 
-dotenv.config({ override: true });
-applyCloudDefaults();
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import dotenv from 'dotenv'
+import mongoose from 'mongoose'
+import Compendium from './models/Compendium.js'
 
-const SEED_USER = { username: 'dm', password: 'dungeon123' };
+dotenv.config({ override: true })
 
-async function seed() {
-  console.log('Starting seed...');
-  console.log(`  URI: ${maskMongoUri(getMongoUri())}`);
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+const __filename = fileURLToPath(import.meta.url)
 
-  await connectDB();
+// Resolve the webapp root and user data store path
+const WEBAPP_ROOT = resolve(__dirname, '..', 'webapp')
+const APP_DATA_BASE = resolve(
+  process.env.APPDATA ||
+    resolve(
+      process.env.HOME || process.env.USERPROFILE || '/tmp',
+      'AppData',
+      'Roaming',
+    ),
+  'party-manager',
+  'documents',
+)
 
-  await CampaignData.deleteMany({});
-  await Campaign.deleteMany({});
-  await User.deleteMany({});
-  console.log('Cleared users, campaigns, and campaign data');
+const COLLECTIONS = [
+  { dir: 'compendium-spells', entityType: 'spell' },
+  { dir: 'compendium-items', entityType: 'item' },
+  { dir: 'compendium-monsters', entityType: 'monster' },
+  { dir: 'compendium-classes', entityType: 'class' },
+  { dir: 'compendium-subclasses', entityType: 'subclass' },
+  { dir: 'compendium-races', entityType: 'race' },
+]
 
-  const passwordHash = await bcrypt.hash(SEED_USER.password, 10);
-  const user = await User.create({
-    username: SEED_USER.username,
-    passwordHash,
-  });
-  console.log(`Created user: ${user.username} (password: ${SEED_USER.password})`);
+async function seedCollection(collectionDir, entityType) {
+  const dirPath = resolve(APP_DATA_BASE, collectionDir)
+  if (!existsSync(dirPath)) {
+    console.log(
+      `[Seed] Skipping ${entityType} — directory not found: ${dirPath}`,
+    )
+    console.log(
+      `[Seed]   → Run \`npm run seed:master-compendium --prefix webapp\` first.`,
+    )
+    return 0
+  }
 
-  const campaign = await Campaign.create({
-    userId: user._id,
-    name: 'Campanha Padrão',
-    description: 'Campanha padrão criada pelo script de seed',
-    lastAccessed: new Date(),
-  });
-  console.log(`Created campaign: "${campaign.name}" (${campaign._id})`);
+  const files = readdirSync(dirPath, { withFileTypes: true }).filter(
+    f => f.isFile() && f.name.endsWith('.json'),
+  )
 
-  await CampaignData.create({
-    campaignId: campaign._id,
-    ...DEFAULT_DATA,
-  });
-  console.log('Created CampaignData with DEFAULT_DATA');
+  if (files.length === 0) {
+    console.log(`[Seed] Skipping ${entityType} — no JSON files found.`)
+    return 0
+  }
 
-  console.log('Seed complete — login with dm / dungeon123');
-  await disconnectDB();
+  console.log(
+    `[Seed] Uploading ${files.length} ${entityType} entries to MongoDB...`,
+  )
+
+  let written = 0
+  for (const file of files) {
+    try {
+      const raw = readFileSync(resolve(dirPath, file.name), 'utf8')
+      const entry = JSON.parse(raw)
+
+      await Compendium.findOneAndUpdate(
+        { entityType, entityKey: entry.entityKey || entry.id },
+        {
+          $set: {
+            entityType,
+            entityKey: entry.entityKey || entry.id,
+            data: entry,
+          },
+        },
+        { upsert: true, new: true },
+      )
+
+      written += 1
+      if (written % 100 === 0) {
+        console.log(`  ... ${written}/${files.length} ${entityType}`)
+      }
+    } catch (err) {
+      console.warn(`  [Warning] Failed to upload ${file.name}:`, err.message)
+    }
+  }
+
+  console.log(`  → Uploaded ${written} ${entityType}`)
+  return written
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err.message);
-  process.exit(1);
-});
+async function main() {
+  console.log('[Seed] Connecting to MongoDB...')
+
+  if (!process.env.MONGO_URI) {
+    console.error(
+      'MONGO_URI not set. Create api/.env with your Atlas connection string.',
+    )
+    process.exit(1)
+  }
+
+  await mongoose.connect(process.env.MONGO_URI)
+
+  const { host, name } = mongoose.connection
+  console.log(`[Seed] Connected to ${host}/${name}`)
+
+  let total = 0
+  for (const { dir, entityType } of COLLECTIONS) {
+    total += await seedCollection(dir, entityType)
+  }
+
+  console.log(`\n[Seed] Done. Uploaded ${total} total entries.`)
+  await mongoose.disconnect()
+}
+
+main().catch(err => {
+  console.error('[Seed] Fatal error:', err)
+  process.exit(1)
+})
