@@ -9,7 +9,7 @@ export type {
   HomebrewRules,
   CustomAttributes,
   DocumentMeta,
-} from './common';
+} from './common'
 
 export type {
   Actor,
@@ -21,7 +21,9 @@ export type {
   ActorResources,
   ActorEquipment,
   ActorEquipmentItem,
-} from './actor';
+  ActorAttack,
+  ActorBuff,
+} from './actor'
 
 export type {
   LogicBlock,
@@ -36,8 +38,8 @@ export type {
   RuleScope,
   LogicComputeTarget,
   DamageModifierDefinition,
-} from './logic-block';
+} from './logic-block'
 
-export type { EncounterState, EncounterCombatantRef } from './encounter-state';
+export type { EncounterState, EncounterCombatantRef } from './encounter-state'
 
-export type { CampaignState } from './campaign-state';
+export type { CampaignState } from './campaign-state'

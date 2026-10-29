@@ -1,11 +1,12 @@
-import type { ICampaign } from '../types';
+import type { ICampaign } from '../types'
 import type {
   ICampaignDataDto,
   ICampaignListItem,
   ICreateCampaignPayload,
   IUpdateCampaignPayload,
   ICreateCampaignResponse,
-} from '../types/api';
+} from '../types/api'
+import * as api from './api'
 
 const CAMPAIGN_IPC_CHANNELS = {
   list: 'campaign:list',
@@ -14,72 +15,92 @@ const CAMPAIGN_IPC_CHANNELS = {
   delete: 'campaign:delete',
   getData: 'campaign:get-data',
   updateData: 'campaign:update-data',
-} as const;
+} as const
 
-function getIpcRenderer():
-  | { invoke: (channel: string, ...args: unknown[]) => Promise<unknown> }
-  | null {
-  if (typeof window === 'undefined' || !window.require) return null;
+function getIpcRenderer(): {
+  invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+} | null {
+  if (typeof window === 'undefined' || !window.require) return null
   try {
-    return window.require('electron').ipcRenderer;
+    return window.require('electron').ipcRenderer
   } catch {
-    return null;
+    return null
   }
 }
 
 export async function listCampaigns(): Promise<ICampaignListItem[]> {
-  const ipc = getIpcRenderer();
+  const ipc = getIpcRenderer()
   if (ipc) {
-    const campaigns = await ipc.invoke(CAMPAIGN_IPC_CHANNELS.list);
-    return (campaigns as ICampaignListItem[]) ?? [];
+    const campaigns = await ipc.invoke(CAMPAIGN_IPC_CHANNELS.list)
+    return (campaigns as ICampaignListItem[]) ?? []
   }
-  return [];
+  return api.listCampaigns()
 }
 
 export async function createCampaign(
   payload: ICreateCampaignPayload = {},
 ): Promise<ICreateCampaignResponse> {
-  const ipc = getIpcRenderer();
+  const ipc = getIpcRenderer()
   if (ipc) {
-    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.create, payload)) as ICreateCampaignResponse;
+    return (await ipc.invoke(
+      CAMPAIGN_IPC_CHANNELS.create,
+      payload,
+    )) as ICreateCampaignResponse
   }
-  throw new Error('IPC not available');
+  return api.createCampaign(payload)
 }
 
 export async function updateCampaign(
   campaignId: string,
   payload: IUpdateCampaignPayload = {},
 ): Promise<ICampaign> {
-  const ipc = getIpcRenderer();
+  const ipc = getIpcRenderer()
   if (ipc) {
-    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.update, campaignId, payload)) as ICampaign;
+    return (await ipc.invoke(
+      CAMPAIGN_IPC_CHANNELS.update,
+      campaignId,
+      payload,
+    )) as ICampaign
   }
-  throw new Error('IPC not available');
+  return api.updateCampaign(campaignId, payload)
 }
 
-export async function deleteCampaign(campaignId: string): Promise<{ ok: boolean }> {
-  const ipc = getIpcRenderer();
+export async function deleteCampaign(
+  campaignId: string,
+): Promise<{ ok: boolean }> {
+  const ipc = getIpcRenderer()
   if (ipc) {
-    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.delete, campaignId)) as { ok: boolean };
+    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.delete, campaignId)) as {
+      ok: boolean
+    }
   }
-  return { ok: false };
+  return api.deleteCampaign(campaignId)
 }
 
-export async function getCampaignData(campaignId: string): Promise<ICampaignDataDto> {
-  const ipc = getIpcRenderer();
+export async function getCampaignData(
+  campaignId: string,
+): Promise<ICampaignDataDto> {
+  const ipc = getIpcRenderer()
   if (ipc) {
-    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.getData, campaignId)) as ICampaignDataDto;
+    return (await ipc.invoke(
+      CAMPAIGN_IPC_CHANNELS.getData,
+      campaignId,
+    )) as ICampaignDataDto
   }
-  throw new Error('IPC not available');
+  return api.getCampaignData(campaignId)
 }
 
 export async function updateCampaignData(
   campaignId: string,
   data: ICampaignDataDto,
 ): Promise<ICampaignDataDto> {
-  const ipc = getIpcRenderer();
+  const ipc = getIpcRenderer()
   if (ipc) {
-    return (await ipc.invoke(CAMPAIGN_IPC_CHANNELS.updateData, campaignId, data)) as ICampaignDataDto;
+    return (await ipc.invoke(
+      CAMPAIGN_IPC_CHANNELS.updateData,
+      campaignId,
+      data,
+    )) as ICampaignDataDto
   }
-  throw new Error('IPC not available');
+  return api.updateCampaignData(campaignId, data)
 }

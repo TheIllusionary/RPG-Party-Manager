@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 const campaignDataSchema = new mongoose.Schema(
   {
@@ -19,8 +19,10 @@ const campaignDataSchema = new mongoose.Schema(
     bestiaryReview: { type: mongoose.Schema.Types.Mixed, default: {} },
     buffsDatabase: { type: mongoose.Schema.Types.Mixed, default: [] },
     subclasses: { type: mongoose.Schema.Types.Mixed, default: [] },
+    /** Unified actor array for Phase 2+ migration (coexists with players / library). */
+    actors: { type: mongoose.Schema.Types.Mixed, default: [] },
   },
-  { timestamps: true }
-);
+  { timestamps: true },
+)
 
-export default mongoose.model('CampaignData', campaignDataSchema);
+export default mongoose.model('CampaignData', campaignDataSchema)
