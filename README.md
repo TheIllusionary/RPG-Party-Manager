@@ -4,6 +4,15 @@ A desktop-first **Dungeon Master control panel** for D&D 5e-style homebrew table
 
 Evolved from the legacy Excel workbook *Party Manager 2.7.xlsm*.
 
+## Who it's for
+
+- **Dungeon Masters** running homebrew 5e-style campaigns who want one panel
+  for party sheets, combat, monsters, loot and campaign notes.
+- **Players** who need a view of their character, inventory and conditions
+  without the DM sharing the whole table.
+- **Developers** interested in a React 19 + Electron + Express/MongoDB stack
+  with a data-driven bestiary and a homebrew rules engine.
+
 ---
 
 ## Features
@@ -28,7 +37,7 @@ Evolved from the legacy Excel workbook *Party Manager 2.7.xlsm*.
 - **Database:** MongoDB (local or Atlas)
 - **Desktop:** Electron (optional)
 
-Deep architecture: see [`architecture.md`](architecture.md) and [`docs/mudancas-recentes.md`](docs/mudancas-recentes.md).
+Deep architecture: see [`architecture.md`](architecture.md) and [`docs/recent-changes.md`](docs/recent-changes.md).
 
 ---
 
@@ -45,8 +54,7 @@ RPG-Party-Manager/
 │       ├── types/       IPlayer, IEnemy, IAppData, …
 │       ├── data/        defaultData, attackSchema
 │       └── services/    api client
-├── docs/                CHANGELOG_AI, PR template, change logs
-├── .cursorrules         Rules for AI/human collaboration
+├── docs/                AI instructions, CHANGELOG_AI, PR template, change logs
 └── architecture.md      System design reference
 ```
 
@@ -72,7 +80,10 @@ This runs `postinstall` for both `api/` and `webapp/`.
 
 ### 2. API environment (optional)
 
-No setup required — the project ships with **cloud defaults** in `shared/cloudDefaults.js` (hosted API on Render + MongoDB Atlas). Clone, install, and run.
+No setup required to try the frontend against the hosted API — the project
+ships with a **cloud default API URL** in `shared/cloudDefaults.js`. Secrets
+(`MONGO_URI`, `JWT_SECRET`) are never committed: set them in `api/.env`
+(local) or as Render environment variables (production).
 
 To use a **local MongoDB** or custom secrets, copy the example file:
 
@@ -153,7 +164,8 @@ The packaged app checks the **public releases repo** on startup (`electron-updat
 - Latest installer: https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases/latest/download/PartyManager-Setup.exe
 - Releases page: https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases
 
-Source code stays in the private repo; only installers and `latest.yml` are published publicly.
+Source code lives in this repository; installers and `latest.yml` are published
+to the releases repo.
 
 **Local build (no publish):**
 
@@ -221,13 +233,19 @@ gh pr create --body-file docs/LAST_COMMIT_MSG.txt
 
 ## Contributing & AI agents
 
-- Read **`.cursorrules`** before making changes.
+- Read **`docs/AI_INSTRUCTIONS.md`** before making changes.
 - Log sessions in **`docs/CHANGELOG_AI.md`**.
 - Use **`docs/PR_TEMPLATE.md`** for pull requests (patch notes + technical sections).
 - Shared types live in **`webapp/src/types/index.ts`** — update interfaces when changing data shape.
 
 ---
 
+## Roadmap
+
+See [`ROADMAP.md`](ROADMAP.md) for the full backlog and matching GitHub issues.
+Highlights: cloud-first auth hardening, a mobile/web companion, richer VTT
+integration, and a self-hostable Docker deployment.
+
 ## License
 
-Private project — see repository owner for usage terms.
+[MIT](LICENSE) © 2026 Guilherme Danzer de Oliveira

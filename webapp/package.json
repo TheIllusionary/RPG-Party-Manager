@@ -6,7 +6,7 @@
   "author": "GuilhermeDanzer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GuilhermeDanzer/RPG-Party-Manager.git"
+    "url": "https://github.com/TheIllusionary/RPG-Party-Manager.git"
   },
   "type": "module",
   "main": "electron/main.cjs",

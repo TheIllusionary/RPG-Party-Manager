@@ -33,3 +33,20 @@ npm-debug.log*
 
 # AI-generated commit drafts (review locally, do not commit)
 docs/LAST_COMMIT_MSG.txt
+
+# Secrets & local environment (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.jks
+*.key
+*.mobileprovision
+
+# Copyrighted reference material (never commit)
+webapp/Documents/*.pdf
+
+# Desktop build artifacts
+*.ipa
+

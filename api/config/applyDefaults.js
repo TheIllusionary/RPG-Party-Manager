@@ -11,11 +11,6 @@ export function applyCloudDefaults() {
     applied.push('MONGO_URI');
   }
 
-  if (!process.env.JWT_SECRET && CLOUD_DEFAULTS.JWT_SECRET) {
-    process.env.JWT_SECRET = CLOUD_DEFAULTS.JWT_SECRET;
-    applied.push('JWT_SECRET');
-  }
-
   if (!process.env.PORT && CLOUD_DEFAULTS.PORT) {
     process.env.PORT = CLOUD_DEFAULTS.PORT;
     applied.push('PORT');
