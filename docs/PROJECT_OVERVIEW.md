@@ -1,64 +1,64 @@
-# RPG Party Manager — Visão Geral do Projeto
+# RPG Party Manager — Project Overview
 
-Documento consolidado sobre o que é o projeto, o que foi implementado até agora, como está organizado e como publicar/atualizar para os usuários.
+Consolidated document about what the project is, what has been implemented so far, how it's organized, and how to publish/update for users.
 
-> **Última atualização:** 2026-07-02  
-> **Repositório de código (privado):** [GuilhermeDanzer/RPG-Party-Manager](https://github.com/GuilhermeDanzer/RPG-Party-Manager)  
-> **Repositório de releases (público):** [GuilhermeDanzer/RPG-Party-Manager-Releases](https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases)
-
----
-
-## 1. O que é
-
-**RPG Party Manager** é uma ferramenta de Mesa (DM) para campanhas D&D 5e com regras homebrew. Substitui a planilha legada *Party Manager 2.7.xlsm* por um app web/desktop moderno.
-
-### Público-alvo
-
-- **DM** que roda a mesa e controla party, combate, bestiário, inventário e notas de campanha.
-- **Jogadores** não usam o app diretamente — o DM opera tudo na interface.
-
-### Principais capacidades
-
-| Área | Funcionalidades |
-|------|-----------------|
-| **Party & Combate** | HP, mana, temp HP, condições (CC), buffs, limit break, battle mode, inimigos, resolução de ataques, targeting em massa, VTT (Owlbear Rodeo) |
-| **Homebrew** | Fórmula custom de mana, trait vampiro/blood magic, nível derivado de XP (D&D 5e) |
-| **Subclasses** | Subclasses data-driven com resistências, traços passivos e ataques estruturados |
-| **Inventário** | Bags por jogador, ouro, paper-doll de equipamento com modificadores |
-| **Bestiário** | 800+ monstros em `default_monsters.json` + biblioteca custom, editor de ataques, buff database |
-| **Campanha** | Notebook (quests/notas), training tracker, chaos tables |
-| **Conta & persistência** | Login JWT, múltiplas campanhas por usuário, auto-save MongoDB, import/export JSON |
-| **Desktop** | App Electron com auto-update e instalador Windows |
+> **Last updated:** 2026-07-02  
+> **Source code repo (private):** [GuilhermeDanzer/RPG-Party-Manager](https://github.com/GuilhermeDanzer/RPG-Party-Manager)  
+> **Releases repo (public):** [GuilhermeDanzer/RPG-Party-Manager-Releases](https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases)
 
 ---
 
-## 2. Stack tecnológica (estado atual)
+## 1. What it is
 
-| Camada | Tecnologia |
-|--------|------------|
-| Frontend | React 19, TypeScript, Vite 7 |
-| Backend | Node.js, Express, Mongoose |
-| Banco | MongoDB (Atlas em produção, local opcional) |
-| Auth | JWT (Bearer token) |
-| Desktop | Electron 41 + electron-builder + electron-updater |
-| CI/CD | GitHub Actions (release Windows) |
-| API cloud | Render (`rpg-party-manager-api`) |
+**RPG Party Manager** is a DM (Dungeon Master) tool for D&D 5e campaigns with homebrew rules. It replaces the legacy _Party Manager 2.7.xlsm_ spreadsheet with a modern web/desktop app.
 
-### Evolução importante
+### Target audience
 
-O projeto **não é mais só localStorage**. Hoje:
+- **DM** who runs the table and controls the party, combat, bestiary, inventory, and campaign notes.
+- **Players** do not use the app directly — the DM operates everything through the interface.
 
-1. **API hospedada** em `https://rpg-party-manager-api.onrender.com`
-2. **Frontend** pode rodar só com Vite (sem Mongo local) apontando para a API na nuvem
-3. **Electron empacotado** também usa a API na nuvem (não depende de `localhost:3001` no instalador)
-4. **TypeScript** em todo o `webapp/src/` com tipos por domínio em `webapp/src/types/`
+### Key capabilities
+
+| Area                      | Features                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Party & Combat**        | HP, mana, temp HP, conditions (CC), buffs, limit break, battle mode, enemies, attack resolution, bulk targeting, VTT (Owlbear Rodeo) |
+| **Homebrew**              | Custom mana formula, vampire/blood magic trait, level derived from XP (D&D 5e)                                                       |
+| **Subclasses**            | Data-driven subclasses with resistances, passive traits, and structured attacks                                                      |
+| **Inventory**             | Bags per player, gold, equipment paper-doll with modifiers                                                                           |
+| **Bestiary**              | 800+ monsters in `default_monsters.json` + custom library, attack editor, buff database                                              |
+| **Campaign**              | Notebook (quests/notes), training tracker, chaos tables                                                                              |
+| **Account & persistence** | JWT login, multiple campaigns per user, MongoDB auto-save, JSON import/export                                                        |
+| **Desktop**               | Electron app with auto-update and Windows installer                                                                                  |
 
 ---
 
-## 3. Arquitetura
+## 2. Tech stack (current state)
+
+| Layer     | Technology                                        |
+| --------- | ------------------------------------------------- |
+| Frontend  | React 19, TypeScript, Vite 7                      |
+| Backend   | Node.js, Express, Mongoose                        |
+| Database  | MongoDB (Atlas in production, local optional)     |
+| Auth      | JWT (Bearer token)                                |
+| Desktop   | Electron 41 + electron-builder + electron-updater |
+| CI/CD     | GitHub Actions (Windows release)                  |
+| Cloud API | Render (`rpg-party-manager-api`)                  |
+
+### Important evolution
+
+The project **is no longer just localStorage**. Currently:
+
+1. **Hosted API** at `https://rpg-party-manager-api.onrender.com`
+2. **Frontend** can run with just Vite (no local Mongo) pointing to the cloud API
+3. **Packaged Electron** also uses the cloud API (does not depend on `localhost:3001` in the installer)
+4. **TypeScript** across all `webapp/src/` with domain-specific types in `webapp/src/types/`
+
+---
+
+## 3. Architecture
 
 ```
-RPG-Party-Manager/                    ← código-fonte (repo privado)
+RPG-Party-Manager/                    ← source code (private repo)
 ├── api/                              Express + Mongoose
 │   ├── routes/                       auth, campaigns
 │   ├── models/                       User, Campaign, CampaignData
@@ -67,24 +67,24 @@ RPG-Party-Manager/                    ← código-fonte (repo privado)
 │   └── src/
 │       ├── core/                     App.tsx, GameApp.tsx
 │       ├── features/
-│       │   ├── auth/                 login/registro
-│       │   ├── battle/               party, combate, VTT
+│       │   ├── auth/                 login/register
+│       │   ├── battle/               party, combat, VTT
 │       │   ├── inventory/            bags + paper-doll
 │       │   ├── bestiary/             EnemyLibrary, EncounterBuilder
 │       │   └── campaign/             Notebook, Training, Chaos, Subclasses, CampaignList
 │       ├── shared/utils/             combatUtils, migrationUtils
-│       ├── types/                    interfaces por domínio
+│       ├── types/                    domain-specific interfaces
 │       ├── data/                     defaultData, attackSchema
-│       └── services/                 cliente HTTP (api.ts)
-├── shared/                           cloudDefaults.js (API URL padrão)
-├── docs/                             changelogs, templates, este arquivo
-└── .github/workflows/                release.yml (build Electron)
+│       └── services/                 HTTP client (api.ts)
+├── shared/                           cloudDefaults.js (default API URL)
+├── docs/                             changelogs, templates, this file
+└── .github/workflows/                release.yml (Electron build)
 
-RPG-Party-Manager-Releases/           ← repo público (só instaladores)
+RPG-Party-Manager-Releases/           ← public repo (installers only)
 └── releases/                         .exe, latest.yml, blockmap
 ```
 
-### Fluxo de dados
+### Data flow
 
 ```mermaid
 flowchart LR
@@ -94,7 +94,7 @@ flowchart LR
     end
     API[Express API - Render]
     Mongo[(MongoDB Atlas)]
-    Releases[GitHub Releases - público]
+    Releases[GitHub Releases - public]
 
     Browser --> API
     Electron --> API
@@ -102,34 +102,34 @@ flowchart LR
     Electron -.->|auto-update| Releases
 ```
 
-### Estado global (`IAppData`)
+### Global state (`IAppData`)
 
-Campos persistidos por campanha no MongoDB:
+Fields persisted per campaign in MongoDB:
 
 - `players`, `equipment`, `library`, `encounters`
 - `training`, `chaos`, `notebook`
 - `bestiaryReview`, `buffsDatabase`, `subclasses`
 
-Fonte canônica de tipos: `webapp/src/types/index.ts`
+Canonical type source: `webapp/src/types/index.ts`
 
 ---
 
-## 4. Features implementadas (detalhado)
+## 4. Implemented features (detailed)
 
-### 4.1 Autenticação e campanhas
+### 4.1 Authentication and campaigns
 
-- Registro e login com JWT
-- Lista de campanhas por usuário
-- Criar campanha (com dados default)
-- Renomear campanha (`PATCH /campaigns/:id`)
-- **Deletar campanha** (`DELETE /campaigns/:id`) — remove campanha + `CampaignData`
-- Auto-save com debounce (~800 ms) ao editar dados no `GameApp`
-- Import de JSON legado na tela de campanhas
-- Export/import manual de save JSON no `GameApp`
+- Registration and login with JWT
+- Campaign list per user
+- Create campaign (with default data)
+- Rename campaign (`PATCH /campaigns/:id`)
+- **Delete campaign** (`DELETE /campaigns/:id`) — removes campaign + `CampaignData`
+- Auto-save with debounce (~800 ms) when editing data in `GameApp`
+- Legacy JSON import on the campaigns screen
+- Manual save JSON export/import in `GameApp`
 
 ### 4.2 Battle / Party Manager
 
-Refatorado de um componente monolítico (~4800 linhas) para:
+Refactored from a monolithic component (~4800 lines) to:
 
 ```
 features/battle/
@@ -142,136 +142,136 @@ features/battle/
     ├── PlayerCard, EnemyCard
     ├── CombatHeader, VttOverlay
     ├── AttackResolutionModal, PartyXpModal
-    ├── PartyLevelModal          ← novo
+    ├── PartyLevelModal          ← new
     └── FloatingActionBar
 ```
 
-**Combate:**
+**Combat:**
 
-- Battle mode com painel de inimigos
-- Resolução de ataques (manual/auto roll)
-- Bulk targeting e ações em massa
-- VTT overlay (Owlbear Rodeo) no Electron
-- `battleNotes` para log de turnos/buffs
+- Battle mode with enemy panel
+- Attack resolution (manual/auto roll)
+- Bulk targeting and mass actions
+- VTT overlay (Owlbear Rodeo) in Electron
+- `battleNotes` for turn/buff logging
 
 **Party:**
 
 - HP, mana, temp HP, limit break
-- Buffs com tipos toggle/fixed/turn
-- CC (condições) com dropdown padronizado
-- XP e nível derivado de thresholds D&D 5e
-- **Set Party Level** via modal (aplica nível 1–20 a todos `inParty`)
+- Buffs with toggle/fixed/turn types
+- CC (conditions) with standardized dropdown
+- XP and level derived from D&D 5e thresholds
+- **Set Party Level** via modal (applies level 1–20 to all `inParty`)
 - Short rest / long rest
-- Distribuição de XP da party (modal)
+- Party XP distribution (modal)
 
-### 4.3 Subclasses customizadas
+### 4.3 Custom subclasses
 
-- Modelo `ISubclass` com resistências, traços passivos, ataques estruturados
-- `SubclassManager` — aba dedicada na navegação
-- `subclassId` em `IPlayer` equipa subclasse
-- `combatUtils` mescla modificadores de dano da subclasse
-- Trait `vampire` / blood magic integrado ao pool de HP+mana
+- `ISubclass` model with resistances, passive traits, structured attacks
+- `SubclassManager` — dedicated navigation tab
+- `subclassId` on `IPlayer` equips subclass
+- `combatUtils` merges subclass damage modifiers
+- `vampire` trait / blood magic integrated into HP+mana pool
 
-### 4.4 Bestiário
+### 4.4 Bestiary
 
-- `default_monsters.json` — 800+ monstros com ataques parseados
-- `EnemyLibrary` — CRUD de monstros custom, editor de ataques, buffs
-- Preview stat-block com rollers
-- CC padronizado + opção custom
-- `EncounterBuilder` — montar encontros com HP rolado
-- `bestiaryReview` — status de revisão por monstro
+- `default_monsters.json` — 800+ monsters with parsed attacks
+- `EnemyLibrary` — custom monster CRUD, attack editor, buffs
+- Stat-block preview with rollers
+- Standardized CC + custom option
+- `EncounterBuilder` — build encounters with rolled HP
+- `bestiaryReview` — review status per monster
 
-### 4.5 Inventário
+### 4.5 Inventory
 
-- `Equipment` — bags, ouro, itens maravilhosos
+- `Equipment` — bags, gold, wondrous items
 - `CharacterEquipment` — paper-doll (head, armor, weapons, rings, etc.)
-- Modificadores de stats, AC, resistências por slot
+- Stat, AC, and resistance modifiers per slot
 
-### 4.6 Ferramentas de campanha
+### 4.6 Campaign tools
 
-- **Notebook** — páginas quest/nota
-- **Training** — progressão por stat com auto-roll
-- **Chaos** — tabelas default (Magic Fumble, Wild Magic, Weather) + custom
+- **Notebook** — quest/note pages
+- **Training** — per-stat progression with auto-roll
+- **Chaos** — default tables (Magic Fumble, Wild Magic, Weather) + custom
 
-### 4.7 Normalização e migração
+### 4.7 Normalization and migration
 
-- `migrationUtils.ts` — hidrata saves legados (Excel/export antigo)
-- `mergeCampaignData()` — merge com defaults + catálogo
-- `toApiPayload()` — serialização para API
+- `migrationUtils.ts` — hydrates legacy saves (Excel/old export)
+- `mergeCampaignData()` — merge with defaults + catalog
+- `toApiPayload()` — serialization for API
 
-### 4.8 Tipagem TypeScript (rigor app-wide)
+### 4.8 TypeScript typing (app-wide rigor)
 
-Módulos de tipos criados:
+Type modules created:
 
-| Arquivo | Conteúdo |
-|---------|----------|
-| `types/index.ts` | `IPlayer`, `IEnemy`, `IAppData`, `IMonster`, … |
-| `types/battle.ts` | `IPartyState`, `ICombatState`, props de componentes de combate |
-| `types/api.ts` | DTOs da API (`IAuthResponse`, `ICampaignDataDto`, …) |
-| `types/campaign.ts` | Notebook, Training, Chaos, CampaignList props |
-| `types/bestiary.ts` | EnemyLibrary, EncounterBuilder |
-| `types/inventory.ts` | Equipment props |
-| `types/auth.ts` | AuthScreen, sessão |
-| `types/app.ts` | GameApp, `AppTab`, `UpdateAppDataFn` |
+| File                 | Content                                               |
+| -------------------- | ----------------------------------------------------- |
+| `types/index.ts`     | `IPlayer`, `IEnemy`, `IAppData`, `IMonster`, …        |
+| `types/battle.ts`    | `IPartyState`, `ICombatState`, combat component props |
+| `types/api.ts`       | API DTOs (`IAuthResponse`, `ICampaignDataDto`, …)     |
+| `types/campaign.ts`  | Notebook, Training, Chaos, CampaignList props         |
+| `types/bestiary.ts`  | EnemyLibrary, EncounterBuilder                        |
+| `types/inventory.ts` | Equipment props                                       |
+| `types/auth.ts`      | AuthScreen, session                                   |
+| `types/app.ts`       | GameApp, `AppTab`, `UpdateAppDataFn`                  |
 
-`services/api.ts` totalmente tipado (sem `@ts-nocheck`).
+Fully typed `services/api.ts` (no `@ts-nocheck`).
 
 ---
 
 ## 5. API (backend)
 
-### Endpoints principais
+### Main endpoints
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `POST` | `/auth/register` | Criar conta |
-| `POST` | `/auth/login` | Login → JWT |
-| `GET` | `/auth/me` | Perfil do usuário logado |
-| `GET` | `/health` | Health check (Render) |
-| `GET` | `/campaigns` | Listar campanhas do usuário |
-| `POST` | `/campaigns` | Criar campanha + dados default |
-| `PATCH` | `/campaigns/:id` | Renomear / editar metadados |
-| `DELETE` | `/campaigns/:id` | Deletar campanha e dados |
-| `GET` | `/campaigns/:id/data` | Carregar estado do jogo |
-| `PUT` | `/campaigns/:id/data` | Salvar estado do jogo |
+| Method   | Route                 | Description                    |
+| -------- | --------------------- | ------------------------------ |
+| `POST`   | `/auth/register`      | Create account                 |
+| `POST`   | `/auth/login`         | Login → JWT                    |
+| `GET`    | `/auth/me`            | Logged-in user profile         |
+| `GET`    | `/health`             | Health check (Render)          |
+| `GET`    | `/campaigns`          | List user campaigns            |
+| `POST`   | `/campaigns`          | Create campaign + default data |
+| `PATCH`  | `/campaigns/:id`      | Rename / edit metadata         |
+| `DELETE` | `/campaigns/:id`      | Delete campaign and data       |
+| `GET`    | `/campaigns/:id/data` | Load game state                |
+| `PUT`    | `/campaigns/:id/data` | Save game state                |
 
 ### Deploy (Render)
 
-- Serviço: `rpg-party-manager-api`
+- Service: `rpg-party-manager-api`
 - URL: `https://rpg-party-manager-api.onrender.com`
 - Config: `render.yaml`
 - Env vars: `MONGO_URI`, `JWT_SECRET`, `NODE_ENV`, `CORS_ORIGIN`
-- Auto-deploy na `main` do fork conectado
+- Auto-deploy on `main` of connected fork
 
-### Defaults cloud
+### Cloud defaults
 
-`shared/cloudDefaults.js` define `API_URL` padrão para o frontend/Electron quando não há override local.
+`shared/cloudDefaults.js` defines the default `API_URL` for frontend/Electron when there's no local override.
 
 ---
 
 ## 6. Desktop (Electron)
 
-### Comportamento
+### Behavior
 
-- **Dev:** `npm run dev` — API local + Electron + Vite
-- **Produção:** instalador NSIS Windows com atalho na área de trabalho e menu iniciar
-- **Auto-update:** `electron-updater` verifica GitHub Releases no startup
-- **API:** build empacotado aponta para Render (não localhost)
+- **Dev:** `npm run dev` — local API + Electron + Vite
+- **Production:** NSIS Windows installer with desktop shortcut and start menu
+- **Auto-update:** `electron-updater` checks GitHub Releases on startup
+- **API:** packaged build points to Render (not localhost)
 
-### Publicação e distribuição
+### Publishing and distribution
 
-| Repo | Visibilidade | Conteúdo |
-|------|--------------|----------|
-| `RPG-Party-Manager` | **Privado** | Código-fonte completo |
-| `RPG-Party-Manager-Releases` | **Público** | Só instaladores + `latest.yml` |
+| Repo                         | Visibility  | Content                        |
+| ---------------------------- | ----------- | ------------------------------ |
+| `RPG-Party-Manager`          | **Private** | Full source code               |
+| `RPG-Party-Manager-Releases` | **Public**  | Installers only + `latest.yml` |
 
-**Link fixo para jogadores:**
+**Fixed download link for players:**
 
 ```
 https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases/latest/download/PartyManager-Setup.exe
 ```
 
-**Página de releases:**
+**Releases page:**
 
 ```
 https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases
@@ -281,47 +281,47 @@ https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases
 
 Workflow: `.github/workflows/release.yml`
 
-- **Trigger:** push na `main` com mudanças em `webapp/**` (ou tag `v*`)
-- **Versão:** `1.0.<build_number>` (ou semver da tag)
-- **Publica:** `PartyManager-Setup-<version>.exe`, `PartyManager-Setup.exe`, `latest.yml`
-- **Secret:** `RELEASES_REPO_TOKEN` (PAT com acesso ao repo de releases)
+- **Trigger:** push to `main` with changes in `webapp/**` (or `v*` tag)
+- **Version:** `1.0.<build_number>` (or tag semver)
+- **Publishes:** `PartyManager-Setup-<version>.exe`, `PartyManager-Setup.exe`, `latest.yml`
+- **Secret:** `RELEASES_REPO_TOKEN` (PAT with access to releases repo)
 
-### Sobre "Source code" na página de release
+### About "Source code" on the release page
 
-O GitHub **adiciona automaticamente** `Source code (zip)` e `Source code (tar.gz)` em toda release com tag. Isso **não é o CI enviando seu código**.
+GitHub **automatically adds** `Source code (zip)` and `Source code (tar.gz)` to every tagged release. This is **not CI sending your code**.
 
-No repo público de releases, esse zip contém **apenas o README** daquele repo (~785 bytes), não o código do app.
+In the public releases repo, this zip contains **only the README** of that repo (~785 bytes), not the app code.
 
-> Releases antigas no repo **privado** (ex.: v1.0.3) podem ter zip com o código — considere deletá-las se não forem mais necessárias.
+> Old releases in the **private** repo (e.g., v1.0.3) may have zips with code — consider deleting them if no longer needed.
 
 ---
 
-## 7. Automação (deploy, commits e PRs)
+## 7. Automation (deploy, commits, and PRs)
 
-O projeto tem **três pipelines** distintos: API na nuvem (Render), desktop (GitHub Actions + electron-builder) e mensagens de commit/PR (script local). Nenhum deles faz commit sozinho — você revisa antes de publicar.
+The project has **three distinct pipelines**: cloud API (Render), desktop (GitHub Actions + electron-builder), and commit/PR messages (local script). None of them commit automatically — you review before publishing.
 
-### Visão geral
+### Overview
 
 ```mermaid
 flowchart TB
-    subgraph Dev["Desenvolvimento local"]
-        Code[Mudanças no código]
+    subgraph Dev["Local development"]
+        Code[Code changes]
         CommitAI["npm run commit:ai"]
-        Review[Revisar LAST_COMMIT_MSG.txt]
+        Review[Review LAST_COMMIT_MSG.txt]
         GitCommit["git commit -F ..."]
         GitPush[git push]
     end
     subgraph API["API — Render"]
-        PushMain[push na main]
+        PushMain[push to main]
         RenderDeploy[Render auto-deploy]
-        APIProd[API em produção]
+        APIProd[Production API]
     end
     subgraph Desktop["Desktop — GitHub Actions"]
-        PushWebapp[push main com webapp/**]
+        PushWebapp[push main with webapp/**]
         GHA[release.yml]
         ElectronBuild[electron-builder --publish]
         PublicRepo[RPG-Party-Manager-Releases]
-        AutoUpdate[electron-updater nos clientes]
+        AutoUpdate[electron-updater on clients]
     end
     Code --> CommitAI --> Review --> GitCommit --> GitPush
     GitPush --> PushMain --> RenderDeploy --> APIProd
@@ -330,174 +330,174 @@ flowchart TB
 
 ---
 
-### 7.1 Deploy da API (Render) — automático
+### 7.1 API deploy (Render) — automated
 
-| Item | Detalhe |
-|------|---------|
-| **O quê** | Backend Express em `api/` |
-| **Como** | Render conectado ao repo privado; blueprint em `render.yaml` |
-| **Trigger** | Push na branch `main` (auto-deploy ligado) |
-| **Build** | `cd api && npm install` |
-| **Start** | `cd api && node server.js` |
-| **Health** | `GET /health` |
-| **URL** | `https://rpg-party-manager-api.onrender.com` |
+| Item        | Detail                                                       |
+| ----------- | ------------------------------------------------------------ |
+| **What**    | Express backend in `api/`                                    |
+| **How**     | Render connected to private repo; blueprint in `render.yaml` |
+| **Trigger** | Push to `main` branch (auto-deploy enabled)                  |
+| **Build**   | `cd api && npm install`                                      |
+| **Start**   | `cd api && node server.js`                                   |
+| **Health**  | `GET /health`                                                |
+| **URL**     | `https://rpg-party-manager-api.onrender.com`                 |
 
-**Não há script npm para deploy da API** — basta fazer merge/push na `main`. O frontend e o Electron já apontam para essa URL via `shared/cloudDefaults.js` quando não há `.env` local.
+**There is no npm script for API deploy** — just merge/push to `main`. The frontend and Electron already point to this URL via `shared/cloudDefaults.js` when there's no local `.env`.
 
-**Env vars no Render:** `MONGO_URI`, `JWT_SECRET`, `NODE_ENV`, `CORS_ORIGIN` (ver `render.yaml`).
+**Env vars on Render:** `MONGO_URI`, `JWT_SECRET`, `NODE_ENV`, `CORS_ORIGIN` (see `render.yaml`).
 
 ---
 
-### 7.2 Deploy do desktop (Electron) — GitHub Actions
+### 7.2 Desktop deploy (Electron) — GitHub Actions
 
-| Item | Detalhe |
-|------|---------|
-| **Workflow** | `.github/workflows/release.yml` |
-| **Trigger** | Push na `main` alterando `webapp/**`, `api/**`, `package.json` ou o próprio workflow; também tags `v*` e `workflow_dispatch` manual |
-| **Runner** | `windows-latest` |
-| **Versão** | `1.0.<GITHUB_RUN_NUMBER>` na main; semver da tag em `v1.2.0` |
-| **Destino** | Repo **público** `GuilhermeDanzer/RPG-Party-Manager-Releases` |
-| **Secret** | `RELEASES_REPO_TOKEN` (PAT com escopo `repo` no repo de releases) |
+| Item            | Detail                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Workflow**    | `.github/workflows/release.yml`                                                                                                      |
+| **Trigger**     | Push to `main` changing `webapp/**`, `api/**`, `package.json`, or the workflow itself; also `v*` tags and `workflow_dispatch` manual |
+| **Runner**      | `windows-latest`                                                                                                                     |
+| **Version**     | `1.0.<GITHUB_RUN_NUMBER>` on main; tag semver on `v1.2.0`                                                                            |
+| **Destination** | **Public** repo `GuilhermeDanzer/RPG-Party-Manager-Releases`                                                                         |
+| **Secret**      | `RELEASES_REPO_TOKEN` (PAT with `repo` scope on releases repo)                                                                       |
 
-**Passos do CI:**
+**CI steps:**
 
 1. Checkout + Node 22
-2. Define versão em `webapp/package.json`
-3. `npm install` em `api` e `webapp` (sem loop de `postinstall` — ver fix em `package.json` raiz)
+2. Set version in `webapp/package.json`
+3. `npm install` in `api` and `webapp` (no `postinstall` loop — see fix in root `package.json`)
 4. `npm run build --prefix webapp`
-5. `electron-builder --win --publish always` com `GH_TOKEN=RELEASES_REPO_TOKEN`
-6. Copia instalador versionado → `PartyManager-Setup.exe` e faz upload com `gh release upload`
-7. Artefatos de backup no GitHub Actions
+5. `electron-builder --win --publish always` with `GH_TOKEN=RELEASES_REPO_TOKEN`
+6. Copy versioned installer → `PartyManager-Setup.exe` and upload with `gh release upload`
+7. Backup artifacts on GitHub Actions
 
-**Scripts npm (raiz e webapp):**
+**npm scripts (root and webapp):**
 
-| Comando | Uso |
-|---------|-----|
-| `npm run build:electron` | Instalador local, **sem** upload |
-| `npm run publish:electron` | Build + upload manual (precisa `GH_TOKEN` na máquina) |
+| Command                    | Use                                                 |
+| -------------------------- | --------------------------------------------------- |
+| `npm run build:electron`   | Local installer, **without** upload                 |
+| `npm run publish:electron` | Build + manual upload (needs `GH_TOKEN` on machine) |
 
-**Auto-update:** o app Electron (`webapp/electron/main.cjs`) usa `electron-updater` e lê `latest.yml` do repo público de releases no startup.
+**Auto-update:** the Electron app (`webapp/electron/main.cjs`) uses `electron-updater` and reads `latest.yml` from the public releases repo on startup.
 
 ---
 
-### 7.3 Commits e PRs — script `commit:ai`
+### 7.3 Commits and PRs — `commit:ai` script
 
-Automação **assistida** (não executa `git commit` nem `gh pr create` sozinha).
+**Assisted** automation (does not run `git commit` or `gh pr create` on its own).
 
-| Arquivo | Função |
-|---------|--------|
-| `scripts/generate-commit.mjs` | Lê o git diff, preenche `docs/PR_TEMPLATE.md`, grava `docs/LAST_COMMIT_MSG.txt` |
-| `scripts/commit-ai.sh` | Wrapper bash que chama `npm run commit:ai` e mostra próximos passos |
-| `docs/PR_TEMPLATE.md` | Template com **Patch Notes** (DMs) + **Technical Details** |
-| `docs/LAST_COMMIT_MSG.txt` | Saída gerada — revisar antes de commitar |
-| `.cursorrules` | Regras para humanos e agentes Cursor usarem o mesmo fluxo |
+| File                          | Function                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `scripts/generate-commit.mjs` | Reads git diff, fills `docs/PR_TEMPLATE.md`, writes `docs/LAST_COMMIT_MSG.txt` |
+| `scripts/commit-ai.sh`        | Bash wrapper that calls `npm run commit:ai` and shows next steps               |
+| `docs/PR_TEMPLATE.md`         | Template with **Patch Notes** (DMs) + **Technical Details**                    |
+| `docs/LAST_COMMIT_MSG.txt`    | Generated output — review before committing                                    |
+| `.cursorrules`                | Rules for humans and Cursor agents to use the same flow                        |
 
-**Comando:**
+**Command:**
 
 ```bash
 npm run commit:ai
 ```
 
-**O que o script analisa (em ordem de prioridade):**
+**What the script analyzes (in priority order):**
 
-1. Diff **staged** (`git diff --cached`), se existir
-2. Diff **unstaged** + arquivos untracked
-3. Diff da branch vs `main` (`git diff main...HEAD`) — útil quando o working tree está limpo mas a branch já tem commits
+1. **Staged** diff (`git diff --cached`), if present
+2. **Unstaged** + untracked files diff
+3. Branch diff vs `main` (`git diff main...HEAD`) — useful when working tree is clean but branch already has commits
 
-**Flags opcionais:**
+**Optional flags:**
 
 ```bash
-node scripts/generate-commit.mjs --local    # só mudanças locais, ignora branch
-node scripts/generate-commit.mjs --branch   # só diff vs main
+node scripts/generate-commit.mjs --local    # only local changes, ignores branch
+node scripts/generate-commit.mjs --branch   # only diff vs main
 ```
 
-**Modo LLM (opcional):** com `OPENAI_API_KEY` definida, o script chama a API OpenAI (`gpt-4o-mini` por padrão) para redigir patch notes e detalhes técnicos. Sem a chave, usa **heurísticas** no diff (áreas afetadas, arquivos, tipo de mudança).
+**LLM mode (optional):** with `OPENAI_API_KEY` set, the script calls the OpenAI API (`gpt-4o-mini` by default) to draft patch notes and technical details. Without the key, it uses **heuristics** on the diff (affected areas, files, change type).
 
-**Fluxo recomendado:**
+**Recommended flow:**
 
 ```bash
-# 1. Fazer alterações e (opcional) git add
+# 1. Make changes and (optional) git add
 npm run commit:ai
 
-# 2. Revisar e editar se necessário
+# 2. Review and edit if needed
 #    docs/LAST_COMMIT_MSG.txt
 
-# 3. Commit com o texto gerado
+# 3. Commit with generated text
 git commit -F docs/LAST_COMMIT_MSG.txt
 
-# 4. Push e PR (manual ou via gh)
-git push -u origin sua-branch
-gh pr create --title "resumo curto" --body-file docs/LAST_COMMIT_MSG.txt
+# 4. Push and PR (manual or via gh)
+git push -u origin your-branch
+gh pr create --title "short summary" --body-file docs/LAST_COMMIT_MSG.txt
 ```
 
-**O que o template gera:**
+**What the template generates:**
 
-- **Summary** — uma linha do que o PR entrega
-- **Patch Notes** — bullets em linguagem de mesa (português)
-- **How to test** — checklist para o DM
-- **Technical Details** — área, arquitetura, arquivos, verificação (`tsc`, build, etc.)
-- **Data model impact** — checkboxes de schema MongoDB / `IAppData`
+- **Summary** — one-liner of what the PR delivers
+- **Patch Notes** — bullets in tabletop language
+- **How to test** — checklist for the DM
+- **Technical Details** — area, architecture, files, verification (`tsc`, build, etc.)
+- **Data model impact** — MongoDB / `IAppData` schema checkboxes
 
-**Agentes Cursor:** as regras em `.cursorrules` pedem que commits e PRs sigam esse template; o agente pode rodar `commit:ai` ou preencher o mesmo formato manualmente a partir do diff.
-
----
-
-### 7.4 O que **não** está automatizado
-
-| Ação | Situação |
-|------|----------|
-| `git commit` / `git push` | Manual (ou pedido explícito ao agente) |
-| `gh pr create` | Manual; corpo vem de `LAST_COMMIT_MSG.txt` |
-| Deploy frontend estático | Não há — o app é Electron ou Vite local |
-| Testes em CI | Não há workflow de test/lint no GitHub Actions hoje |
-| `docs/CHANGELOG_AI.md` | Entrada manual após sessões significativas (regra em `.cursorrules`) |
+**Cursor agents:** rules in `.cursorrules` require commits and PRs to follow this template; the agent can run `commit:ai` or fill in the same format manually from the diff.
 
 ---
 
-## 8. Cronologia de implementações
+### 7.4 What is **not** automated
 
-### Fase inicial — Bestiário e combate
+| Action                    | Status                                                           |
+| ------------------------- | ---------------------------------------------------------------- |
+| `git commit` / `git push` | Manual (or explicit request to agent)                            |
+| `gh pr create`            | Manual; body comes from `LAST_COMMIT_MSG.txt`                    |
+| Static frontend deploy    | None — the app is Electron or local Vite                         |
+| CI tests                  | No test/lint workflow on GitHub Actions today                    |
+| `docs/CHANGELOG_AI.md`    | Manual entry after significant sessions (rule in `.cursorrules`) |
 
-- Migração do Excel/VBA para web
-- Bestiário estruturado (808 monstros)
-- Parser de ataques (`combatUtils`)
-- Fixes de dano duplicado, versatile attacks, Yugoloths
-- Notebook, stat-blocks com rollers, auto-CC, temp HP D&D
+---
 
-### Fase estrutural — Refatoração e API
+## 8. Implementation chronology
 
-- God component `PlayerManager` → hooks + componentes
-- API Express + MongoDB
-- Auth JWT + multi-campanha
-- Import JSON legado
-- Subclasses customizadas
-- Normalização de dados (`migrationUtils`)
-- Edição direta de nível (XP sync)
+### Initial phase — Bestiary and combat
 
-### Fase TypeScript e cloud
+- Excel/VBA to web migration
+- Structured bestiary (808 monsters)
+- Attack parser (`combatUtils`)
+- Duplicate damage fixes, versatile attacks, Yugoloths
+- Notebook, stat-blocks with rollers, auto-CC, D&D temp HP
 
-- Layout feature-driven (`features/battle`, `campaign`, etc.)
-- Migração TypeScript com tipos por domínio
-- API cloud-ready (CORS, `/health`, Render deploy)
-- Cloud defaults (frontend funciona sem Mongo local)
-- Tipagem rigorosa em props, DTOs e `services/api.ts`
+### Structural phase — Refactoring and API
 
-### Fase UX e campanhas (jul/2026)
+- God component `PlayerManager` → hooks + components
+- Express API + MongoDB
+- JWT auth + multi-campaign
+- Legacy JSON import
+- Custom subclasses
+- Data normalization (`migrationUtils`)
+- Direct level editing (XP sync)
 
-- Modal **Set Party Level** (substituiu `window.prompt`)
-- **DELETE campanha** na lista
-- Deploy Render na `main`
+### TypeScript and cloud phase
 
-### Fase distribuição desktop (jul/2026)
+- Feature-driven layout (`features/battle`, `campaign`, etc.)
+- TypeScript migration with domain-specific types
+- Cloud-ready API (CORS, `/health`, Render deploy)
+- Cloud defaults (frontend works without local Mongo)
+- Strict typing on props, DTOs, and `services/api.ts`
 
-- `electron-updater` integrado
-- CI release no push da `main`
-- Fix loop infinito de `postinstall` no GitHub Actions
-- Repo público de releases separado
-- Dois instaladores: versionado + nome fixo (`PartyManager-Setup.exe`)
-- Scripts `publish:electron` / `build:electron` no `webapp/package.json`
+### UX and campaigns phase (Jul/2026)
 
-### Commits recentes (referência)
+- **Set Party Level** modal (replaced `window.prompt`)
+- **DELETE campaign** on the list
+- Render deploy on `main`
+
+### Desktop distribution phase (Jul/2026)
+
+- `electron-updater` integrated
+- CI release on `main` push
+- Infinite `postinstall` loop fix on GitHub Actions
+- Separate public releases repo
+- Two installers: versioned + fixed name (`PartyManager-Setup.exe`)
+- `publish:electron` / `build:electron` scripts in `webapp/package.json`
+
+### Recent commits (reference)
 
 ```
 271448f Publish desktop releases to public releases repository
@@ -509,86 +509,86 @@ cc2b527 Add campaign delete, party level modal, and centralized TypeScript types
 
 ---
 
-## 9. Comandos úteis
+## 9. Useful commands
 
-### Desenvolvimento
+### Development
 
 ```bash
-npm install                          # instala api + webapp (postinstall)
-npm run dev:web                      # API local + Vite
-npm run dev                          # API local + Electron
-npm run dev --prefix webapp          # só Vite (API na nuvem)
+npm install                          # installs api + webapp (postinstall)
+npm run dev:web                      # local API + Vite
+npm run dev                          # local API + Electron
+npm run dev --prefix webapp          # Vite only (cloud API)
 ```
 
 ### Build
 
 ```bash
 npm run build --prefix webapp        # build frontend
-npm run build:electron               # instalador local (sem upload)
-cd webapp && npm run publish:electron  # build + upload manual (precisa GH_TOKEN)
+npm run build:electron               # local installer (no upload)
+cd webapp && npm run publish:electron  # build + manual upload (needs GH_TOKEN)
 ```
 
-### API local
+### Local API
 
 ```bash
-cp api/.env.example api/.env         # opcional — override dos defaults
+cp api/.env.example api/.env         # optional — override defaults
 npm run dev --prefix api
 npm run seed --prefix api
 ```
 
-### Commits e PRs (ver seção 7.3)
+### Commits and PRs (see section 7.3)
 
 ```bash
-npm run commit:ai                    # gera docs/LAST_COMMIT_MSG.txt
+npm run commit:ai                    # generates docs/LAST_COMMIT_MSG.txt
 git commit -F docs/LAST_COMMIT_MSG.txt
 gh pr create --body-file docs/LAST_COMMIT_MSG.txt
 ```
 
 ---
 
-## 10. Regras de negócio importantes (não quebrar)
+## 10. Important business rules (do not break)
 
-1. **Nível** é derivado de `xp` via thresholds D&D 5e — edições manuais de nível ajustam `xp` para o mínimo do nível.
-2. **Não persistir valores derivados** (level, max HP) no Mongo quando podem ser calculados.
-3. **Fórmulas de combate** vivem em `shared/utils/combatUtils.ts` — mudanças exigem revisar todos os callers em `features/battle/`.
-4. **Subclasses** sobrescrevem traits do jogador via `subclassId`.
-5. **Vampire / Blood Magic:** mana merge no pool de HP (`resourceTrait: 'vampire'`).
-
----
-
-## 11. Documentação relacionada
-
-| Arquivo | Conteúdo |
-|---------|----------|
-| `README.md` | Setup rápido e comandos |
-| `architecture.md` | Design técnico (parcialmente legado — ainda menciona só localStorage em trechos) |
-| `docs/mudancas-recentes.md` | Changelog user-facing em português |
-| `docs/CHANGELOG_AI.md` | Log de sessões de agentes IA |
-| `docs/PR_TEMPLATE.md` | Template de pull request |
-| `.cursorrules` | Regras de colaboração para humanos e IA |
+1. **Level** is derived from `xp` via D&D 5e thresholds — manual level edits adjust `xp` to the minimum for that level.
+2. **Do not persist derived values** (level, max HP) in Mongo when they can be computed.
+3. **Combat formulas** live in `shared/utils/combatUtils.ts` — changes require reviewing all callers in `features/battle/`.
+4. **Subclasses** override player traits via `subclassId`.
+5. **Vampire / Blood Magic:** mana merges into HP pool (`resourceTrait: 'vampire'`).
 
 ---
 
-## 12. Pendências / próximos passos sugeridos
+## 11. Related documentation
 
-- [ ] Deletar releases antigas no repo privado (v1.0.3) se não forem mais usadas
-- [ ] Atualizar `architecture.md` para refletir MongoDB + TypeScript (ainda desatualizado em partes)
-- [ ] Habilitar `strict: true` no TypeScript (tipagem interna de hooks legados)
-- [ ] Remover `@ts-nocheck` restante em `combatUtils.ts` (parsers OCR internos)
-- [ ] Renovar `RELEASES_REPO_TOKEN` quando o PAT expirar
-- [ ] Usuários com instalador antigo (repo privado) precisam reinstalar uma vez pelo link público
-
----
-
-## 13. Links rápidos
-
-| Recurso | URL |
-|---------|-----|
-| API produção | https://rpg-party-manager-api.onrender.com/health |
-| Download app (último) | https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases/latest/download/PartyManager-Setup.exe |
-| Releases | https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases |
-| Código (privado) | https://github.com/GuilhermeDanzer/RPG-Party-Manager |
+| File                     | Content                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `README.md`              | Quick setup and commands                                                          |
+| `architecture.md`        | Technical design (partially outdated — still mentions only localStorage in parts) |
+| `docs/recent-changes.md` | User-facing changelog                                                             |
+| `docs/CHANGELOG_AI.md`   | AI agent session log                                                              |
+| `docs/PR_TEMPLATE.md`    | Pull request template                                                             |
+| `.cursorrules`           | Collaboration rules for humans and AI                                             |
 
 ---
 
-*Documento gerado para consolidar o estado do projeto após as sessões de desenvolvimento com Cursor (jul/2026). Atualize este arquivo quando houver mudanças arquiteturais significativas.*
+## 12. Pending / suggested next steps
+
+- [ ] Delete old releases in the private repo (v1.0.3) if no longer used
+- [ ] Update `architecture.md` to reflect MongoDB + TypeScript (still outdated in parts)
+- [ ] Enable `strict: true` in TypeScript (internal typing of legacy hooks)
+- [ ] Remove remaining `@ts-nocheck` in `combatUtils.ts` (internal OCR parsers)
+- [ ] Renew `RELEASES_REPO_TOKEN` when PAT expires
+- [ ] Users with old installer (private repo) need to reinstall once from the public link
+
+---
+
+## 13. Quick links
+
+| Resource              | URL                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Production API        | https://rpg-party-manager-api.onrender.com/health                                                             |
+| App download (latest) | https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases/latest/download/PartyManager-Setup.exe |
+| Releases              | https://github.com/GuilhermeDanzer/RPG-Party-Manager-Releases/releases                                        |
+| Code (private)        | https://github.com/GuilhermeDanzer/RPG-Party-Manager                                                          |
+
+---
+
+_Document generated to consolidate the project state after development sessions with Cursor (Jul/2026). Update this file when there are significant architectural changes._

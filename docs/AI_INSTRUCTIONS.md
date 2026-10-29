@@ -10,7 +10,7 @@ Follow these rules so humans and AI agents can collaborate without breaking the 
 Before writing code:
 
 1. Read `src/types/index.ts` for canonical data shapes (`IPlayer`, `IEnemy`, `IAppData`, etc.).
-2. Read `architecture.md` and `docs/mudancas-recentes.md` for domain context.
+2. Read `architecture.md` and `docs/recent-changes.md` for domain context.
 3. Identify the **feature** that owns the change (`battle`, `inventory`, `bestiary`, `campaign`, `auth`).
 4. Prefer extending existing hooks/utils over duplicating logic in components.
 
@@ -20,20 +20,20 @@ Do not create new top-level folders without updating this file and `README.md`.
 
 ## 2. State Reading (Single Source of Truth)
 
-| Concern | Location |
-|---------|----------|
-| Global campaign state | `IAppData` in `webapp/src/types/index.ts` |
-| Document-oriented domain (local) | `webapp/src/types/domain/` — `CampaignState`, `Actor`, `LogicBlock` |
-| Local JSON persistence (Electron) | `webapp/src/services/persistence/` → `userData/documents/` |
-| Player View sanitize + WS | `webapp/src/services/PlayerViewService.ts`, `WebSocketServer.ts` |
-| Offline sync (Electron) | `webapp/src/services/SyncService.ts` → `userData/campaign.json` + `POST/GET /sync` |
-| Homebrew logic engine | `webapp/src/services/homebrew/LogicEngine.ts` |
-| Rule computation (numeric) | `webapp/src/engine/RuleEvaluator.ts` |
-| Defaults & merge | `webapp/src/data/defaultData.ts` |
-| Legacy import normalization | `webapp/src/shared/utils/migrationUtils.ts` |
-| Combat math (D&D rules) | `webapp/src/shared/utils/combatUtils.ts` — **do not change formulas casually** |
-| Battle runtime (enemies, VTT) | `GameApp.tsx` local state + `features/battle/hooks/` |
-| API persistence | `api/routes/campaigns.js`, `webapp/src/services/api.ts` |
+| Concern                           | Location                                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| Global campaign state             | `IAppData` in `webapp/src/types/index.ts`                                          |
+| Document-oriented domain (local)  | `webapp/src/types/domain/` — `CampaignState`, `Actor`, `LogicBlock`                |
+| Local JSON persistence (Electron) | `webapp/src/services/persistence/` → `userData/documents/`                         |
+| Player View sanitize + WS         | `webapp/src/services/PlayerViewService.ts`, `WebSocketServer.ts`                   |
+| Offline sync (Electron)           | `webapp/src/services/SyncService.ts` → `userData/campaign.json` + `POST/GET /sync` |
+| Homebrew logic engine             | `webapp/src/services/homebrew/LogicEngine.ts`                                      |
+| Rule computation (numeric)        | `webapp/src/engine/RuleEvaluator.ts`                                               |
+| Defaults & merge                  | `webapp/src/data/defaultData.ts`                                                   |
+| Legacy import normalization       | `webapp/src/shared/utils/migrationUtils.ts`                                        |
+| Combat math (D&D rules)           | `webapp/src/shared/utils/combatUtils.ts` — **do not change formulas casually**     |
+| Battle runtime (enemies, VTT)     | `GameApp.tsx` local state + `features/battle/hooks/`                               |
+| API persistence                   | `api/routes/campaigns.js`, `webapp/src/services/api.ts`                            |
 
 Never store derived values (level, max HP) in MongoDB when they can be computed from `xp` + stats.
 
@@ -48,6 +48,7 @@ webapp/src/
 │   ├── battle/        Party roster, combat mode, VTT, attack resolution
 │   ├── inventory/     Equipment, CharacterEquipment
 │   ├── bestiary/      EnemyLibrary, EncounterBuilder, default_monsters.json
+│   │   └── components/  BuffsSubTab, MonsterDetailPreview
 │   ├── campaign/      CampaignList, Notebook, Training, Chaos, SubclassManager
 │   └── auth/          AuthScreen
 ├── shared/
@@ -73,12 +74,13 @@ After meaningful changes, append a short entry to `docs/CHANGELOG_AI.md`:
 
 ```markdown
 ## YYYY-MM-DD — [Agent/Person name or "Cursor"]
+
 - **Area:** battle | api | types | docs | …
 - **Summary:** one-line what changed
 - **Files:** key paths touched
 ```
 
-Also update `docs/mudancas-recentes.md` when the change affects user-visible behavior (Portuguese OK).
+Also update `docs/recent-changes.md` when the change affects user-visible behavior.
 
 ---
 
@@ -157,7 +159,7 @@ Every React component and CSS change must follow these spacing and layout rules.
 ### Icons & collapse
 
 - Use **`lucide-react`** for expand/collapse and add actions (`ChevronDown`, `ChevronUp`, `Plus`, `Minus`, `Trash2`) — not raw `+` / `−` / `×` text.
-- Collapse controls must work **per item**, not only “all at once”.
+- Collapse controls must work **per item**, not only "all at once".
 
 ### Readable text blocks
 
